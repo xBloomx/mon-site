@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Notes F.Dussault - Ultimate Pro</title>
+    <link rel="shortcut icon" href="logo_note.png" type="image/png">
+    <style>
+        /* =========================================
+           1. VARIABLES & DESIGN (STYLE SOMBRE)
+           ========================================= */
+        :root { 
+            --app-bg: #1e1f26;
+            --sidebar-bg: #fcca46; 
+            --btn-yellow: #fcca46; 
+            --btn-green: #28a745; 
+            --btn-grey: #343a40;
+            --text-light: #e0e0e0;
+            --btn-red: #ff4d4d;
+            --card-bg: #2b2c36;
+            --toolbar-bg: #23242a;
+            --group-bg: #2b2c36;
+            --icon-grey: #BBBBBB;
+            --icon-hover: #ffffff;
+            --active-bg: #4a4b55;
+            --border-color: #444;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- BARRE LATÉRALE --- */
+        .sidebar { width: 80px; background-color: var(--sidebar-bg); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 20px 0; z-index: 100; }
+        .sidebar-top, .sidebar-bottom { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .nav-btn { background: none; border: none; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
+        .nav-btn:hover { background-color: rgba(255,255,255, 0.3); }
+        .nav-btn.active { background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .nav-btn img, .nav-btn svg { width: 32px; height: 32px; object-fit: contain; display: block; }
+        .menu-burger svg { width: 36px; height: 36px; stroke: black; stroke-width: 3; stroke-linecap: round; }
+        .settings-btn svg { width: 28px; height: 28px; stroke: black; stroke-width: 2.5; fill: none; }
+
+        /* --- ZONE PRINCIPALE --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
+        .app-section { display: none; height: 100%; flex-direction: column; }
+        .app-section.active-section { display: flex; }
+
+        /* =========================================
+           VUE NOTES (Dashboard)
+           ========================================= */
+        #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        
+        .action-btn { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 13px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s; }
+        .action-btn:hover { background-color: #ffd66b; transform: translateY(-1px); }
+        
+        .btn-back { background-color: var(--btn-grey) !important; color: white !important; }
+        .btn-back:hover { background-color: #23272b !important; }
+        .btn-save { background-color: var(--btn-green) !important; color: white !important; }
+        .btn-save:hover { background-color: #218838 !important; }
+
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 12px 15px 12px 40px; border-radius: 8px; font-size: 16px; outline: none; }
+        .search-icon { position: absolute; left: 12px; color: #888; pointer-events: none; }
+        
+        .note-list { display: flex; flex-direction: column; gap: 10px; }
+        .note-item { background-color: var(--card-bg); padding: 15px 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s, background-color 0.2s; cursor: pointer; border-left: 5px solid transparent; }
+        .note-item:hover { transform: translateY(-2px); background-color: #343542; border-left: 5px solid var(--btn-yellow); }
+        .note-info-row { display: flex; gap: 20px; align-items: center; flex: 1; }
+        .note-title-col { font-weight: bold; font-size: 16px; color: white; flex: 1; }
+        .note-mod-col { color: #aaa; font-size: 14px; width: 180px; text-align: right; }
+        .btn-icon { background: #444; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; margin-left: 20px; }
+        .btn-icon:hover { background: #555; }
+        .btn-delete { background: rgba(220, 53, 69, 0.2); color: var(--btn-red); }
+        .btn-delete:hover { background: var(--btn-red); color: white; }
+
+        /* =========================================
+           VUE ÉDITEUR (BARRE ULTIMATE)
+           ========================================= */
+        #view-editor { display: none; flex-direction: column; height: 100%; }
+        
+        .editor-top-bar { padding: 8px 15px; display: flex; align-items: center; gap: 8px; background: var(--toolbar-bg); height: 60px; z-index: 101; position: relative; color: var(--icon-grey); }
+
+        .back-circle-btn { width: 32px; height: 32px; background-color: #353641; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-right: 5px; color: var(--icon-grey); }
+        .back-circle-btn:hover { background-color: #444; color: white; }
+
+        .tools-group { display: flex; align-items: center; background: var(--group-bg); padding: 3px 5px; border-radius: 6px; height: 38px; position: relative; margin-right: 2px; }
+
+        .tool-btn { background: transparent; border: none; color: var(--icon-grey); min-width: 28px; height: 30px; border-radius: 4px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.1s; font-size: 14px; position: relative; margin: 0 1px; }
+        .tool-btn:hover { background-color: rgba(255,255,255,0.1); color: var(--icon-hover); }
+        .tool-btn.active { background-color: var(--active-bg); color: white; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        .tool-btn svg { width: 16px; height: 16px; fill: currentColor; }
+        .tool-btn svg.stroke-icon { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .font-icon { font-weight: bold; font-size: 15px; fill: currentColor; color: currentColor; }
+
+        /* --- STYLES MENU DÉROULANT --- */
+        .select-wrapper { position: relative; height: 100%; display: flex; align-items: center; color: var(--icon-grey); }
+        .toolbar-select { background: transparent; color: var(--icon-grey); border: none; font-weight: 600; font-size: 13px; cursor: pointer; padding-right: 15px; -webkit-appearance: none; -moz-appearance: none; appearance: none; height: 100%; outline: none; }
+        .toolbar-select option { background: #1e1f26; color: var(--icon-grey); }
+        .select-arrow { pointer-events: none; position: absolute; right: 0; font-size: 8px; color: var(--icon-grey); margin-top: 2px;}
+
+        /* Input Font Size */
+        #fontSizeInput { background: transparent; color: var(--icon-grey); border: none; width: 45px; font-weight: 600; font-size: 13px; text-align: center; outline: none; }
+        #fontSizeInput::-webkit-outer-spin-button, #fontSizeInput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .font-size-wrapper { display: flex; align-items: center; gap: 2px; }
+
+        .v-sep { width: 1px; height: 18px; background: #444; margin: 0 6px; }
+        
+        .color-bar { position: absolute; bottom: 4px; left: 5px; right: 5px; height: 3px; border-radius: 1px; }
+
+        /* 🔥 BOUTONS SCINDÉS POUR LES COULEURS 🔥 */
+        .split-button { position: relative; display: inline-flex; border-radius: 4px; margin: 0 1px; }
+        .split-button:hover { background-color: rgba(255,255,255,0.1); }
+        .split-button .tool-btn { margin: 0; }
+        .split-button .main-btn { border-top-right-radius: 0; border-bottom-right-radius: 0; padding-right: 4px; }
+        .split-button .main-btn:hover { background-color: transparent; }
+        .split-button .arrow-btn { border-top-left-radius: 0; border-bottom-left-radius: 0; padding-left: 2px; padding-right: 2px; min-width: 16px; font-size: 9px; }
+        .split-button .arrow-btn:hover { background-color: rgba(255,255,255,0.1); }
+
+        .draw-btn-container { border: 1px solid #fcca46; border-radius: 6px; padding: 0; margin-left: 5px; background: transparent; }
+        .draw-btn-container .tool-btn { min-width: 32px; height: 32px; color: var(--icon-grey); }
+        .draw-btn-container.active-draw { background: rgba(252, 202, 70, 0.2); }
+
+        .save-btn-large { margin-left: auto; background-color: var(--btn-yellow); color: var(--icon-grey) !important; border: none; height: 36px; padding: 0 20px; border-radius: 18px; font-weight: 800; font-size: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .save-btn-large:hover { background-color: #ffd66b; }
+        .save-btn-large svg { fill: var(--icon-grey) !important; }
+        .save-btn-large svg polyline[stroke] { stroke: var(--icon-grey) !important; fill: none !important; }
+        .save-btn-large svg polyline[fill] { fill: var(--icon-grey) !important; stroke: none !important; }
+
+        .search-container { position: relative; display: flex; align-items: center; background: var(--group-bg); border-radius: 6px; height: 38px; padding: 0 5px; transition: 0.3s; width: 38px; overflow: hidden; color: var(--icon-grey); }
+        .search-container.active { width: 180px; }
+        .search-input { background: transparent; border: none; color: var(--icon-grey); width: 100%; height: 100%; outline: none; padding-left: 5px; position: absolute; left: 35px; top: 0; }
+        .search-input::placeholder { color: var(--icon-grey); opacity: 0.7; }
+
+        .scroll-area { flex: 1; overflow-y: auto; padding: 40px; display: flex; justify-content: center; background: #15161b; }
+        .note-page-container { position: relative; }
+        .note-page { width: 8.5in; min-height: 11in; background: white; color: black; padding: 1in; box-shadow: 0 0 30px rgba(0,0,0,0.5); outline: none; position: relative; z-index: 1; font-size: 12pt; line-height: 1.5; }
+        
+        #note-content h1 { font-size: 32px; font-weight: 700; }
+        #note-content h2 { font-size: 24px; font-weight: 600; }
+        #note-content h3 { font-size: 18px; font-weight: 600; }
+        #note-content p { font-size: 16px; font-weight: 400; }
+
+        #drawing-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+        #drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+        #draw-options-panel { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: #222; padding: 10px; border-radius: 8px; display: none; gap: 10px; z-index: 200; border: 1px solid #444; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+
+        .office-color-popup { display: none; position: absolute; background: #1f1f1f; border: 1px solid #444; box-shadow: 0 10px 25px rgba(0,0,0,0.7); padding: 14px; width: 280px; z-index: 5000; border-radius: 6px; }
+        .palette-section { margin-bottom: 14px; }
+        .palette-title { font-size: 11px; font-weight: 600; color: #aaa; margin-bottom: 6px; display: block; }
+        .color-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+        .color-cell { width: 22px; height: 22px; cursor: pointer; border: 1px solid #333; box-sizing: border-box; transition: transform 0.1s ease; }
+        .color-cell:hover { border: 1px solid white; transform: scale(1.2); z-index: 2; }
+        .recent-colors { display: flex; gap: 4px; flex-wrap: wrap; }
+        .menu-item { margin-top: 8px; padding: 6px; cursor: pointer; font-size: 12px; border-radius: 4px; }
+        .menu-item:hover { background: #333; }
+
+        /* TABLE GRID */
+        .table-wrapper { position: relative; }
+        .table-grid { display: none; position: absolute; top: 35px; left: 0; background: #2b2c36; padding: 8px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.7); grid-template-columns: repeat(10, 18px); gap: 2px; z-index: 5000; border-radius: 6px; }
+        .table-grid div { width: 18px; height: 18px; border: 1px solid #555; cursor: pointer; }
+        .table-grid div.active { background: var(--btn-yellow); border-color: #ffd66b; }
+
+        /* NOUVELLES MODALES (STYLE CONSISTANT) */
+        .custom-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75); display: none; z-index: 4000;
+            justify-content: center; align-items: center;
+        }
+        .custom-modal-card {
+            background: var(--card-bg); width: 350px; padding: 25px;
+            border-radius: 12px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .custom-modal-title { font-size: 20px; color: var(--btn-red); margin-bottom: 15px; font-weight: bold; }
+        .custom-modal-msg { color: var(--text-light); margin-bottom: 25px; font-size: 15px; line-height: 1.4; }
+        .custom-modal-actions { display: flex; justify-content: center; gap: 10px; }
+        
+        .btn-modal-cancel { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-modal-confirm { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-modal-ok { background: var(--btn-yellow); color: black; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        @media print {
+            .sidebar, .editor-top-bar, #view-dashboard, .custom-modal-overlay { display: none !important; }
+            #view-editor { display: block !important; }
+            .scroll-area { background: white; padding: 0; display: block; overflow: visible; }
+            .note-page { box-shadow: none; margin: 0; height: auto; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    
+    <div id="section-facture" class="app-section">
+        <div class="dash-header">
+            <div class="dash-title"><h1>Factures</h1><p>Gestion des factures</p></div>
+            <button class="action-btn">NOUVELLE FACTURE</button>
+        </div>
+        <div class="placeholder-facture" style="text-align:center;margin-top:100px;border:2px dashed #444;padding:50px;border-radius:20px;">
+            <h2>Interface Facture</h2><p style="color:#aaa;">Code de facturation ici.</p>
+        </div>
+    </div>
+
+    <div id="section-notes" class="app-section active-section">
+        
+        <div id="view-dashboard">
+            <div class="dash-header">
+                <div class="dash-title"><h1>Mes Notes</h1><p>Espace de travail</p></div>
+                <button class="action-btn" onclick="createNewNote()">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="3" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> NOUVELLE NOTE
+                </button>
+            </div>
+            <div class="toolbar">
+                <div class="search-box"><span class="search-icon">🔍</span><input type="text" id="note-search" placeholder="Rechercher..." onkeyup="searchNotes()"></div>
+            </div>
+            <div id="notes-list-container" class="note-list"></div>
+        </div>
+
+        <div id="view-editor">
+            
+            <div class="editor-top-bar">
+                
+                <button class="action-btn btn-back" onclick="closeEditor()" style="margin-right: 10px;">⬅ Retour</button>
+
+                <div class="tools-group">
+                    <button class="tool-btn" onclick="formatDoc('undo')" title="Annuler">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                    </button>
+                    <button class="tool-btn" onclick="formatDoc('redo')" title="Rétablir">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.4 10.6C16.55 9 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>
+                    </button>
+                </div>
+
+                <div class="tools-group">
+                    <div class="select-wrapper">
+                        <select id="styleSelect" onchange="applyTextStyle(this.value)" class="toolbar-select" title="Style">
+                            <option value="body" selected>Corps</option>
+                            <option value="title">Titre</option>
+                            <option value="subtitle">Sous-titre</option>
+                            <option value="secondary">Titre secondaire</option>
+                        </select>
+                        <span class="select-arrow">▼</span>
+                    </div>
+
+                    <div class="v-sep"></div>
+                    
+                    <div class="font-size-wrapper">
+                        <button class="tool-btn" onclick="changeFontSize(-1)" style="font-size:16px;">−</button>
+                        <input type="number"
+                               id="fontSizeInput"
+                               min="8"
+                               max="72"
+                               value="16"
+                               onkeydown="handleFontSizeEnter(event)"
+                               onchange="applyFontSizeWord(this.value)">
+                        <button class="tool-btn" onclick="changeFontSize(1)" style="font-size:16px;">+</button>
+                    </div>
+                </div>
+
+                <div class="tools-group">
+                    <button class="tool-btn" id="btn-bold" onclick="formatDoc('bold')" title="Gras">
+                        <span class="font-icon" style="font-family: 'Arial Black', sans-serif;">G</span>
+                    </button>
+                    <button class="tool-btn" id="btn-italic" onclick="formatDoc('italic')" title="Italique">
+                        <span class="font-icon" style="font-family: 'Times New Roman', serif; font-style:italic;">I</span>
+                    </button>
+                    <button class="tool-btn" id="btn-underline" onclick="formatDoc('underline')" title="Souligné">
+                        <span class="icon-underline">U</span>
+                    </button>
+                    <button class="tool-btn" id="btn-strike" onclick="formatDoc('strikeThrough')" title="Barré">
+                        <span style="font-family:sans-serif; font-size:13px; text-decoration:line-through; color:inherit;">ab</span>
+                    </button>
+                </div>
+
+                <div class="tools-group">
+                    <div class="split-button">
+                        <button class="tool-btn main-btn" onclick="applyTextColor()" title="Appliquer couleur texte">
+                            <span class="font-icon" style="font-size:16px;">A</span>
+                            <div class="color-bar" style="background:#ff0000;" id="textColorInd"></div>
+                        </button>
+                        <button class="tool-btn arrow-btn" onclick="toggleColorPopup('text', this)" title="Choisir couleur texte">▼</button>
+                    </div>
+                    
+                    <div class="split-button">
+                        <button class="tool-btn main-btn" onclick="applyHighlightColor()" title="Appliquer surlignage">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="transform: rotate(-45deg); width: 14px; height: 14px;">
+                                <path d="M10 20v-6h4v6h5v-8h3L12 2 2 12h3v8z" fill="none"/>
+                                <path d="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM5.21 20L5 19.79v-2.79l8.93-8.93 2.79 2.79L7.79 20H5.21z"/>
+                            </svg>
+                            <div class="color-bar" style="background:#ffff00;" id="hiliteColorInd"></div>
+                        </button>
+                        <button class="tool-btn arrow-btn" onclick="toggleColorPopup('highlight', this)" title="Choisir surlignage">▼</button>
+                    </div>
+
+                    <div id="officeColorPopup" class="office-color-popup">
+                        <div class="palette-section"><span class="palette-title">Couleurs du thème</span><div class="color-grid" id="themeColorsGrid"></div></div>
+                        <div class="palette-section"><span class="palette-title">Couleurs standard</span><div class="color-grid" id="standardColorsGrid"></div></div>
+                        <div class="palette-section"><span class="palette-title">Récents</span><div id="recentColorsGrid" class="recent-colors"></div></div>
+                        <div style="border-top:1px solid #444; padding-top:8px;">
+                            <div class="menu-item" onclick="document.getElementById('hiddenColorInput').click()">🎨 Autres couleurs...</div>
+                            <input type="color" id="hiddenColorInput" style="display:none" onchange="applyCustomColor(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tools-group">
+                    <button class="tool-btn" id="btn-justifyLeft" onclick="formatDoc('justifyLeft')" title="Aligner à gauche"><svg viewBox="0 0 24 24" class="stroke-icon"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></button>
+                    <button class="tool-btn" id="btn-justifyCenter" onclick="formatDoc('justifyCenter')" title="Centrer"><svg viewBox="0 0 24 24" class="stroke-icon"><line x1="18" y1="10" x2="6" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="18" y1="18" x2="6" y2="18"></line></svg></button>
+                    <button class="tool-btn" id="btn-justifyRight" onclick="formatDoc('justifyRight')" title="Aligner à droite"><svg viewBox="0 0 24 24" class="stroke-icon"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg></button>
+                    <button class="tool-btn" id="btn-justifyFull" onclick="formatDoc('justifyFull')" title="Justifier"><svg viewBox="0 0 24 24" class="stroke-icon"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><line x1="3" y1="14" x2="21" y2="14"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+                    <div class="v-sep"></div>
+                    <button class="tool-btn" onclick="formatDoc('outdent')" title="Diminuer le retrait">
+                        <svg viewBox="0 0 24 24" class="stroke-icon"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <button class="tool-btn" onclick="formatDoc('indent')" title="Augmenter le retrait">
+                        <svg viewBox="0 0 24 24" class="stroke-icon"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+
+                <div class="tools-group">
+                    <button class="tool-btn" id="btn-unorderedList" onclick="formatDoc('insertUnorderedList')" title="Liste à puces">
+                        <svg viewBox="0 0 24 24" class="stroke-icon" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line>
+                            <circle cx="3.5" cy="6" r="1.5" fill="currentColor" stroke="none"></circle>
+                            <circle cx="3.5" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+                            <circle cx="3.5" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" id="btn-orderedList" onclick="formatDoc('insertOrderedList')" title="Liste numérotée">
+                        <svg viewBox="0 0 24 24" class="stroke-icon" stroke-width="2">
+                            <line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line>
+                            <path d="M4 6h1v1M4 12h1v1M4 18h1v1" stroke-width="2"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="tools-group">
+                    <button class="tool-btn" onclick="insertLink()" title="Insérer un lien"><svg viewBox="0 0 24 24" class="stroke-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                    
+                    <div class="table-wrapper" style="position:relative;">
+                        <button class="tool-btn" onclick="toggleTableGrid()" title="Insérer un tableau"><svg viewBox="0 0 24 24" class="stroke-icon"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg></button>
+                        <div id="tableGrid" class="table-grid"></div>
+                    </div>
+
+                    <button class="tool-btn" onclick="document.getElementById('img-upload').click()" title="Insérer une image"><svg viewBox="0 0 24 24" class="stroke-icon"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+                    <input type="file" id="img-upload" style="display:none" onchange="insertImage(this)">
+                </div>
+
+                <div class="search-container" id="editorSearchCont">
+                    <button class="tool-btn" onclick="toggleSearch()" title="Rechercher" style="position:absolute; left:0; top:4px;">
+                        <svg viewBox="0 0 24 24" class="stroke-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </button>
+                    <input type="text" id="find-input" class="search-input" placeholder="Trouver..." onkeyup="findInPage(this.value)">
+                </div>
+
+                <div class="draw-btn-container" id="drawBtnCont">
+                    <button class="tool-btn" id="btn-draw-toggle" onclick="toggleDrawingMode()" title="Mode Dessin">
+                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:20px;height:20px; transform: rotate(0deg);">
+                            <path d="M19.4 6.6L17.4 4.6C17.2 4.4 16.9 4.4 16.7 4.6L15.3 6L18 8.7L19.4 7.3C19.6 7.1 19.6 6.8 19.4 6.6ZM14.6 6.7L6 15.3V18H8.7L17.3 9.4L14.6 6.7Z"/>
+                            <rect x="5" y="19" width="14" height="2" rx="1" fill="#BBBBBB" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div style="flex:1"></div>
+                <button class="action-btn btn-save" onclick="saveCurrentNote()" title="Sauvegarder la note">💾 SAUVEGARDER</button>
+
+                <div id="draw-options-panel">
+                    <button class="tool-btn draw-tool-btn" id="dt-pen" onclick="setDrawTool('pen')" title="Crayon">✏️</button>
+                    <button class="tool-btn draw-tool-btn" id="dt-fine" onclick="setDrawTool('fine')" title="Plume">🖊</button>
+                    <button class="tool-btn draw-tool-btn" id="dt-eraser" onclick="setDrawTool('eraser')" title="Gomme">🩹</button>
+                    <input type="range" id="brushSize" min="1" max="30" value="5" onchange="setBrushSize(this.value)" style="width:60px;">
+                    
+                    <div style="position:relative;">
+                        <div id="drawColorBtn" onclick="toggleDrawPaletteLocal()" style="width:24px;height:24px;border-radius:50%;background:black;cursor:pointer;border:2px solid #555;"></div>
+                        <div id="drawLocalPalette" class="office-color-popup" style="top:30px; left:-80px;">
+                            <div class="palette-section"><span class="palette-title">Couleurs du thème</span><div class="color-grid" id="drawThemeGrid"></div></div>
+                            <div class="palette-section"><span class="palette-title">Couleurs standard</span><div class="color-grid" id="drawStdGrid"></div></div>
+                        </div>
+                    </div>
+
+                    <button class="tool-btn" onclick="clearDrawLayer()">🗑️</button>
+                </div>
+
+            </div>
+
+            <div class="scroll-area">
+                <div class="note-page-container">
+                    <div id="note-content" class="note-page" contenteditable="true">
+                        <h1>Nouvelle Note</h1>
+                        <p>Commencez à écrire...</p>
+                    </div>
+                    <canvas id="drawing-layer" width="816" height="1056"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div> </div>
+
+<div class="custom-modal-overlay" id="confirmModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title">Confirmation</div>
+        <div class="custom-modal-msg" id="confirmMsg">...</div>
+        <div class="custom-modal-actions">
+            <button class="btn-modal-cancel" onclick="closeConfirmModal()">Non</button>
+            <button class="btn-modal-confirm" id="confirmYesBtn">Oui</button>
+        </div>
+    </div>
+</div>
+
+<div class="custom-modal-overlay" id="alertModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title" style="color:var(--btn-yellow);">Information</div>
+        <div class="custom-modal-msg" id="alertMsg">...</div>
+        <div class="custom-modal-actions">
+            <button class="btn-modal-ok" onclick="closeAlertModal()">Compris</button>
+        </div>
+    </div>
+</div>
+
+<div class="custom-modal-overlay" id="promptModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title">Insérer un lien</div>
+        <input type="text" id="promptInput" style="width:100%; padding:10px; border-radius:5px; border:1px solid #555; background:#222; color:white; margin-bottom:15px;" placeholder="http://">
+        <div class="custom-modal-actions">
+            <button class="btn-modal-cancel" onclick="closePromptModal()">Annuler</button>
+            <button class="btn-modal-ok" id="promptOkBtn">Valider</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* =========================================
+       LOGIQUE JAVASCRIPT
+       ========================================= */
+    
+    // --- GESTION DES MODALES ---
+    let confirmCallback = null;
+    let promptCallback = null;
+
+    function showConfirm(msg, callback) {
+        document.getElementById('confirmMsg').textContent = msg;
+        confirmCallback = callback;
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+        confirmCallback = null;
+    }
+
+    document.getElementById('confirmYesBtn').onclick = function() {
+        if (confirmCallback) confirmCallback();
+        closeConfirmModal();
+    };
+
+    function showAlert(msg) {
+        document.getElementById('alertMsg').textContent = msg;
+        document.getElementById('alertModal').style.display = 'flex';
+    }
+
+    function closeAlertModal() {
+        document.getElementById('alertModal').style.display = 'none';
+    }
+
+    // --- GESTION DU PROMPT MODAL ---
+    function showPrompt(title, defaultVal, callback) {
+        document.querySelector('#promptModal .custom-modal-title').textContent = title;
+        const input = document.getElementById('promptInput');
+        input.value = defaultVal || '';
+        promptCallback = callback;
+        document.getElementById('promptModal').style.display = 'flex';
+        input.focus();
+    }
+    
+    function closePromptModal() {
+        document.getElementById('promptModal').style.display = 'none';
+        promptCallback = null;
+    }
+    
+    document.getElementById('promptOkBtn').onclick = function() {
+        const val = document.getElementById('promptInput').value;
+        if(promptCallback) promptCallback(val);
+        closePromptModal();
+    };
+
+
+    // --- NAVIGATION ---
+    function switchSection(sectionId) {
+        document.querySelectorAll('.app-section').forEach(el => el.classList.remove('active-section'));
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('section-' + sectionId).classList.add('active-section');
+        document.getElementById('btn-' + sectionId).classList.add('active');
+        if(sectionId === 'notes') closeEditor(); 
+    }
+
+    let notes = JSON.parse(localStorage.getItem('fd_notes')) || [];
+    let currentNoteId = null;
+    let drawCtx = null;
+    
+    // --- GESTION COULEURS ---
+    let recentColors = [];
+    let activeColorType = '';
+    
+    // 🔥 1️⃣ VARIABLES GLOBALES POUR LES COULEURS
+    let currentTextColor = '#ff0000';
+    let currentHighlightColor = '#ffff00';
+
+    // 🔥 2️⃣ VARIABLE GLOBALE SÉLECTION
+    let savedRange = null;
+
+    // 🔥 SOLUTION CHATGPT : Protéger le focus automatiquement
+    document.addEventListener("keydown", function(e) {
+        if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+        if (document.activeElement && document.activeElement.tagName === "TEXTAREA") return;
+        
+        const viewEditor = document.getElementById("view-editor");
+        const editor = document.getElementById("note-content");
+        
+        // On donne le focus à l'éditeur SEULEMENT si on est dans la vue éditeur
+        if (viewEditor && viewEditor.style.display === "flex") {
+            editor.focus();
+        }
+    });
+
+    function saveSelection() {
+        const sel = window.getSelection();
+        if (sel.rangeCount > 0) {
+            savedRange = sel.getRangeAt(0);
+        }
+    }
+
+    function restoreSelection() {
+        if (savedRange) {
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
+        }
+    }
+
+    // Ajout des écouteurs sur l'éditeur pour sauvegarder la sélection
+    document.getElementById("note-content").addEventListener("mouseup", saveSelection);
+    document.getElementById("note-content").addEventListener("keyup", saveSelection);
+
+    // 🔥 UTILITAIRE RGB -> HEX
+    function rgbToHex(rgb) {
+        if (!rgb) return null;
+        if (rgb.startsWith("#")) return rgb;
+        const result = rgb.match(/\d+/g);
+        if (!result || result.length < 3) return null;
+        return "#" +
+            ((1 << 24) + (parseInt(result[0]) << 16) + (parseInt(result[1]) << 8) + parseInt(result[2]))
+            .toString(16)
+            .slice(1);
+    }
+
+    const themeColors = [
+        "#000000","#FFFFFF","#44546A","#E7E6E6","#5B9BD5","#ED7D31","#A5A5A5","#FFC000","#4472C4","#70AD47",
+        "#D9E1F2","#B4C6E7","#8EA9DB","#2F5597","#1F3864",
+        "#FCE4D6","#F8CBAD","#F4B084","#C55A11","#833C0C",
+        "#EDEDED","#DBDBDB","#C9C9C9","#7F7F7F","#595959",
+        "#FFF2CC","#FFE699","#FFD966","#BF9000","#7F6000",
+        "#D9E2F3","#B4C7E7","#8FAADC","#305496","#203864",
+        "#E2F0D9","#C6E0B4","#A9D18E","#548235","#385723"
+    ];
+    
+    const standardColors = ["#C00000","#FF0000","#FFC000","#FFFF00","#92D050","#00B050","#00B0F0","#0070C0","#002060","#7030A0"];
+
+    function initColorPalette() {
+        const themeGrid = document.getElementById('themeColorsGrid');
+        const stdGrid = document.getElementById('standardColorsGrid');
+        const drawThemeGrid = document.getElementById('drawThemeGrid');
+        const drawStdGrid = document.getElementById('drawStdGrid');
+
+        themeColors.forEach(c => {
+            createColorCell(c, themeGrid, 'text');
+            createColorCell(c, drawThemeGrid, 'draw');
+        });
+        standardColors.forEach(c => {
+            createColorCell(c, stdGrid, 'text');
+            createColorCell(c, drawStdGrid, 'draw');
+        });
+    }
+
+    function createColorCell(color, container, mode) {
+        const cell = document.createElement('div');
+        cell.className = 'color-cell';
+        cell.style.backgroundColor = color;
+        if(mode === 'text') cell.onclick = () => pickColor(color);
+        else cell.onclick = () => pickDrawColor(color);
+        container.appendChild(cell);
+    }
+
+    function pickColor(color) {
+       document.getElementById('officeColorPopup').style.display = 'none';
+
+       if (!recentColors.includes(color)) {
+           recentColors.unshift(color);
+           if (recentColors.length > 10) recentColors.pop();
+           renderRecentColors();
+       }
+       
+       if (activeColorType === 'text') {
+           currentTextColor = color;
+           document.getElementById('textColorInd').style.backgroundColor = color;
+       } 
+       else if (activeColorType === 'highlight') {
+           currentHighlightColor = color;
+           document.getElementById('hiliteColorInd').style.backgroundColor = color;
+       }
+    }
+
+    function applyTextColor() {
+        const editor = document.getElementById("note-content");
+        editor.focus(); // On rend le focus à l'éditeur explicitement lors d'un clic de mise en forme
+        restoreSelection();
+
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        const parent = range.startContainer.nodeType === 3 ? range.startContainer.parentElement : range.startContainer;
+        
+        const currentColor = window.getComputedStyle(parent).color;
+        const hexCurrent = rgbToHex(currentColor);
+
+        document.execCommand("styleWithCSS", false, true);
+
+        if (hexCurrent && hexCurrent.toLowerCase() === rgbToHex(currentTextColor).toLowerCase()) {
+            document.execCommand("foreColor", false, "#000000"); 
+        } else {
+            document.execCommand("foreColor", false, currentTextColor);
+        }
+        
+        document.execCommand("styleWithCSS", false, false);
+    }
+
+    function applyHighlightColor() {
+        const editor = document.getElementById("note-content");
+        editor.focus(); // On rend le focus à l'éditeur explicitement lors d'un clic de mise en forme
+        restoreSelection();
+
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        const parent = range.startContainer.nodeType === 3 ? range.startContainer.parentElement : range.startContainer;
+
+        const bg = window.getComputedStyle(parent).backgroundColor;
+        const hexBg = rgbToHex(bg);
+
+        document.execCommand("styleWithCSS", false, true);
+
+        if (hexBg && hexBg.toLowerCase() === rgbToHex(currentHighlightColor).toLowerCase()) {
+            document.execCommand("hiliteColor", false, "transparent");
+        } else {
+            document.execCommand("hiliteColor", false, currentHighlightColor);
+        }
+        
+        document.execCommand("styleWithCSS", false, false);
+    }
+    
+    function pickDrawColor(color) {
+       drawColor = color;
+       document.getElementById('drawColorBtn').style.background = color;
+       document.getElementById('drawLocalPalette').style.display = 'none';
+       if(drawTool !== 'eraser') {
+           drawCtx.globalCompositeOperation = 'source-over';
+           drawCtx.strokeStyle = drawColor;
+       }
+    }
+
+    function renderRecentColors() {
+        const container = document.getElementById('recentColorsGrid');
+        container.innerHTML = '';
+        recentColors.forEach(c => createColorCell(c, container, 'text'));
+    }
+
+    function toggleColorPopup(type, btnElement) {
+        const popup = document.getElementById('officeColorPopup');
+        if (popup.style.display === 'block' && activeColorType === type) {
+            popup.style.display = 'none';
+            return;
+        }
+
+        activeColorType = type;
+        popup.style.display = 'block';
+
+        const container = popup.parentElement; 
+        const btnRect = btnElement.parentElement.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        const leftPos = btnRect.left - containerRect.left;
+        const topPos = btnRect.bottom - containerRect.top;
+
+        popup.style.left = leftPos + "px";
+        popup.style.top = (topPos + 5) + "px";
+    }
+    
+    function toggleDrawPaletteLocal() {
+        const p = document.getElementById('drawLocalPalette');
+        p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function applyCustomColor(color) { pickColor(color); }
+    
+    document.addEventListener('click', function(e) {
+        const popup = document.getElementById('officeColorPopup');
+        if (!popup.contains(e.target) && !e.target.closest('.split-button')) { popup.style.display = 'none'; }
+        
+        const drawPal = document.getElementById('drawLocalPalette');
+        if (!drawPal.contains(e.target) && !e.target.closest('#drawColorBtn')) { drawPal.style.display = 'none'; }
+        
+        const tableGrid = document.getElementById('tableGrid');
+        if (!tableGrid.contains(e.target) && !e.target.closest('.tool-btn')) {
+             if(tableGrid.style.display === 'grid') tableGrid.style.display = 'none';
+        }
+    });
+    
+    initColorPalette();
+    renderNotesList();
+
+    function applyTextStyle(style) {
+        document.getElementById("note-content").focus();
+        if (style === "title") document.execCommand("formatBlock", false, "h1");
+        else if (style === "subtitle") document.execCommand("formatBlock", false, "h2");
+        else if (style === "secondary") document.execCommand("formatBlock", false, "h3");
+        else document.execCommand("formatBlock", false, "p");
+    }
+
+    let currentFontSize = 16;
+    function applyFontSizeWord(size) {
+        size = parseInt(size);
+        if (isNaN(size) || size < 8 || size > 72) return;
+        currentFontSize = size;
+        document.getElementById("note-content").focus();
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        document.execCommand("styleWithCSS", false, true);
+        if (range.collapsed) {
+            document.getElementById("note-content").style.fontSize = size + "px";
+        } else {
+            const span = document.createElement("span");
+            span.style.fontSize = size + "px";
+            range.surroundContents(span);
+        }
+        document.execCommand("styleWithCSS", false, false);
+        document.getElementById("fontSizeInput").value = size;
+    }
+
+    function changeFontSize(step) {
+        let input = document.getElementById("fontSizeInput");
+        let size = parseInt(input.value) || 16;
+        size += step;
+        applyFontSizeWord(size); 
+    }
+
+    function handleFontSizeEnter(e) {
+        if (e.key === "Enter") {
+            applyFontSizeWord(e.target.value);
+            e.target.blur();
+        }
+    }
+
+    function updateFontSizeDisplay() {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        const node = selection.anchorNode;
+        if (!node) return;
+        
+        const element = node.nodeType === 3 ? node.parentElement : node;
+        const size = window.getComputedStyle(element).fontSize;
+        const px = parseInt(size);
+        if (px >= 8 && px <= 72) {
+            document.getElementById("fontSizeInput").value = px;
+        }
+
+        let currentTag = 'body';
+        const editor = document.getElementById('note-content');
+        let tempNode = element;
+        while (tempNode && tempNode !== editor) {
+            const tag = tempNode.nodeName.toLowerCase();
+            if (tag === 'h1') { currentTag = 'title'; break; }
+            else if (tag === 'h2') { currentTag = 'subtitle'; break; }
+            else if (tag === 'h3') { currentTag = 'secondary'; break; }
+            tempNode = tempNode.parentNode;
+        }
+        document.getElementById('styleSelect').value = currentTag;
+    }
+
+    document.getElementById("note-content").addEventListener("keyup", updateFontSizeDisplay);
+    document.getElementById("note-content").addEventListener("mouseup", updateFontSizeDisplay);
+
+    function toggleTableGrid() {
+        const grid = document.getElementById("tableGrid");
+        if(grid.innerHTML === "") initTableGrid();
+        grid.style.display = grid.style.display === "grid" ? "none" : "grid";
+    }
+
+    function initTableGrid() {
+        const grid = document.getElementById("tableGrid");
+        grid.innerHTML = "";
+        for (let i = 0; i < 100; i++) {
+            const cell = document.createElement("div");
+            cell.dataset.index = i;
+            cell.addEventListener("mouseover", function() {
+                const index = parseInt(this.dataset.index);
+                const row = Math.floor(index / 10) + 1;
+                const col = (index % 10) + 1;
+                highlightTableGrid(row, col);
+            });
+            cell.addEventListener("click", function() {
+                const index = parseInt(this.dataset.index);
+                const rows = Math.floor(index / 10) + 1;
+                const cols = (index % 10) + 1;
+                createTable(rows, cols);
+                grid.style.display = "none";
+            });
+            grid.appendChild(cell);
+        }
+    }
+
+    function highlightTableGrid(rows, cols) {
+        const cells = document.querySelectorAll("#tableGrid div");
+        cells.forEach((cell, i) => {
+            const r = Math.floor(i / 10) + 1;
+            const c = (i % 10) + 1;
+            cell.classList.toggle("active", r <= rows && c <= cols);
+        });
+    }
+
+    function createTable(rows, cols) {
+        document.getElementById("note-content").focus();
+        let table = "<table border='1' style='border-collapse:collapse;width:100%;border-color:#555;'>";
+        for (let r = 0; r < rows; r++) {
+            table += "<tr>";
+            for (let c = 0; c < cols; c++) {
+                table += "<td style='padding:8px;border:1px solid #555;'>&nbsp;</td>";
+            }
+            table += "</tr>";
+        }
+        table += "</table><p></p>";
+        document.execCommand("insertHTML", false, table);
+    }
+
+    function createNewNote() {
+        const newNote = { id: Date.now(), title: 'Nouvelle Note', date: Date.now(), content: '<h1>Nouvelle Note</h1><p>Commencez à écrire...</p>', drawing: null };
+        notes.push(newNote); localStorage.setItem('fd_notes', JSON.stringify(notes)); openNote(newNote.id);
+    }
+    
+    function renderNotesList() {
+        const container = document.getElementById('notes-list-container'); container.innerHTML = '';
+        const searchVal = document.getElementById('note-search').value.toLowerCase();
+        const sortedNotes = [...notes].sort((a,b) => b.date - a.date);
+        if(sortedNotes.length === 0) { container.innerHTML = '<div style="text-align:center; color:#888; margin-top:50px;">Aucune note trouvée.</div>'; return; }
+        sortedNotes.forEach(note => {
+            if(note.title.toLowerCase().includes(searchVal)) {
+                const div = document.createElement('div'); div.className = 'note-item';
+                div.onclick = function(e) { if(!e.target.closest('.btn-delete')) openNote(note.id); };
+                div.innerHTML = `
+                    <div class="note-info-row">
+                        <div class="note-title-col">${note.title || 'Sans titre'}</div>
+                        <div class="note-mod-col">Modifié: ${new Date(note.date).toLocaleTimeString()}</div>
+                    </div>
+                    <button class="btn-icon btn-delete" onclick="deleteNote(${note.id}, event)" title="Supprimer">🗑️</button>
+                `;
+                container.appendChild(div);
+            }
+        });
+    }
+
+    function deleteNote(id, event) {
+        event.stopPropagation();
+        showConfirm('Supprimer cette note ?', function() {
+            notes = notes.filter(n => n.id !== id);
+            localStorage.setItem('fd_notes', JSON.stringify(notes));
+            renderNotesList();
+        });
+    }
+
+    function searchNotes() { renderNotesList(); }
+
+    function openNote(id) {
+        currentNoteId = id;
+        const note = notes.find(n => n.id === id);
+        if(!note) return;
+        document.getElementById('view-dashboard').style.display = 'none';
+        document.getElementById('view-editor').style.display = 'flex';
+        const contentDiv = document.getElementById('note-content');
+        contentDiv.innerHTML = note.content;
+        const canvas = document.getElementById('drawing-layer');
+        canvas.width = canvas.parentElement.offsetWidth; canvas.height = canvas.parentElement.offsetHeight;
+        drawCtx = canvas.getContext('2d'); 
+        drawCtx.lineCap = "round"; drawCtx.lineJoin = "round";
+        if(note.drawing) { const img = new Image(); img.onload = function() { drawCtx.drawImage(img,0,0); }; img.src = note.drawing; }
+        updateFontSizeDisplay();
+    }
+    function closeEditor() { saveCurrentNote(); document.getElementById('view-dashboard').style.display = 'flex'; document.getElementById('view-editor').style.display = 'none'; currentNoteId = null; }
+    function saveCurrentNote() {
+        if(!currentNoteId) return;
+        const idx = notes.findIndex(n => n.id === currentNoteId);
+        if(idx > -1) {
+            const contentDiv = document.getElementById('note-content');
+            let title = contentDiv.innerText.split('\n')[0] || 'Sans titre';
+            if(title.trim() === '') title = 'Sans titre';
+            notes[idx].title = title.substring(0,30);
+            notes[idx].content = contentDiv.innerHTML;
+            notes[idx].date = Date.now();
+            notes[idx].drawing = document.getElementById('drawing-layer').toDataURL();
+            localStorage.setItem('fd_notes', JSON.stringify(notes));
+            renderNotesList();
+            showAlert("Note sauvegardée !");
+        }
+    }
+
+    function formatDoc(cmd, value=null) { 
+        document.execCommand(cmd, false, value); 
+        document.getElementById('note-content').focus();
+    }
+
+    function insertLink() {
+        showPrompt("Entrez l'URL du lien :", "http://", function(url) {
+            if (url) {
+                document.execCommand('createLink', false, url);
+                document.getElementById('note-content').focus();
+            }
+        });
+    }
+
+    function insertImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = `<img src="${e.target.result}" style="max-width:100%; height:auto; display:block; margin:10px 0;">`;
+                document.execCommand('insertHTML', false, img);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function updateButtonsState() {
+        document.querySelectorAll('.tool-btn:not(.arrow-btn):not(.main-btn)').forEach(btn => btn.classList.remove('active'));
+        if(document.queryCommandState('bold')) document.getElementById('btn-bold').classList.add('active');
+        if(document.queryCommandState('italic')) document.getElementById('btn-italic').classList.add('active');
+        if(document.queryCommandState('underline')) document.getElementById('btn-underline').classList.add('active');
+        if(document.queryCommandState('strikeThrough')) document.getElementById('btn-strike').classList.add('active');
+        if(document.queryCommandState('insertUnorderedList')) document.getElementById('btn-unorderedList').classList.add('active');
+        if(document.queryCommandState('insertOrderedList')) document.getElementById('btn-orderedList').classList.add('active');
+        if(document.queryCommandState('justifyLeft')) document.getElementById('btn-justifyLeft').classList.add('active');
+        if(document.queryCommandState('justifyCenter')) document.getElementById('btn-justifyCenter').classList.add('active');
+        if(document.queryCommandState('justifyRight')) document.getElementById('btn-justifyRight').classList.add('active');
+        if(document.queryCommandState('justifyFull')) document.getElementById('btn-justifyFull').classList.add('active');
+    }
+    document.addEventListener('selectionchange', updateButtonsState);
+    document.getElementById('note-content').addEventListener('keyup', updateButtonsState);
+    document.getElementById('note-content').addEventListener('mouseup', updateButtonsState);
+    document.getElementById('note-content').addEventListener('click', updateButtonsState);
+
+    function toggleSearch() { 
+        const cont = document.getElementById('editorSearchCont'); 
+        cont.classList.toggle('active'); 
+        if(cont.classList.contains('active')) document.getElementById('find-input').focus(); 
+    }
+    
+    // 🔥 CORRECTIF DE LA RECHERCHE (Garde ton texte et le curseur intact)
+    function findInPage(text) { 
+        if (!text) return;
+        
+        const searchInput = document.getElementById('find-input');
+        const cursorPosition = searchInput.selectionStart; // Sauvegarde la position EXACTE du curseur
+        
+        if (window.find && window.getSelection) { 
+            document.designMode="on"; 
+            var sel=window.getSelection(); 
+            sel.collapse(document.body,0); 
+            while(window.find(text)){} 
+            document.designMode="off"; 
+        } 
+
+        // Restaure le focus et le curseur EXACTEMENT là où tu écrivais !
+        searchInput.focus();
+        searchInput.setSelectionRange(cursorPosition, cursorPosition);
+    }
+
+    /* =========================================
+       MOTEUR DE DESSIN
+       ========================================= */
+    let isDrawingMode = false;
+    let isDrawing = false; let lastX = 0; let lastY = 0;
+    let drawTool = 'pen'; let brushSize = 5;
+    let drawColor = '#000000';
+    const drawCanvas = document.getElementById('drawing-layer');
+
+    function toggleDrawingMode() {
+        const layer = document.getElementById('drawing-layer');
+        const options = document.getElementById('draw-options-panel');
+        const cont = document.getElementById('drawBtnCont');
+        isDrawingMode = !isDrawingMode;
+        if(isDrawingMode) {
+            layer.classList.add('active'); options.style.display = 'flex'; cont.classList.add('active-draw');
+            drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
+            updateDrawToolsState();
+        } else {
+            layer.classList.remove('active');
+            options.style.display = 'none'; cont.classList.remove('active-draw');
+        }
+    }
+
+    function setDrawTool(tool) {
+       drawTool = tool;
+       if(tool === 'eraser') {
+           drawCtx.globalCompositeOperation = 'destination-out';
+       } else {
+           drawCtx.globalCompositeOperation = 'source-over';
+           drawCtx.strokeStyle = drawColor;
+       }
+       updateDrawToolsState();
+    }
+    
+    function updateDrawToolsState() {
+        document.querySelectorAll('.draw-tool-btn').forEach(btn => btn.classList.remove('active'));
+        if(drawTool === 'pen') document.getElementById('dt-pen').classList.add('active');
+        else if(drawTool === 'fine') document.getElementById('dt-fine').classList.add('active');
+        else if(drawTool === 'eraser') document.getElementById('dt-eraser').classList.add('active');
+    }
+
+    function setBrushSize(size) { brushSize = parseInt(size); }
+
+    function draw(e) {
+        if (!isDrawing || !isDrawingMode) return;
+        const rect = drawCanvas.getBoundingClientRect();
+        const scaleX = drawCanvas.width / rect.width;
+        const scaleY = drawCanvas.height / rect.height;
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        if(e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; }
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+
+        drawCtx.beginPath(); drawCtx.moveTo(lastX, lastY); drawCtx.lineTo(x, y);
+        
+        if (drawTool === 'pen') {
+           drawCtx.lineWidth = brushSize;
+           drawCtx.strokeStyle = drawColor;
+           drawCtx.lineCap = 'round';
+        }
+        else if (drawTool === 'fine') {
+           drawCtx.lineWidth = Math.max(1, brushSize / 2);
+           drawCtx.strokeStyle = drawColor;
+           drawCtx.lineCap = 'round';
+        }
+        else if (drawTool === 'eraser') {
+           drawCtx.lineWidth = brushSize * 3;
+           drawCtx.lineCap = 'round';
+        }
+
+        drawCtx.stroke();
+        lastX = x; lastY = y;
+    }
+
+    // Events Souris
+    drawCanvas.addEventListener('mousedown', (e) => {
+        if(!isDrawingMode) return; isDrawing = true;
+        const rect = drawCanvas.getBoundingClientRect();
+        lastX = (e.clientX - rect.left) * (drawCanvas.width / rect.width);
+        lastY = (e.clientY - rect.top) * (drawCanvas.height / rect.height);
+    });
+    drawCanvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', () => isDrawing = false);
+    
+    // Events Tactiles (Mobile)
+    drawCanvas.addEventListener('touchstart', (e) => {
+        if(!isDrawingMode) return; e.preventDefault(); isDrawing = true;
+        const rect = drawCanvas.getBoundingClientRect();
+        lastX = (e.touches[0].clientX - rect.left) * (drawCanvas.width / rect.width);
+        lastY = (e.touches[0].clientY - rect.top) * (drawCanvas.height / rect.height);
+    }, {passive: false});
+    drawCanvas.addEventListener('touchmove', (e) => { if(!isDrawingMode) return; e.preventDefault(); draw(e); }, {passive: false});
+    drawCanvas.addEventListener('touchend', () => isDrawing = false);
+
+    function clearDrawLayer() { 
+        showConfirm('Tout effacer le dessin ?', function() {
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        });
+    }
+</script>
+</body>
+</html>

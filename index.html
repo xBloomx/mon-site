@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Interface F.Dussault</title>
+    <style>
+        /* =========================================
+           1. VARIABLES & LAYOUT GÉNÉRAL
+           ========================================= */
+        :root { 
+            --app-bg: #1e1f26;
+            --sidebar-bg: #fcca46; 
+            --btn-yellow: #fcca46; 
+            --text-light: #e0e0e0;
+            --card-bg: #2b2c36;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* =========================================
+           2. BARRE LATÉRALE
+           ========================================= */
+        .sidebar {
+            width: 80px;
+            background-color: var(--sidebar-bg);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between;
+            padding: 20px 0; z-index: 100;
+        }
+        
+        .sidebar-top, .sidebar-bottom {
+            display: flex;
+            flex-direction: column;
+            align-items: center; gap: 20px; width: 100%;
+        }
+        
+        .nav-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 10px; border-radius: 10px; transition: 0.2s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        
+        .nav-btn:hover { background-color: rgba(255,255,255, 0.3); }
+        .nav-btn.active { background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .nav-btn img, .nav-btn svg { width: 32px; height: 32px; object-fit: contain; display: block; }
+        
+        .menu-burger svg { width: 36px; height: 36px; stroke: black; stroke-width: 3; stroke-linecap: round; }
+        .settings-btn svg { width: 28px; height: 28px; stroke: black; stroke-width: 2.5; fill: none; }
+
+        /* =========================================
+           3. ZONE PRINCIPALE & VUES
+           ========================================= */
+        .main-content {
+            flex: 1; display: flex; flex-direction: column;
+            position: relative; background-color: var(--app-bg);
+            overflow: hidden;
+        }
+
+        .view-section {
+            padding: 30px; height: 100%; overflow-y: auto;
+            display: none; /* Masqué par défaut */
+            flex-direction: column; gap: 20px;
+        }
+
+        /* Afficher la vue active */
+        .view-section.active-view {
+            display: flex;
+        }
+
+        .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+
+        /* Style de base pour les cartes de contenu (placeholders) */
+        .placeholder-card {
+            background-color: var(--card-bg); padding: 30px;
+            border-radius: 12px; text-align: center; color: #888;
+            border: 2px dashed #444;
+        }
+
+.view-section {
+    padding: 0; /* enlève le padding */
+}
+
+.module-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-top">
+        <div class="menu-burger">
+            <svg viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line></svg>
+        </div>
+        
+        <button class="nav-btn" data-target="view-factures" title="Factures">
+            <img src="assets/logo_facture.png" alt="Factures">
+        </button>
+        <button class="nav-btn active" data-target="view-temps" title="Feuille de temps">
+            <img src="assets/logo_feuille_de_temps.png" alt="Temps">
+        </button>
+        <button class="nav-btn" data-target="view-notes" title="Notes">
+            <img src="assets/logo_notes.png" alt="Notes">
+        </button>
+        <button class="nav-btn" data-target="view-calendrier" title="Calendrier">
+            <img src="assets/logo_calendrier.png" alt="Calendrier">
+        </button>
+        <button class="nav-btn" data-target="view-client" title="Clients">
+            <img src="assets/logo_client.png" alt="Clients">
+        </button>
+        
+        <button class="nav-btn settings-btn" title="Paramètres">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+    </div>
+    <div class="sidebar-bottom">
+        <button class="nav-btn" title="Profil"><img src="assets/logo_profil.png" alt="Profil"></button>
+    </div>
+</div>
+
+<div class="main-content">
+    
+    <div id="view-factures" class="view-section">
+    <iframe class="module-frame" src="code_facture/code_facture.html"></iframe>
+</div>
+
+    <div id="view-temps" class="view-section active-view">
+    <iframe class="module-frame" src="code_feuille_de_temps/code_feuille_de_temps.html"></iframe>
+</div>
+
+    <div id="view-notes" class="view-section">
+    <iframe class="module-frame" src="code_notes/code_notes.html"></iframe>
+</div>
+
+   <div id="view-calendrier" class="view-section">
+    <iframe class="module-frame" src="code_calendrier/code_calendrier.html"></iframe>
+</div>
+
+    <div id="view-client" class="view-section">
+    <iframe class="module-frame" src="code_clients/code_clients.html"></iframe>
+</div>
+
+</div>
+
+<script>
+    // Script simple pour gérer la navigation entre les onglets
+    const navButtons = document.querySelectorAll('.nav-btn[data-target]');
+    const views = document.querySelectorAll('.view-section');
+
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // 1. Retirer la classe 'active' de tous les boutons
+            navButtons.forEach(b => b.classList.remove('active'));
+            
+            // 2. Ajouter la classe 'active' au bouton cliqué
+            this.classList.add('active');
+            
+            // 3. Cacher toutes les vues
+            views.forEach(view => view.classList.remove('active-view'));
+            
+            // 4. Afficher la vue correspondante
+            const targetId = this.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active-view');
+        });
+    });
+</script>
+
+</body>
+</html>
