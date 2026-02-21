@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestion Clients F.Dussault</title>
+    <style>
+        /* =========================================
+           1. VARIABLES & THEME
+           ========================================= */
+        :root { 
+            --app-bg: #1e1f26;
+            --sidebar-bg: #fcca46; 
+            --text-light: #e0e0e0;
+            --card-bg: #2b2c36;
+            --btn-yellow: #fcca46; 
+            --btn-red: #ff4d4d;
+            --btn-green: #28a745;
+            --border-color: #444;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* =========================================
+           2. BARRE LATÉRALE
+           ========================================= */
+        .sidebar {
+            width: 80px; background-color: var(--sidebar-bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            padding: 20px 0; z-index: 100;
+        }
+        .sidebar-top, .sidebar-bottom { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .nav-btn {
+            background: none; border: none; cursor: pointer; padding: 10px; border-radius: 10px;
+            display: flex; justify-content: center; align-items: center; transition: 0.2s;
+        }
+        .nav-btn:hover { background-color: rgba(255,255,255, 0.3); }
+        .nav-btn.active { background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .nav-btn img, .nav-btn svg { width: 32px; height: 32px; object-fit: contain; display: block; }
+        .menu-burger svg { width: 36px; height: 36px; stroke: black; stroke-width: 3; stroke-linecap: round; }
+
+        /* =========================================
+           3. ZONE PRINCIPALE
+           ========================================= */
+        .main-content {
+            flex: 1; display: flex; flex-direction: column; position: relative;
+            background-color: var(--app-bg); padding: 0 20px 20px 20px; overflow: hidden;
+        }
+
+        .header-bar { display: flex; justify-content: space-between; align-items: center; padding: 20px 10px; min-height: 80px; }
+        .header-title h1 { margin: 0; font-size: 28px; color: white; }
+        .header-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+
+        .btn-action {
+            background-color: var(--btn-yellow); color: black; border: none;
+            padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px;
+        }
+        .btn-action:hover { background-color: #ffd66b; transform: translateY(-1px); }
+
+        /* =========================================
+           4. LISTE CLIENTS
+           ========================================= */
+        .search-bar {
+            display: flex; align-items: center; background: var(--card-bg);
+            padding: 12px 15px; border-radius: 12px; margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .search-bar input {
+            background: transparent; border: none; color: white; font-size: 16px;
+            width: 100%; outline: none; margin-left: 10px;
+        }
+        
+        .client-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-bottom: 50px; }
+        
+        .client-card {
+            background: var(--card-bg); padding: 15px; border-radius: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-left: 5px solid transparent; transition: 0.2s; cursor: pointer;
+            position: relative;
+        }
+        .client-card:hover { transform: translateY(-2px); background: #343542; }
+        
+        .client-card.status-residentiel { border-left-color: #28a745; }
+        .client-card.status-commercial { border-left-color: #007bff; }
+        .client-card.status-prospect { border-left-color: #6c757d; }
+        
+        .cli-info h3 { margin: 0; font-size: 18px; color: white; display: flex; align-items: center; gap: 10px; }
+        .cli-info p { margin: 2px 0; color: #aaa; font-size: 14px; display: flex; align-items: center; gap: 8px;}
+        
+        .cli-alert-badge { background: var(--btn-red); color: white; font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-left: 10px;}
+
+        .cli-actions { display: flex; gap: 10px; align-items: center; z-index: 10;}
+        .btn-gear {
+            background: #444; border: 1px solid #555; width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px;
+            transition: 0.2s;
+        }
+        .btn-gear:hover { background: var(--btn-yellow); color: black; transform: rotate(45deg); }
+        
+        .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #444; color: white; text-transform: uppercase; font-weight: bold;}
+
+        /* =========================================
+           5. MODALS
+           ========================================= */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: none; z-index: 3000;
+            justify-content: center; align-items: center;
+        }
+        .modal-overlay.z-high { z-index: 3500; background: rgba(0,0,0,0.85); }
+
+        .modal-card {
+            background: var(--card-bg); width: 850px; padding: 30px;
+            border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-card.small-card { width: 400px; text-align: center; }
+
+        .modal-title { font-size: 22px; color: white; margin-bottom: 20px; font-weight: bold; text-decoration: underline; text-decoration-color: var(--btn-yellow);}
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 12px; background: #1e1f26; border: 1px solid #555;
+            color: white; border-radius: 8px; font-family: sans-serif; font-size: 14px;
+        }
+        .form-row { display: flex; gap: 15px; }
+        
+        /* CONTACTS LIST */
+        .contacts-container { border: 1px solid #444; padding: 10px; border-radius: 8px; background: #1e1f26; margin-bottom: 15px; }
+        .contact-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+        .contact-row input.inp-name { flex: 2; }
+        .contact-row input.inp-role { flex: 1.5; }
+        .contact-row input.inp-phone { flex: 1.5; }
+        .contact-row input.inp-email { flex: 2; }
+        
+        .btn-add-contact { background: #444; color: white; width: 100%; padding: 8px; border: 1px dashed #666; border-radius: 50px; cursor: pointer; font-size: 12px; }
+        .btn-remove-row { background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-weight: bold; font-size: 18px; }
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .modal-actions.center { justify-content: center; }
+        
+        .btn-cancel { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-submit { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-delete { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+
+        /* VIEW MODAL (MAPS) */
+        .view-section-title { color: var(--btn-yellow); font-size: 14px; font-weight: bold; margin: 15px 0 5px 0; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .view-row { margin-bottom: 8px; display: flex; align-items: center;}
+        .view-label { color: #888; width: 140px; font-size: 13px; }
+        .view-val { color: white; font-weight: 500; flex: 1; }
+        
+        .gps-options { display: flex; gap: 10px; margin-left: 10px; }
+        .gps-btn { text-decoration: none; font-size: 12px; padding: 4px 8px; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        .gps-google { background: #4285F4; color: white; }
+        .gps-apple { background: #ffffff; color: black; } /* Style Apple Plans */
+
+        .box-note { background:#1e1f26; padding:10px; border-radius:8px; color:#ddd; font-style:italic; min-height:40px; white-space: pre-wrap; border: 1px solid #444; }
+        .box-alert { background: rgba(255, 77, 77, 0.1); border: 1px solid var(--btn-red); color: var(--btn-red); padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; }
+        
+        .contact-item { background: #333; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+        .ci-name { font-weight: bold; color: white; font-size: 15px; }
+        .ci-role { font-size: 12px; color: var(--btn-yellow); font-style: italic; background: rgba(252, 202, 70, 0.1); padding: 1px 6px; border-radius: 4px; display: inline-block; }
+
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    <div class="header-bar">
+        <div class="header-title">
+            <h1>Clients</h1>
+            <p>Répertoire & Historique</p>
+        </div>
+        <button class="btn-action" onclick="openEditModal()"><span>+</span> NOUVEAU CLIENT</button>
+    </div>
+
+    <div class="search-bar">
+        <span style="font-size:20px;">🔍</span>
+        <input type="text" id="clientSearch" placeholder="Rechercher nom, tel, adresse, alerte..." onkeyup="filterClients()">
+    </div>
+
+    <div class="client-list" id="clientListContainer"></div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal-card">
+        <div class="modal-title" id="viewModalTitle">Fiche Client</div>
+        
+        <div id="vAlertSection" style="display:none;" class="box-alert">
+            ⚠️ ATTENTION : <span id="vAlertText"></span>
+        </div>
+
+        <div class="view-section-title">Informations Générales</div>
+        <div class="view-row"><div class="view-label">Entreprise</div><div class="view-val" id="vCompany">-</div></div>
+        <div class="view-row"><div class="view-label">Contact Dossier</div><div class="view-val" id="vContact">-</div></div>
+        <div class="view-row"><div class="view-label">Statut</div><div class="view-val" id="vStatus">-</div></div>
+        
+        <div class="view-row">
+            <div class="view-label">Adresse</div>
+            <div class="view-val" id="vAddress">-</div>
+            <div class="gps-options">
+                <a href="#" id="vLinkGoogle" target="_blank" class="gps-btn gps-google">Google Maps</a>
+                <a href="#" id="vLinkApple" target="_blank" class="gps-btn gps-apple">Apple Plans</a>
+            </div>
+        </div>
+        
+        <div class="view-section-title">Liste des Contacts</div>
+        <div id="vContactsList"></div>
+
+        <div id="vTarifSection" style="display:none;">
+            <div class="view-section-title">Spécifications Tarifaires</div>
+            <div class="box-note" id="vTarif" style="border-color:var(--btn-yellow); color:#fff; font-style:normal;"></div>
+        </div>
+
+        <div class="view-section-title">Notes Dossier</div>
+        <div class="box-note" id="vNotes"></div>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('viewModal')">Fermer</button>
+            <button class="btn-submit" onclick="switchToEdit()">Modifier ⚙️</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+    <div class="modal-card">
+        <div class="modal-title" id="edModalTitle">Fiche Client</div>
+        <input type="hidden" id="edId">
+        
+        <div class="form-group">
+            <label style="color:var(--btn-red); font-weight:bold;">⚠️ Alerte Prioritaire (Chien, Mauvais payeur...)</label>
+            <input type="text" id="edAlert" placeholder="S'affiche en rouge..." style="border-color:var(--btn-red);">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex:2">
+                <label>Nom de l'entreprise</label>
+                <input type="text" id="edCompany" placeholder="Construction ABC Inc.">
+            </div>
+            <div class="form-group" style="flex:1">
+                <label>Statut</label>
+                <select id="edStatus" onchange="toggleTarifField()">
+                    <option value="residentiel">Résidentiel</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="prospect">Prospect / Inconnu</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Contact principal</label>
+            <input type="text" id="edContact" placeholder="Marie Tremblay">
+        </div>
+
+        <div class="form-group">
+            <label>Adresse principale <span style="color:var(--btn-red)">*</span></label>
+            <input type="text" id="edAddress" placeholder="Adresse complète (Obligatoire)">
+        </div>
+
+        <div class="form-group">
+            <label>Contacts (Téléphones / Courriels) <span style="color:var(--btn-red)">*</span></label>
+            <div class="contacts-container" id="edContactsList"></div>
+            <button type="button" class="btn-add-contact" onclick="addContactRow()">+ Ajouter un contact</button>
+        </div>
+
+        <div class="form-group" id="grpTarif" style="display:none;">
+            <label style="color:var(--btn-yellow); font-weight:bold;">Spécifications tarifaires</label>
+            <textarea id="edTarif" rows="3" placeholder="Taux, Déplacement..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Notes internes</label>
+            <textarea id="edNotes" rows="3" placeholder="Notes..."></textarea>
+        </div>
+
+        <div class="modal-actions" id="edModalActions"></div>
+    </div>
+</div>
+
+<div class="modal-overlay z-high" id="confirmModal">
+    <div class="modal-card small-card">
+        <div class="modal-title" style="color: var(--btn-red); text-decoration: none;">Supprimer ce client ?</div>
+        <div class="modal-msg">Cette action est irréversible.</div>
+        <div class="modal-actions center">
+            <button class="btn-cancel" onclick="closeConfirmModal()">Annuler</button>
+            <button class="btn-delete" onclick="executeDeleteClient()">Oui, supprimer</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="alertModal" style="z-index: 4000;">
+    <div class="modal-card" style="width: 320px; text-align: center;">
+        <div class="modal-title" style="color: #ff4d4d; margin-bottom: 10px;">Attention</div>
+        <p id="alertMessage" style="color: #e0e0e0; margin-bottom: 25px; font-size: 15px;">...</p>
+        <button class="btn-action" style="width: 100%; justify-content: center;" onclick="closeAlertModal()">Compris</button>
+    </div>
+</div>
+
+<script>
+    const KEY_CLIENTS = 'dussault_clients_vGPS_LOGO';
+    let clients = [];
+    let clientToDeleteId = null; 
+    let currentViewingId = null;
+
+    const DEMO_CLIENTS = [
+        { 
+            id: 'demo1', 
+            company: 'Jean Tremblay', 
+            contact: 'Jean',
+            address: '123 Rue des Érables, Repentigny', 
+            status: 'residentiel',
+            notes: 'Payer toujours comptant.',
+            alert: 'GROS CHIEN DANS LA COUR',
+            tarif: '',
+            contacts: [{ name: 'Jean', role: 'Propriétaire', phone: '514-555-0101', email: 'jean@gmail.com' }]
+        }
+    ];
+
+    function init() {
+        const stored = localStorage.getItem(KEY_CLIENTS);
+        if (stored) clients = JSON.parse(stored);
+        else { clients = DEMO_CLIENTS; saveClientsData(); }
+        renderClients();
+    }
+
+    function saveClientsData() { 
+        localStorage.setItem(KEY_CLIENTS, JSON.stringify(clients)); 
+        renderClients(); 
+    }
+
+    function getMapsUrl(address) { return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`; }
+    
+    // Modification: Fonction pour Apple Maps
+    function getAppleMapsUrl(address) { return `http://maps.apple.com/?q=${encodeURIComponent(address)}`; }
+
+    function renderClients(list = clients) {
+        const container = document.getElementById('clientListContainer');
+        container.innerHTML = '';
+        list.sort((a,b) => (a.company || a.contact || "").localeCompare(b.company || b.contact || ""));
+        
+        list.forEach(c => {
+            const card = document.createElement('div');
+            card.className = `client-card status-${c.status}`;
+            card.onclick = () => openViewModal(c.id);
+            let mainContact = c.contacts[0] || { phone: '---' };
+            card.innerHTML = `
+                <div class="cli-info">
+                    <h3>
+                        ${c.status==='commercial'?'🏢':'👤'} ${c.company || c.contact} 
+                        <span class="tag">${c.status}</span>
+                        ${c.alert ? '<span class="cli-alert-badge">⚠️ ALERTE</span>' : ''}
+                    </h3>
+                    <p>📞 ${mainContact.phone || '---'}</p>
+                    <p>📍 ${c.address || 'Adresse inconnue'}</p>
+                </div>
+                <div class="cli-actions">
+                    <button class="btn-gear" onclick="openEditModal('${c.id}', event)">⚙️</button>
+                </div>`;
+            container.appendChild(card);
+        });
+    }
+
+    function filterClients() {
+        const term = document.getElementById('clientSearch').value.toLowerCase();
+        const filtered = clients.filter(c => 
+            (c.company || "").toLowerCase().includes(term) || 
+            (c.contact || "").toLowerCase().includes(term) || 
+            (c.address || "").toLowerCase().includes(term) ||
+            (c.contacts || []).some(ct => (ct.phone || "").includes(term))
+        );
+        renderClients(filtered);
+    }
+
+    function toggleTarifField() {
+        const status = document.getElementById('edStatus').value;
+        document.getElementById('grpTarif').style.display = (status === 'commercial') ? 'block' : 'none';
+    }
+
+    function openViewModal(id) {
+        currentViewingId = id;
+        const c = clients.find(cl => cl.id === id);
+        if(!c) return;
+        
+        document.getElementById('vCompany').textContent = c.company || '-';
+        document.getElementById('vContact').textContent = c.contact || '-';
+        document.getElementById('vStatus').textContent = c.status;
+        document.getElementById('vAddress').textContent = c.address || '-';
+        document.getElementById('vNotes').textContent = c.notes || 'Aucune note.';
+        
+        const mapsLink = getMapsUrl(c.address);
+        const appleLink = getAppleMapsUrl(c.address); // Nouveau lien Apple
+        
+        document.getElementById('vLinkGoogle').href = mapsLink;
+        document.getElementById('vLinkApple').href = appleLink; // Affectation du lien
+
+        const alertSec = document.getElementById('vAlertSection');
+        if(c.alert) { alertSec.style.display = 'block'; document.getElementById('vAlertText').textContent = c.alert; }
+        else { alertSec.style.display = 'none'; }
+
+        const secTarif = document.getElementById('vTarifSection');
+        if(c.status === 'commercial' && c.tarif) { secTarif.style.display = 'block'; document.getElementById('vTarif').textContent = c.tarif; }
+        else { secTarif.style.display = 'none'; }
+
+        const contList = document.getElementById('vContactsList');
+        contList.innerHTML = '';
+        (c.contacts || []).forEach(ct => {
+            contList.innerHTML += `
+            <div class="contact-item">
+                <div><span class="ci-name">${ct.name}</span> • <span class="ci-role">${ct.role}</span></div>
+                <div class="ci-details"><div>${ct.phone}</div><div style="opacity:0.6; font-size:11px;">${ct.email || ''}</div></div>
+            </div>`;
+        });
+        document.getElementById('viewModal').style.display = 'flex';
+    }
+
+    function switchToEdit() { closeModal('viewModal'); openEditModal(currentViewingId); }
+
+    function openEditModal(id=null, e=null) {
+        if(e) e.stopPropagation();
+        document.getElementById('editModal').style.display = 'flex';
+        const actionsDiv = document.getElementById('edModalActions');
+        const contList = document.getElementById('edContactsList');
+        contList.innerHTML = '';
+        actionsDiv.innerHTML = `<button class="btn-cancel" onclick="closeModal('editModal')">Annuler</button><button class="btn-submit" onclick="saveClient()">Enregistrer</button>`;
+
+        if(id) {
+            const c = clients.find(cl => cl.id === id);
+            document.getElementById('edId').value = c.id;
+            document.getElementById('edAlert').value = c.alert || '';
+            document.getElementById('edCompany').value = c.company || '';
+            document.getElementById('edContact').value = c.contact || '';
+            document.getElementById('edAddress').value = c.address || '';
+            document.getElementById('edStatus').value = c.status;
+            document.getElementById('edNotes').value = c.notes || '';
+            document.getElementById('edTarif').value = c.tarif || '';
+            (c.contacts || []).forEach(ct => addContactRow(ct));
+            toggleTarifField();
+            const btnDel = document.createElement('button');
+            btnDel.className = 'btn-delete'; btnDel.textContent = 'Supprimer'; btnDel.onclick = () => askDeleteClient(c.id);
+            actionsDiv.prepend(btnDel);
+        } else {
+            document.getElementById('edId').value = '';
+            document.getElementById('edAlert').value = '';
+            document.getElementById('edStatus').value = 'residentiel';
+            document.getElementById('edCompany').value = ''; document.getElementById('edContact').value = '';
+            document.getElementById('edAddress').value = ''; document.getElementById('edNotes').value = '';
+            document.getElementById('edTarif').value = '';
+            toggleTarifField();
+            addContactRow();
+        }
+    }
+
+    function addContactRow(data = {name:'', role:'', phone:'', email:''}) {
+        const div = document.createElement('div');
+        div.className = 'contact-row';
+        div.innerHTML = `<input type="text" placeholder="Nom" class="inp-name" value="${data.name}"><input type="text" placeholder="Poste" class="inp-role" value="${data.role}"><input type="text" placeholder="Tél" class="inp-phone" value="${data.phone}" onkeyup="formatPhone(this)"><input type="email" placeholder="Email" class="inp-email" value="${data.email}"><button class="btn-remove-row" onclick="this.parentElement.remove()">×</button>`;
+        document.getElementById('edContactsList').appendChild(div);
+    }
+
+    // --- FONCTIONS ALERTE (STYLE CALENDRIER) ---
+    function openAlertModal(msg) {
+        document.getElementById('alertMessage').textContent = msg;
+        document.getElementById('alertModal').style.display = 'flex';
+    }
+
+    function closeAlertModal() {
+        document.getElementById('alertModal').style.display = 'none';
+    }
+
+    // --- FONCTION DE SAUVEGARDE MODIFIÉE ---
+    function saveClient() {
+        const id = document.getElementById('edId').value;
+        const alertVal = document.getElementById('edAlert').value.trim();
+        const company = document.getElementById('edCompany').value.trim();
+        const contact = document.getElementById('edContact').value.trim();
+        const address = document.getElementById('edAddress').value.trim();
+        const status = document.getElementById('edStatus').value;
+        const notes = document.getElementById('edNotes').value;
+        const tarif = document.getElementById('edTarif').value;
+        
+        // Validation Nom
+        if (!company && !contact) {
+            openAlertModal("Vous devez entrer au moins un Nom d'entreprise ou un Contact principal.");
+            return; 
+        }
+
+        // Validation Adresse
+        if (!address) {
+            openAlertModal("L'adresse est obligatoire pour créer la fiche client.");
+            return;
+        }
+
+        // Validation Contacts
+        let contacts = [];
+        let hasPhone = false;
+
+        document.querySelectorAll('.contact-row').forEach(row => {
+            const name = row.querySelector('.inp-name').value.trim();
+            const role = row.querySelector('.inp-role').value.trim();
+            const phone = row.querySelector('.inp-phone').value.trim();
+            const email = row.querySelector('.inp-email').value.trim();
+
+            if (phone.length > 0) hasPhone = true;
+
+            if(name || phone || email) { 
+                contacts.push({ name, role, phone, email });
+            }
+        });
+
+        if (!hasPhone) {
+            openAlertModal("Il faut ajouter au moins un numéro de téléphone valide.");
+            return;
+        }
+
+        const data = { id: id || 'cli-'+Date.now(), alert: alertVal, company, contact, address, status, notes, contacts, tarif };
+        if(id) { const idx = clients.findIndex(c => c.id === id); clients[idx] = data; } else { clients.push(data); }
+        saveClientsData();
+        closeModal('editModal');
+    }
+
+    function askDeleteClient(id) { clientToDeleteId = id; document.getElementById('confirmModal').style.display = 'flex'; }
+    function executeDeleteClient() { clients = clients.filter(c => c.id !== clientToDeleteId); saveClientsData(); closeConfirmModal(); closeModal('editModal'); }
+    function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; }
+    function formatPhone(input) { let v = input.value.replace(/\D/g, ''); if(v.length > 3 && v.length <= 6) v = v.slice(0,3)+'-'+v.slice(3); else if(v.length > 6) v = v.slice(0,3)+'-'+v.slice(3,6)+'-'+v.slice(6,10); input.value = v; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    init();
+</script>
+</body>
+</html>
