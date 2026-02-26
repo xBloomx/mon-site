@@ -105,41 +105,28 @@
         .cli-name { font-weight: bold; font-size: 18px; color: white; flex: 1; }
         
         .cli-name-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
         }
         
         .cli-chip-sub {
-            font-size: 13px;
-            color: white;
-            background: #3a3b46;
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            border: 1px solid #555;
-            display: inline-flex;
-            align-items: center;
+            font-size: 13px; color: white; background: #3a3b46; padding: 4px 12px;
+            border-radius: 6px; font-weight: bold; border: 1px solid #555;
+            display: inline-flex; align-items: center;
         }
         
         .cli-chip-contact {
-            font-size: 12px;
-            color: var(--btn-yellow);
-            background: rgba(252, 202, 70, 0.15);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-weight: normal;
-            border: 1px solid rgba(252, 202, 70, 0.3);
-            display: inline-flex;
-            align-items: center;
+            font-size: 12px; color: var(--btn-yellow); background: rgba(252, 202, 70, 0.15);
+            padding: 4px 10px; border-radius: 6px; font-weight: normal;
+            border: 1px solid rgba(252, 202, 70, 0.3); display: inline-flex; align-items: center;
         }
         
         .cli-alert-badge { background: var(--btn-red); color: white; font-size: 10px; padding: 4px 8px; border-radius: 6px; font-weight: bold; white-space:nowrap; border: 1px solid #ff7b7b;}
 
         /* Contact (à droite) */
         .cli-contact { color: #aaa; font-size: 14px; width: 250px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-        .cli-contact div { display: flex; align-items: center; gap: 8px; }
+        .cli-contact-item { display: flex; align-items: flex-start; gap: 6px; justify-content: flex-end; text-align: right; }
+        .cli-contact-item.address { font-size: 12px; color: #888; margin-top: 2px; }
+        .cli-contact-item span:first-child { flex-shrink: 0; } /* Empêche l'émoji de s'écraser */
 
         .cli-actions { display: flex; gap: 10px; margin-left: 20px; }
         .btn-icon { background: #444; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; font-size: 16px; color:#ccc;}
@@ -160,6 +147,8 @@
             .cli-status { width: auto; font-size: 13px; } 
             
             .cli-contact { width: 100%; align-items: flex-start; font-size: 13px; margin-top: 5px; }
+            .cli-contact-item { justify-content: flex-start; text-align: left; }
+            
             .cli-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
             
             .modal-card { width: 95% !important; padding: 20px !important; }
@@ -167,6 +156,12 @@
             .contact-row { flex-wrap: wrap; border-bottom: 1px solid #333; padding-bottom: 10px; }
             .contact-row input { width: 100%; margin-bottom: 5px; flex: none; }
             .btn-remove-row { width: 100%; text-align: right; }
+
+            /* 🔥 CORRECTION VISUELLE DE L'ADRESSE DANS LE MODAL SUR MOBILE 🔥 */
+            .view-row { flex-wrap: wrap; }
+            .view-row .view-val { flex: 1; min-width: 150px; }
+            .gps-options { margin-left: 0; margin-top: 10px; width: 100%; display: flex; gap: 10px; justify-content: space-between; }
+            .gps-btn { flex: 1; text-align: center; padding: 10px 5px; font-size: 13px; }
         }
 
         /* =========================================
@@ -268,7 +263,9 @@
 
         <div class="view-section-title">Informations Générales</div>
         <div class="view-row"><div class="view-label">Entreprise</div><div class="view-val" id="vCompany">-</div></div>
-        <div class="view-row"><div class="view-label">Sous-traitant</div><div class="view-val" id="vSubcontractor">-</div></div>
+        
+        <div class="view-row" id="vRowSubcontractor" style="display:none;"><div class="view-label">Sous-traitant</div><div class="view-val" id="vSubcontractor">-</div></div>
+        
         <div class="view-row"><div class="view-label">Contact Dossier</div><div class="view-val" id="vContact">-</div></div>
         <div class="view-row"><div class="view-label">Statut</div><div class="view-val" id="vStatus">-</div></div>
         
@@ -316,7 +313,7 @@
             </div>
             <div class="form-group" style="flex:1">
                 <label>Statut</label>
-                <select id="edStatus" onchange="toggleTarifField()">
+                <select id="edStatus" onchange="toggleCommercialFields()">
                     <option value="residentiel">Résidentiel</option>
                     <option value="commercial">Commercial</option>
                     <option value="prospect">Prospect / Inconnu</option>
@@ -324,7 +321,7 @@
             </div>
         </div>
         
-        <div class="form-group">
+        <div class="form-group" id="grpSubcontractor" style="display:none;">
             <label>Nom du sous-traitant <span style="color:#aaa; font-weight:normal; font-size:12px;">(Optionnel)</span></label>
             <input type="text" id="edSubcontractor" placeholder="Ex: Equans">
         </div>
@@ -447,9 +444,9 @@
             let chipsHTML = "";
             
             // Badge Sous-traitant
-            if (c.company && c.subcontractor) {
+            if (c.status === 'commercial' && c.company && c.subcontractor) {
                 chipsHTML += `<span class="cli-chip-sub"><strong>${c.subcontractor}</strong></span>`;
-            } else if (!c.company && c.subcontractor) {
+            } else if (c.status === 'commercial' && !c.company && c.subcontractor) {
                 mainName = c.subcontractor;
             }
 
@@ -471,8 +468,8 @@
                     </div>
                     
                     <div class="cli-contact">
-                        <div>📞 ${mainContact.phone || '---'}</div>
-                        <div style="font-size:12px; color:#888;">📍 ${c.address ? (c.address.length > 40 ? c.address.substring(0,40)+'...' : c.address) : '---'}</div>
+                        <div class="cli-contact-item"><span>📞</span> <span>${mainContact.phone || '---'}</span></div>
+                        <div class="cli-contact-item address"><span>📍</span> <span style="line-height:1.3;">${c.address ? (c.address.length > 40 ? c.address.substring(0,40)+'...' : c.address) : '---'}</span></div>
                     </div>
                 </div>
                 
@@ -496,9 +493,12 @@
         renderClients(filtered);
     }
 
-    function toggleTarifField() {
+    // 🔥 Gère l'affichage des champs réservés au statut Commercial 🔥
+    function toggleCommercialFields() {
         const status = document.getElementById('edStatus').value;
-        document.getElementById('grpTarif').style.display = (status === 'commercial') ? 'block' : 'none';
+        const isCommercial = (status === 'commercial');
+        document.getElementById('grpTarif').style.display = isCommercial ? 'block' : 'none';
+        document.getElementById('grpSubcontractor').style.display = isCommercial ? 'block' : 'none';
     }
 
     function openViewModal(id) {
@@ -507,12 +507,20 @@
         if(!c) return;
         
         document.getElementById('vCompany').textContent = c.company || '-';
-        document.getElementById('vSubcontractor').textContent = c.subcontractor || '-';
         document.getElementById('vContact').textContent = c.contact || '-';
         document.getElementById('vStatus').textContent = c.status;
         document.getElementById('vAddress').textContent = c.address || '-';
         document.getElementById('vNotes').textContent = c.notes || 'Aucune note.';
         
+        // Affiche la ligne sous-traitant uniquement si commercial ET renseigné
+        const secSubcontractor = document.getElementById('vRowSubcontractor');
+        if(c.status === 'commercial' && c.subcontractor) { 
+            secSubcontractor.style.display = 'flex'; 
+            document.getElementById('vSubcontractor').textContent = c.subcontractor; 
+        } else { 
+            secSubcontractor.style.display = 'none'; 
+        }
+
         document.getElementById('vLinkGoogle').href = getMapsUrl(c.address);
         document.getElementById('vLinkApple').href = getAppleMapsUrl(c.address);
 
@@ -558,7 +566,8 @@
             document.getElementById('edNotes').value = c.notes || '';
             document.getElementById('edTarif').value = c.tarif || '';
             (c.contacts || []).forEach(ct => addContactRow(ct));
-            toggleTarifField();
+            
+            toggleCommercialFields();
             
             const btnDel = document.createElement('button');
             btnDel.className = 'btn-delete'; btnDel.textContent = 'Supprimer';
@@ -574,7 +583,8 @@
             document.getElementById('edAddress').value = ''; 
             document.getElementById('edNotes').value = '';
             document.getElementById('edTarif').value = '';
-            toggleTarifField();
+            
+            toggleCommercialFields();
             addContactRow();
         }
     }
@@ -597,12 +607,15 @@
         const id = document.getElementById('edId').value;
         const alertVal = document.getElementById('edAlert').value.trim();
         const company = document.getElementById('edCompany').value.trim();
-        const subcontractor = document.getElementById('edSubcontractor').value.trim();
         const contact = document.getElementById('edContact').value.trim();
         const address = document.getElementById('edAddress').value.trim();
         const status = document.getElementById('edStatus').value;
         const notes = document.getElementById('edNotes').value;
         const tarif = document.getElementById('edTarif').value;
+        
+        // On ne sauvegarde le sous-traitant que si c'est commercial
+        let subcontractor = document.getElementById('edSubcontractor').value.trim();
+        if (status !== 'commercial') subcontractor = '';
         
         if (!company && !contact && !subcontractor) { openAlertModal("Vous devez entrer au moins un Nom d'entreprise, un Sous-traitant ou un Contact principal."); return; }
         if (!address) { openAlertModal("L'adresse est obligatoire pour créer la fiche client."); return; }
