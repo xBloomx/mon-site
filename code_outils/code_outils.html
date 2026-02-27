@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestion des Outils F.Dussault</title>
+    <style>
+        /* =========================================
+           1. VARIABLES & THEME
+           ========================================= */
+        :root { 
+            --app-bg: #1e1f26;
+            --text-light: #e0e0e0;
+            --card-bg: #2b2c36;
+            --btn-yellow: #fcca46; 
+            --btn-red: #ff4d4d;
+            --btn-green: #28a745;
+            --border-color: #444;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* =========================================
+           2. ZONE PRINCIPALE (DASHBOARD)
+           ========================================= */
+        .main-content {
+            flex: 1; display: flex; flex-direction: column; position: relative;
+            background-color: var(--app-bg); overflow: hidden;
+        }
+
+        #view-dashboard {
+            padding: 30px; height: 100%; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        /* HEADER */
+        .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+
+        .btn-action {
+            background-color: var(--btn-yellow); color: black; border: none;
+            padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 13px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s;
+        }
+        .btn-action:hover { background-color: #ffd66b; transform: translateY(-2px); }
+
+        /* BARRE DE RECHERCHE */
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: transparent; padding: 0; margin-bottom: 10px; }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input {
+            width: 100%; background: var(--card-bg); border: 1px solid #444;
+            color: white; padding: 12px 15px 12px 40px; border-radius: 8px; font-size: 16px; outline: none;
+        }
+        .search-icon { position: absolute; left: 12px; color: #888; pointer-events: none; }
+
+        /* =========================================
+           3. LISTE DES EMPRUNTS
+           ========================================= */
+        .section-title { font-size: 16px; color: var(--btn-yellow); text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        
+        .tool-list { display: flex; flex-direction: column; gap: 15px; padding-bottom: 30px; }
+        
+        .tool-item {
+            background-color: var(--card-bg);
+            padding: 20px; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-left: 5px solid var(--btn-yellow);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .tool-item.returned { border-left-color: var(--btn-green); opacity: 0.7; }
+        
+        .tool-info { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+        .tool-name { font-size: 18px; font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
+        .tool-details { color: #aaa; font-size: 14px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 5px;}
+        .tool-details span { display: flex; align-items: center; gap: 5px; }
+        
+        .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        .status-badge.out { background: rgba(252, 202, 70, 0.2); color: var(--btn-yellow); border: 1px solid rgba(252, 202, 70, 0.5); }
+        .status-badge.in { background: rgba(40, 167, 69, 0.2); color: var(--btn-green); border: 1px solid rgba(40, 167, 69, 0.5); }
+
+        .tool-actions { display: flex; gap: 10px; margin-left: 20px; }
+        .btn-return { background: var(--btn-green); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap;}
+        .btn-return:hover { background: #218838; }
+        .btn-delete { background: rgba(255, 77, 77, 0.1); color: var(--btn-red); border: 1px solid transparent; width: 40px; height: 40px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; flex-shrink: 0;}
+        .btn-delete:hover { background: var(--btn-red); color: white; }
+
+        /* =========================================
+           4. MODALS PERSONNALISÉES (CHIC)
+           ========================================= */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; z-index: 4000;
+            justify-content: center; align-items: center;
+        }
+
+        .modal-card-basic { 
+            background: var(--card-bg); width: 350px; padding: 25px; 
+            border-radius: 15px; text-align: center; border: 1px solid #555;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .modal-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px;}
+        
+        .btn-modal-gray { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-modal-yellow { background: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+        .btn-modal-green { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+        .btn-modal-red { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+
+        /* Formulaire d'ajout */
+        .custom-form-card {
+            background: #252631; width: 90%; max-width: 400px; padding: 30px;
+            border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            position: relative; border: 1px solid #444;
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        .modal-header-custom {
+            display: flex; align-items: center; gap: 15px; margin-bottom: 25px;
+            color: white; font-size: 22px; font-weight: bold;
+        }
+        .modal-header-custom svg { width: 35px; height: 35px; fill: #66b2ff; }
+
+        .custom-group { margin-bottom: 18px; text-align: left; }
+        .custom-group label { display: block; color: white; margin-bottom: 7px; font-size: 15px; font-weight: bold;}
+        .custom-group input, .custom-group select {
+            width: 100%; padding: 12px 15px; background: #323443; 
+            border: 1px solid #444; color: white; border-radius: 8px; font-size: 16px; /* 16px évite le zoom sur iPhone */
+            outline: none;
+        }
+        .custom-group input:focus, .custom-group select:focus { border-color: var(--btn-yellow); }
+        
+        .custom-group select { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 15px top 50%; background-size: 12px auto; padding-right: 40px; }
+
+        .btn-custom-submit {
+            background-color: var(--btn-yellow); color: black; border: none;
+            width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 18px;
+            cursor: pointer; margin-top: 10px; transition: 0.2s;
+        }
+        .btn-custom-submit:hover { background-color: #ffd66b; }
+        
+        .btn-close-modal { position: absolute; top: 15px; right: 20px; background: none; border: none; color: #888; font-size: 30px; cursor: pointer; }
+        .btn-close-modal:hover { color: white; }
+
+        option:disabled { color: #ff4d4d; font-style: italic; }
+
+        /* =========================================
+           5. ADAPTATION TABLETTE & MOBILE
+           ========================================= */
+        @media (max-width: 1024px) {
+            #view-dashboard { padding: 20px; }
+        }
+
+        @media (max-width: 768px) {
+            #view-dashboard { padding: 15px; }
+            
+            /* Évite que le titre ne touche le bouton du menu Burger à droite */
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; padding-right: 60px; }
+            .dash-header .btn-action { width: 100%; justify-content: center; padding: 15px; font-size: 14px; }
+            
+            .toolbar { flex-direction: column; width: 100%; }
+            .search-box { width: 100%; }
+            
+            /* Cartes Outils empilées */
+            .tool-item { flex-direction: column; align-items: flex-start; gap: 15px; padding: 15px; }
+            .tool-actions { align-self: stretch; margin-left: 0; display: flex; width: 100%; gap: 10px; }
+            .btn-return { flex: 1; text-align: center; }
+            
+            /* Optimisation Modales sur petits écrans */
+            .custom-form-card { width: 95%; padding: 20px; border-radius: 20px; }
+            .modal-header-custom { font-size: 20px; margin-bottom: 15px; }
+            .custom-group label { font-size: 14px; }
+            .custom-group input, .custom-group select { padding: 12px; }
+            .btn-custom-submit { padding: 15px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    <div id="view-dashboard">
+        <div class="dash-header">
+            <div class="dash-title">
+                <h1>Outils</h1>
+                <p>Registre d'emprunt du matériel</p>
+            </div>
+            <button class="btn-action" onclick="openBorrowModal()"><span>+</span> EMPRUNTER UN OUTIL</button>
+        </div>
+
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="toolSearch" placeholder="Rechercher (Plombier, Outil, Adresse...)" onkeyup="filterTools()">
+            </div>
+        </div>
+
+        <div class="section-title">En cours d'utilisation</div>
+        <div class="tool-list" id="activeListContainer">
+            </div>
+
+        <div class="section-title" style="margin-top: 20px; color:#888;">Historique des retours</div>
+        <div class="tool-list" id="historyListContainer">
+            </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="borrowModal">
+    <div class="custom-form-card">
+        <button class="btn-close-modal" onclick="closeModal('borrowModal')">×</button>
+        
+        <div class="modal-header-custom">
+            <svg viewBox="0 0 24 24">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+            Outil emprunté
+        </div>
+
+        <div class="custom-group">
+            <label>Nom du plombier</label>
+            <input type="text" id="inpPlombier" placeholder="Ex: François">
+        </div>
+
+        <div class="custom-group">
+            <label>Outil</label>
+            <select id="inpOutil">
+                <option value="" disabled selected hidden>Sélectionner une machine...</option>
+                <option value="Machine à déboucher T3 (#1)">Machine à déboucher T3 (#1)</option>
+                <option value="Machine à déboucher T3 (#2)">Machine à déboucher T3 (#2)</option>
+                <option value="Machine à déboucher T4">Machine à déboucher T4</option>
+                <option value="Petite caméra">Petite caméra</option>
+                <option value="Grosse caméra">Grosse caméra</option>
+                <option value="Mâchoire mega press">Mâchoire mega press</option>
+                <option value="Autre...">Autre (Préciser en note)</option>
+            </select>
+        </div>
+
+        <div class="custom-group">
+            <label>Adresse / Lieu</label>
+            <input type="text" id="inpAdresse" placeholder="Ex: 123 Rue Principale">
+        </div>
+
+        <div class="custom-group">
+            <label>Date</label>
+            <input type="date" id="inpDate">
+        </div>
+
+        <button class="btn-custom-submit" onclick="saveBorrow()">Emprunter l'outil</button>
+    </div>
+</div>
+
+<div class="modal-overlay z-high" id="alertModal">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-yellow); font-weight:bold; margin-bottom: 15px;">Information</div>
+        <div style="color: #e0e0e0; margin-bottom: 25px; line-height: 1.4;" id="alertMsg">...</div>
+        <div class="modal-actions">
+            <button class="btn-modal-yellow" style="width: 100%" onclick="closeAlertModal()">Compris</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay z-high" id="confirmModal">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-red); font-weight:bold; margin-bottom: 15px;" id="confirmTitle">Action</div>
+        <div style="color: #e0e0e0; margin-bottom: 25px;" id="confirmMsg">Êtes-vous sûr ?</div>
+        <div class="modal-actions">
+            <button class="btn-modal-gray" onclick="closeConfirmModal()">Annuler</button>
+            <button id="confirmActionBtn" class="btn-modal-red">Confirmer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KEY_TOOLS = 'dussault_outils_v1';
+    let toolsLog = [];
+    let itemToProcess = null; 
+    let actionType = null;
+
+    function showAlert(msg) {
+        document.getElementById('alertMsg').textContent = msg;
+        document.getElementById('alertModal').style.display = 'flex';
+    }
+
+    function closeAlertModal() {
+        document.getElementById('alertModal').style.display = 'none';
+    }
+
+    function askReturn(id) {
+        itemToProcess = id;
+        actionType = 'return';
+        document.getElementById('confirmTitle').textContent = "Retour d'outil";
+        document.getElementById('confirmTitle').style.color = "var(--btn-green)";
+        document.getElementById('confirmMsg').textContent = "Confirmer que cet outil a été ramené ?";
+        
+        const btn = document.getElementById('confirmActionBtn');
+        btn.textContent = "Oui, retourné";
+        btn.className = "btn-modal-green";
+
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function askDelete(id) {
+        itemToProcess = id;
+        actionType = 'delete';
+        document.getElementById('confirmTitle').textContent = "Supprimer";
+        document.getElementById('confirmTitle').style.color = "var(--btn-red)";
+        document.getElementById('confirmMsg').textContent = "Effacer définitivement cet enregistrement ?";
+        
+        const btn = document.getElementById('confirmActionBtn');
+        btn.textContent = "Supprimer";
+        btn.className = "btn-modal-red";
+
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeConfirmModal() { 
+        document.getElementById('confirmModal').style.display = 'none'; 
+        itemToProcess = null;
+    }
+
+    document.getElementById('confirmActionBtn').addEventListener('click', function() {
+        if (!itemToProcess) return;
+        
+        if (actionType === 'return') {
+            const idx = toolsLog.findIndex(t => t.id === itemToProcess);
+            if (idx > -1) {
+                toolsLog[idx].status = 'returned';
+                toolsLog[idx].dateIn = new Date().toISOString().split('T')[0];
+            }
+        } else if (actionType === 'delete') {
+            toolsLog = toolsLog.filter(t => t.id !== itemToProcess);
+        }
+
+        saveData();
+        closeConfirmModal();
+    });
+
+    function init() {
+        const stored = localStorage.getItem(KEY_TOOLS);
+        if (stored) {
+            toolsLog = JSON.parse(stored);
+        } else {
+            toolsLog = [
+                { id: '1', plumber: 'François Dussault', tool: 'Grosse caméra', address: '456 Rue St-Pierre', dateOut: new Date().toISOString().split('T')[0], status: 'active' },
+                { id: '2', plumber: 'Patrick Baker', tool: 'Machine à déboucher T3 (#1)', address: 'Entrepôt', dateOut: '2026-02-15', status: 'returned', dateIn: '2026-02-18' }
+            ];
+            saveData();
+        }
+        renderTools();
+    }
+
+    function saveData() { 
+        localStorage.setItem(KEY_TOOLS, JSON.stringify(toolsLog));
+        renderTools(); 
+    }
+
+    function formatDateFR(isoDate) {
+        if(!isoDate) return '';
+        const parts = isoDate.split('-'); 
+        return `${parts[2]}/${parts[1]}/${parts[0]}`; 
+    }
+
+    function renderTools(list = toolsLog) {
+        const activeContainer = document.getElementById('activeListContainer');
+        const historyContainer = document.getElementById('historyListContainer');
+        activeContainer.innerHTML = '';
+        historyContainer.innerHTML = '';
+        
+        list.sort((a,b) => new Date(b.dateOut) - new Date(a.dateOut));
+        
+        let hasActive = false;
+        let hasHistory = false;
+
+        list.forEach(t => {
+            const card = document.createElement('div');
+            card.className = `tool-item ${t.status === 'returned' ? 'returned' : ''}`;
+            
+            let badge = t.status === 'active' 
+                ? `<span class="status-badge out">En cours</span>` 
+                : `<span class="status-badge in">Retourné le ${formatDateFR(t.dateIn)}</span>`;
+
+            let actions = t.status === 'active' 
+                ? `<button class="btn-return" onclick="askReturn('${t.id}')">Marquer retourné</button>
+                   <button class="btn-delete" onclick="askDelete('${t.id}')" title="Supprimer">🗑️</button>`
+                : `<button class="btn-delete" onclick="askDelete('${t.id}')" title="Supprimer l'historique">🗑️</button>`;
+
+            card.innerHTML = `
+                <div class="tool-info">
+                    <div class="tool-name">
+                        🛠️ ${t.tool} ${badge}
+                    </div>
+                    <div class="tool-details">
+                        <span>👤 <strong>${t.plumber}</strong></span>
+                        <span>📍 ${t.address}</span>
+                        <span>📅 Emprunté le ${formatDateFR(t.dateOut)}</span>
+                    </div>
+                </div>
+                <div class="tool-actions">
+                    ${actions}
+                </div>
+            `;
+            
+            if (t.status === 'active') {
+                activeContainer.appendChild(card);
+                hasActive = true;
+            } else {
+                historyContainer.appendChild(card);
+                hasHistory = true;
+            }
+        });
+
+        if (!hasActive) activeContainer.innerHTML = '<div style="color:#888; font-style:italic; padding:10px;">Aucun outil actuellement en utilisation.</div>';
+        if (!hasHistory) historyContainer.innerHTML = '<div style="color:#888; font-style:italic; padding:10px;">Aucun historique de retour.</div>';
+    }
+
+    function filterTools() {
+        const term = document.getElementById('toolSearch').value.toLowerCase();
+        const filtered = toolsLog.filter(t => 
+            (t.plumber || "").toLowerCase().includes(term) || 
+            (t.tool || "").toLowerCase().includes(term) || 
+            (t.address || "").toLowerCase().includes(term)
+        );
+        renderTools(filtered);
+    }
+
+    function updateToolDropdown() {
+        const select = document.getElementById('inpOutil');
+        const activeTools = toolsLog.filter(t => t.status === 'active').map(t => t.tool);
+
+        for (let i = 0; i < select.options.length; i++) {
+            const opt = select.options[i];
+            if (opt.value === "") continue;
+            
+            if (!opt.hasAttribute('data-orig')) {
+                opt.setAttribute('data-orig', opt.textContent);
+            }
+            
+            if (activeTools.includes(opt.value) && opt.value !== "Autre...") {
+                opt.disabled = true;
+                opt.textContent = opt.getAttribute('data-orig') + " 🔴 (Indisponible)";
+            } else {
+                opt.disabled = false;
+                opt.textContent = opt.getAttribute('data-orig');
+            }
+        }
+    }
+
+    function openBorrowModal() {
+        updateToolDropdown();
+        
+        document.getElementById('borrowModal').style.display = 'flex';
+        document.getElementById('inpPlombier').value = '';
+        document.getElementById('inpOutil').value = '';
+        document.getElementById('inpAdresse').value = '';
+        document.getElementById('inpDate').value = new Date().toISOString().split('T')[0];
+    }
+
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function saveBorrow() {
+        const plumber = document.getElementById('inpPlombier').value.trim();
+        const tool = document.getElementById('inpOutil').value;
+        const address = document.getElementById('inpAdresse').value.trim();
+        const dateOut = document.getElementById('inpDate').value;
+        
+        if (!plumber || !tool || !address || !dateOut) { 
+            showAlert("⚠️ Merci de remplir tous les champs du formulaire d'emprunt."); 
+            return; 
+        }
+
+        if (tool !== "Autre..." && toolsLog.some(t => t.tool === tool && t.status === 'active')) {
+            showAlert("⚠️ Cet outil est déjà emprunté et n'a pas encore été retourné.");
+            return;
+        }
+
+        const newBorrow = {
+            id: 'tool-'+Date.now(),
+            plumber: plumber,
+            tool: tool,
+            address: address,
+            dateOut: dateOut,
+            status: 'active',
+            dateIn: null
+        };
+
+        toolsLog.push(newBorrow);
+        saveData();
+        closeModal('borrowModal');
+    }
+
+    init();
+</script>
+</body>
+</html>

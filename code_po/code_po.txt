@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Demande de PO F.Dussault</title>
+    <style>
+        /* =========================================
+           1. VARIABLES & THEME
+           ========================================= */
+        :root { 
+            --app-bg: #1e1f26;
+            --text-light: #e0e0e0;
+            --card-bg: #2b2c36;
+            --btn-yellow: #fcca46; 
+            --btn-red: #ff4d4d;
+            --btn-green: #28a745;
+            --border-color: #444;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* =========================================
+           2. ZONE PRINCIPALE (DASHBOARD)
+           ========================================= */
+        .main-content {
+            flex: 1; display: flex; flex-direction: column; position: relative;
+            background-color: var(--app-bg); overflow: hidden;
+        }
+
+        #view-dashboard {
+            padding: 30px; height: 100%; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        /* HEADER */
+        .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+
+        .btn-action {
+            background-color: var(--btn-yellow); color: black; border: none;
+            padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 13px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s;
+        }
+        .btn-action:hover { background-color: #ffd66b; transform: translateY(-2px); }
+
+        /* BARRE DE RECHERCHE */
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: transparent; padding: 0; margin-bottom: 10px; }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input {
+            width: 100%; background: var(--card-bg); border: 1px solid #444;
+            color: white; padding: 12px 15px 12px 40px; border-radius: 8px; font-size: 16px; outline: none;
+        }
+        .search-icon { position: absolute; left: 12px; color: #888; pointer-events: none; }
+
+        /* =========================================
+           3. LISTE DES PO
+           ========================================= */
+        .section-title { font-size: 16px; color: var(--btn-yellow); text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        
+        .po-list { display: flex; flex-direction: column; gap: 15px; padding-bottom: 30px; }
+        
+        .po-item {
+            background-color: var(--card-bg);
+            padding: 20px; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-left: 5px solid #66b2ff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .po-info { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+        .po-number { font-size: 20px; font-weight: bold; color: var(--btn-yellow); font-family: monospace; letter-spacing: 1px; }
+        .po-details { color: white; font-size: 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 5px;}
+        .po-details span { display: flex; align-items: center; gap: 5px; }
+        .po-subtext { color: #aaa; font-size: 13px; margin-top: 5px;}
+
+        .po-actions { display: flex; gap: 10px; margin-left: 20px; }
+        .btn-copy { background: #444; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; display:flex; gap:5px; align-items:center;}
+        .btn-copy:hover { background: #555; }
+        .btn-delete { background: rgba(255, 77, 77, 0.1); color: var(--btn-red); border: 1px solid transparent; width: 40px; height: 40px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; flex-shrink: 0;}
+        .btn-delete:hover { background: var(--btn-red); color: white; }
+
+        /* =========================================
+           4. ADAPTATION MOBILE
+           ========================================= */
+        @media (max-width: 768px) {
+            #view-dashboard { padding: 15px; }
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; padding-right: 60px; }
+            .dash-header .btn-action { width: 100%; justify-content: center; padding: 15px; font-size: 14px; }
+            
+            .po-item { flex-direction: column; align-items: flex-start; gap: 15px; padding: 15px; }
+            .po-actions { align-self: stretch; margin-left: 0; display: flex; width: 100%; gap: 10px; }
+            .btn-copy { flex: 1; justify-content: center; }
+        }
+
+        /* =========================================
+           5. MODALS (FORMULAIRE DE PO)
+           ========================================= */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; z-index: 4000;
+            justify-content: center; align-items: center;
+        }
+
+        .modal-card-basic { 
+            background: var(--card-bg); width: 350px; padding: 25px; 
+            border-radius: 15px; text-align: center; border: 1px solid #555;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .modal-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px;}
+        
+        .btn-modal-gray { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-modal-yellow { background: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+        .btn-modal-red { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+
+        /* Formulaire d'ajout (Reproduction de ton design) */
+        .custom-form-card {
+            background: #252631; width: 90%; max-width: 400px; padding: 30px;
+            border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            position: relative; border: 1px solid #444;
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        .modal-header-custom {
+            display: flex; align-items: center; gap: 15px; margin-bottom: 25px;
+            color: white; font-size: 24px; font-weight: normal;
+        }
+        
+        /* Icône de document pour le PO */
+        .modal-header-custom svg { width: 35px; height: 35px; fill: none; stroke: white; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;}
+
+        .custom-group { margin-bottom: 18px; text-align: left; }
+        .custom-group label { display: block; color: white; margin-bottom: 7px; font-size: 15px; }
+        .custom-group input {
+            width: 100%; padding: 12px 15px; background: #323443; 
+            border: 1px solid transparent; color: white; border-radius: 8px; font-size: 16px; 
+            outline: none; transition: border-color 0.2s;
+        }
+        .custom-group input:focus { border-color: var(--btn-yellow); }
+        
+        .btn-custom-submit {
+            background-color: var(--btn-yellow); color: black; border: none;
+            width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 18px;
+            cursor: pointer; margin-top: 10px; transition: 0.2s;
+        }
+        .btn-custom-submit:hover { background-color: #ffd66b; }
+        
+        .btn-close-modal { position: absolute; top: 15px; right: 20px; background: none; border: none; color: #888; font-size: 30px; cursor: pointer; }
+        .btn-close-modal:hover { color: white; }
+
+        /* Boîte de résultat (Ton carré sombre en bas) */
+        .po-result-box {
+            background: #1a1b23; border-radius: 12px; padding: 20px; text-align: center;
+            margin-top: 20px; border: 1px dashed var(--border-color);
+            display: none; /* Masqué par défaut */
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .po-result-title { color: #aaa; font-size: 13px; margin-bottom: 5px; text-transform: uppercase; }
+        .po-result-number { color: var(--btn-yellow); font-size: 24px; font-weight: bold; font-family: monospace; letter-spacing: 1px; margin-bottom: 15px;}
+        
+        .btn-copy-large {
+            background: #444; color: white; border: none; padding: 10px 20px; 
+            border-radius: 8px; font-weight: bold; cursor: pointer; display: inline-flex; gap: 8px; align-items: center;
+        }
+        .btn-copy-large:hover { background: #555; }
+        .btn-copy-large.success { background: var(--btn-green); }
+
+        /* Optimisation Modales sur petits écrans */
+        @media (max-width: 768px) {
+            .custom-form-card { width: 95%; padding: 20px; border-radius: 20px; }
+            .modal-header-custom { font-size: 22px; margin-bottom: 15px; }
+            .custom-group label { font-size: 14px; }
+            .custom-group input { padding: 12px; }
+            .btn-custom-submit { padding: 15px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    <div id="view-dashboard">
+        <div class="dash-header">
+            <div class="dash-title">
+                <h1>Bons de Commande</h1>
+                <p>Générateur de numéros PO</p>
+            </div>
+            <button class="btn-action" onclick="openPoModal()"><span>+</span> NOUVEAU PO</button>
+        </div>
+
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="poSearch" placeholder="Rechercher (Numéro, Fournisseur, Plombier...)" onkeyup="filterPO()">
+            </div>
+        </div>
+
+        <div class="section-title">Historique des PO générés</div>
+        <div class="po-list" id="poListContainer">
+            </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="poModal">
+    <div class="custom-form-card">
+        <button class="btn-close-modal" onclick="closeModal('poModal')">×</button>
+        
+        <div class="modal-header-custom">
+            <svg viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Demande de PO
+        </div>
+
+        <div id="poFormZone">
+            <div class="custom-group">
+                <label>Nom du plombier</label>
+                <input type="text" id="inpPlombier" placeholder="Ex: François">
+            </div>
+
+            <div class="custom-group">
+                <label>Fournisseur</label>
+                <input type="text" id="inpFournisseur" placeholder="Ex: Deschênes, Wolseley...">
+            </div>
+
+            <div class="custom-group">
+                <label>Adresse / Lieu</label>
+                <input type="text" id="inpAdresse" placeholder="Adresse du chantier">
+            </div>
+
+            <div class="custom-group">
+                <label>Date</label>
+                <input type="date" id="inpDate">
+            </div>
+
+            <button class="btn-custom-submit" onclick="generatePO()">Générer le PO</button>
+        </div>
+
+        <div id="poResultZone" class="po-result-box">
+            <div class="po-result-title">Numéro généré avec succès</div>
+            <div class="po-result-number" id="displayNewPoNumber">PO-XXXXXX-XXXX</div>
+            <button class="btn-copy-large" id="btnCopyMain" onclick="copyPoNumber('displayNewPoNumber', this)">
+                📋 Copier le numéro
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal-overlay z-high" id="alertModal">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-yellow); font-weight:bold; margin-bottom: 15px;">Information</div>
+        <div style="color: #e0e0e0; margin-bottom: 25px; line-height: 1.4;" id="alertMsg">...</div>
+        <div class="modal-actions">
+            <button class="btn-modal-yellow" style="width: 100%" onclick="closeAlertModal()">Compris</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay z-high" id="confirmModal">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-red); font-weight:bold; margin-bottom: 15px;" id="confirmTitle">Supprimer</div>
+        <div style="color: #e0e0e0; margin-bottom: 25px;" id="confirmMsg">Effacer définitivement ce PO ?</div>
+        <div class="modal-actions">
+            <button class="btn-modal-gray" onclick="closeConfirmModal()">Annuler</button>
+            <button class="btn-modal-red" onclick="executeDeletePO()">Supprimer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KEY_POS = 'dussault_po_v1';
+    let poLog = [];
+    let poToDeleteId = null; 
+
+    // --- GESTION DES MODALES GÉNÉRIQUES ---
+    function showAlert(msg) {
+        document.getElementById('alertMsg').textContent = msg;
+        document.getElementById('alertModal').style.display = 'flex';
+    }
+    function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    // --- LOGIQUE METIER (PO) ---
+    function init() {
+        const stored = localStorage.getItem(KEY_POS);
+        if (stored) {
+            poLog = JSON.parse(stored);
+        } else {
+            // Données de démonstration
+            poLog = [
+                { id: '1', poNumber: 'PO-260225-8452', plumber: 'François Dussault', supplier: 'Deschênes', address: '456 Rue St-Pierre', date: '2026-02-25', timestamp: Date.now() - 100000 },
+                { id: '2', poNumber: 'PO-260226-1024', plumber: 'Patrick Baker', supplier: 'Wolseley', address: 'Entrepôt', date: '2026-02-26', timestamp: Date.now() }
+            ];
+            saveData();
+        }
+        renderPOList();
+    }
+
+    function saveData() { 
+        localStorage.setItem(KEY_POS, JSON.stringify(poLog));
+        renderPOList(); 
+    }
+
+    function formatDateFR(isoDate) {
+        if(!isoDate) return '';
+        const parts = isoDate.split('-'); 
+        return `${parts[2]}/${parts[1]}/${parts[0]}`; 
+    }
+
+    function renderPOList(list = poLog) {
+        const container = document.getElementById('poListContainer');
+        container.innerHTML = '';
+        
+        // Trie par date de création décroissante
+        list.sort((a,b) => b.timestamp - a.timestamp);
+
+        if (list.length === 0) {
+            container.innerHTML = '<div style="color:#888; font-style:italic; padding:10px;">Aucun bon de commande généré pour le moment.</div>';
+            return;
+        }
+
+        list.forEach(po => {
+            const card = document.createElement('div');
+            card.className = `po-item`;
+            
+            card.innerHTML = `
+                <div class="po-info">
+                    <div class="po-number">${po.poNumber}</div>
+                    <div class="po-details">
+                        <span>👤 <strong>${po.plumber}</strong></span>
+                        <span>🏢 ${po.supplier}</span>
+                    </div>
+                    <div class="po-subtext">📍 ${po.address} | 📅 ${formatDateFR(po.date)}</div>
+                </div>
+                <div class="po-actions">
+                    <button class="btn-copy" onclick="copyTextToClipboard('${po.poNumber}', this)">📋 Copier</button>
+                    <button class="btn-delete" onclick="askDeletePO('${po.id}')" title="Supprimer">🗑️</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function filterPO() {
+        const term = document.getElementById('poSearch').value.toLowerCase();
+        const filtered = poLog.filter(po => 
+            (po.poNumber || "").toLowerCase().includes(term) || 
+            (po.plumber || "").toLowerCase().includes(term) || 
+            (po.supplier || "").toLowerCase().includes(term) || 
+            (po.address || "").toLowerCase().includes(term)
+        );
+        renderPOList(filtered);
+    }
+
+    // --- GENERATION DU PO ---
+    function openPoModal() {
+        // Reset le formulaire
+        document.getElementById('inpPlombier').value = '';
+        document.getElementById('inpFournisseur').value = '';
+        document.getElementById('inpAdresse').value = '';
+        document.getElementById('inpDate').value = new Date().toISOString().split('T')[0];
+        
+        // Cache la zone de résultat, affiche le bouton générer
+        document.getElementById('poResultZone').style.display = 'none';
+        document.querySelector('.btn-custom-submit').style.display = 'block';
+        
+        // Ouvre la modal
+        document.getElementById('poModal').style.display = 'flex';
+    }
+
+    function generatePONumber(dateString) {
+        // Format: PO-AAMMJJ-XXXX (ex: PO-260227-1452)
+        const d = new Date(dateString);
+        const yy = String(d.getFullYear()).slice(-2);
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const random = Math.floor(1000 + Math.random() * 9000); // 4 chiffres aléatoires
+        return `PO-${yy}${mm}${dd}-${random}`;
+    }
+
+    function generatePO() {
+        const plumber = document.getElementById('inpPlombier').value.trim();
+        const supplier = document.getElementById('inpFournisseur').value.trim();
+        const address = document.getElementById('inpAdresse').value.trim();
+        const dateReq = document.getElementById('inpDate').value;
+        
+        if (!plumber || !supplier || !address || !dateReq) { 
+            showAlert("⚠️ Merci de remplir tous les champs pour générer le PO."); 
+            return; 
+        }
+
+        // Création du numéro
+        const newPoNumber = generatePONumber(dateReq);
+
+        const newPo = {
+            id: 'po-'+Date.now(),
+            poNumber: newPoNumber,
+            plumber: plumber,
+            supplier: supplier,
+            address: address,
+            date: dateReq,
+            timestamp: Date.now()
+        };
+
+        // Sauvegarde
+        poLog.push(newPo);
+        saveData();
+
+        // Modification de l'interface visuelle (Animation)
+        document.querySelector('.btn-custom-submit').style.display = 'none'; // Cache le bouton jaune
+        document.getElementById('displayNewPoNumber').textContent = newPoNumber;
+        
+        // Reset l'état du bouton copier au cas où
+        const btnCopy = document.getElementById('btnCopyMain');
+        btnCopy.innerHTML = "📋 Copier le numéro";
+        btnCopy.className = "btn-copy-large";
+
+        document.getElementById('poResultZone').style.display = 'block'; // Affiche la boite noire
+    }
+
+    // --- FONCTION DE COPIE ---
+    function copyPoNumber(elementId, btnElement) {
+        const text = document.getElementById(elementId).textContent;
+        copyTextToClipboard(text, btnElement, true);
+    }
+
+    function copyTextToClipboard(text, btnElement, isLargeBtn = false) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Animation du bouton pour confirmer la copie
+            const originalText = btnElement.innerHTML;
+            const originalClass = btnElement.className;
+            
+            btnElement.innerHTML = "✅ Copié !";
+            btnElement.className = isLargeBtn ? "btn-copy-large success" : "btn-copy success";
+            btnElement.style.background = "var(--btn-green)";
+            btnElement.style.color = "white";
+
+            setTimeout(() => {
+                btnElement.innerHTML = originalText;
+                btnElement.className = originalClass;
+                btnElement.style.background = ""; // Remet le CSS d'origine
+            }, 2000);
+        }).catch(err => {
+            console.error('Erreur lors de la copie', err);
+            showAlert("Erreur : Impossible de copier le texte.");
+        });
+    }
+
+    // --- SUPPRESSION ---
+    function askDeletePO(id) {
+        poToDeleteId = id;
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function executeDeletePO() {
+        if (!poToDeleteId) return;
+        poLog = poLog.filter(po => po.id !== poToDeleteId);
+        saveData();
+        document.getElementById('confirmModal').style.display = 'none';
+        poToDeleteId = null;
+    }
+
+    init();
+</script>
+</body>
+</html>

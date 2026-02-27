@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Accueil F.Dussault</title>
+    <style>
+        :root { 
+            --app-bg: #1e1f26;
+            --text-light: #e0e0e0;
+            --card-bg: #2b2c36;
+            --btn-yellow: #fcca46; 
+            --btn-red: #ff4d4d;
+            --btn-green: #28a745;
+            --border-glow: rgba(252, 202, 70, 0.2);
+        }
+        
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; overflow-y: auto; }
+
+        .main-content { max-width: 1200px; margin: 0 auto; padding: 30px; }
+
+        /* HEADER CHIC */
+        .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 1px solid #333; padding-bottom: 20px;}
+        .dash-title h1 { margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: var(--btn-yellow); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;}
+        
+        .date-badge { background: linear-gradient(145deg, #32333d, #24252e); padding: 12px 25px; border-radius: 12px; border: 1px solid #444; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center;}
+        .date-badge span { display: block; font-size: 11px; color: var(--btn-yellow); font-weight: bold; margin-bottom: 4px; text-transform: uppercase;}
+        .date-badge div { font-weight: bold; color: white; font-size: 16px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+
+        /* TITRES DE SECTION */
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .section-title { font-size: 18px; color: white; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; }
+
+        /* NOUVELLES (CARREAU #1) */
+        .news-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
+        .news-card {
+            background: var(--card-bg); border-radius: 16px; padding: 25px;
+            border: 1px solid #444; position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: border-color 0.3s;
+        }
+        .news-card:hover { border-color: var(--btn-yellow); }
+        .news-card.important { border-left: 6px solid var(--btn-red); }
+        .news-card.info { border-left: 6px solid var(--btn-yellow); }
+
+        .news-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+        .news-title { font-size: 20px; font-weight: 700; color: white; margin: 0; }
+        .news-date { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; }
+        .news-body { font-size: 15px; color: #bbb; line-height: 1.6; }
+        .btn-add-news {
+            background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .btn-add-news:hover { transform: scale(1.05); background-color: white; }
+
+        /* ACTIONS RAPIDES (PLUS CHIC) */
+        .quick-actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .action-card {
+            background: linear-gradient(145deg, #2b2c36, #1e1f26); border: 1px solid #444; border-radius: 16px; padding: 25px;
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .action-card:hover { 
+            transform: translateY(-8px); 
+            border-color: var(--btn-yellow); 
+            box-shadow: 0 10px 20px var(--border-glow);
+            background: #343542;
+        }
+        .action-icon { font-size: 32px; background: rgba(252, 202, 70, 0.1); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .action-title { font-size: 15px; font-weight: 700; color: white; letter-spacing: 0.5px; }
+
+        /* ALERTES */
+        .alerts-container { background: #22232b; border-radius: 16px; border: 1px solid #333; padding: 25px; }
+        .alert-item { padding: 15px; border-radius: 12px; margin-bottom: 12px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 12px; border: 1px solid transparent; }
+        .alert-danger { background: rgba(255, 77, 77, 0.1); border-color: rgba(255, 77, 77, 0.3); color: #ff9999; }
+        .alert-warning { background: rgba(252, 202, 70, 0.1); border-color: rgba(252, 202, 70, 0.3); color: #ffe69c; }
+        .alert-success { background: rgba(40, 167, 69, 0.1); border-color: rgba(40, 167, 69, 0.3); color: #c3e6cb; }
+
+        /* MODAL */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; z-index: 4000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-card { background: var(--card-bg); width: 90%; max-width: 500px; padding: 30px; border-radius: 20px; border: 1px solid #555; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 15px; background: #1a1b23; border: 1px solid #444; color: white; border-radius: 10px; margin-top: 5px; font-size: 15px; }
+
+        @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    <div class="dash-header">
+        <div class="dash-title">
+            <h1 id="greeting">Bonjour !</h1>
+            <p>Centre de contrôle F.Dussault</p>
+        </div>
+        <div class="date-badge">
+            <span>Nous sommes le</span>
+            <div id="todayDate">--/--/----</div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="col-main">
+            <div class="section-header">
+                <div class="section-title">📢 Annonces de l'équipe</div>
+                <button class="btn-add-news" onclick="openNewsModal()">+ Nouveau Message</button>
+            </div>
+            <div class="news-container" id="newsList"></div>
+
+            <div class="section-title" style="margin-bottom: 20px;">⚡ Raccourcis Professionnels</div>
+            <div class="quick-actions-grid">
+                <div class="action-card" onclick="goToTab('view-factures')">
+                    <div class="action-icon">🧾</div>
+                    <div class="action-title">Factures</div>
+                </div>
+                <div class="action-card" onclick="goToTab('view-soumissions')">
+                    <div class="action-icon">📝</div>
+                    <div class="action-title">Soumissions</div>
+                </div>
+                <div class="action-card" onclick="goToTab('view-temps')">
+                    <div class="action-icon">⏱️</div>
+                    <div class="action-title">Temps</div>
+                </div>
+                <div class="action-card" onclick="goToTab('view-calendrier')">
+                    <div class="action-icon">📅</div>
+                    <div class="action-title">Agenda</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-side">
+            <div class="alerts-container">
+                <div class="section-title" style="margin-bottom: 20px;">🛡️ État des Certifications</div>
+                <div id="alertsList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="newsModal">
+    <div class="modal-card">
+        <h2 style="margin-top:0">Publier une annonce</h2>
+        <div class="form-group">
+            <label style="font-size: 13px; font-weight: bold; color: #888;">TYPE</label>
+            <select id="newsType"><option value="info">Information</option><option value="important">Urgent</option></select>
+        </div>
+        <div class="form-group" style="margin-top:15px">
+            <label style="font-size: 13px; font-weight: bold; color: #888;">TITRE</label>
+            <input type="text" id="newsTitle" placeholder="Titre de l'annonce">
+        </div>
+        <div class="form-group" style="margin-top:15px">
+            <label style="font-size: 13px; font-weight: bold; color: #888;">MESSAGE</label>
+            <textarea id="newsBody" rows="4" placeholder="Votre message..."></textarea>
+        </div>
+        <div style="display:flex; justify-content: flex-end; gap:10px; margin-top:25px">
+            <button onclick="closeNewsModal()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer">Annuler</button>
+            <button onclick="saveNews()" style="background:var(--btn-yellow); border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer">Publier l'annonce</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KEY_NEWS = 'dussault_news_v1';
+    const KEY_PROFILE = 'dussault_profile_v2';
+    const KEY_FORMATIONS = 'dussault_formations_v1';
+
+    // --- LE SECRET POUR QUE LES BOUTONS FONCTIONNENT ---
+    function goToTab(targetId) {
+        // Cette fonction demande au fichier index.html (le parent) de cliquer sur le bon bouton de menu
+        if (window.parent && window.parent.document) {
+            const btn = window.parent.document.querySelector(`.nav-btn[data-target="${targetId}"]`);
+            if (btn) {
+                btn.click();
+            } else {
+                console.error("Bouton de menu introuvable : " + targetId);
+            }
+        }
+    }
+
+    function init() {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('todayDate').textContent = new Date().toLocaleDateString('fr-FR', options);
+        
+        const profile = localStorage.getItem(KEY_PROFILE);
+        if (profile) {
+            const data = JSON.parse(profile);
+            if (data.name) document.getElementById('greeting').textContent = "Bonjour, " + data.name.split(' ')[0];
+        }
+
+        loadNews();
+        checkCertifications();
+    }
+
+    function checkCertifications() {
+        const container = document.getElementById('alertsList');
+        const stored = localStorage.getItem(KEY_FORMATIONS);
+        let html = '';
+        let count = 0;
+
+        if (stored) {
+            const formations = JSON.parse(stored);
+            const today = new Date();
+            formations.forEach(f => {
+                const diff = Math.ceil((new Date(f.dateExp) - today) / (1000 * 60 * 60 * 24));
+                if (diff < 0) {
+                    html += `<div class="alert-item alert-danger">⚠️ ${f.name} expirée !</div>`;
+                    count++;
+                } else if (diff <= 30) {
+                    html += `<div class="alert-item alert-warning">⏳ ${f.name} expire dans ${diff}j</div>`;
+                    count++;
+                }
+            });
+        }
+        container.innerHTML = html || '<div class="alert-item alert-success">✅ Certifications à jour</div>';
+    }
+
+    function loadNews() {
+        const container = document.getElementById('newsList');
+        const stored = JSON.parse(localStorage.getItem(KEY_NEWS) || '[]');
+        if (stored.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#666; padding:20px;">Aucune annonce récente.</div>';
+            return;
+        }
+        container.innerHTML = stored.sort((a,b) => b.timestamp - a.timestamp).map(n => `
+            <div class="news-card ${n.type}">
+                <div class="news-header">
+                    <div class="news-title">${n.title}</div>
+                    <div class="news-date">${new Date(n.timestamp).toLocaleDateString()}</div>
+                </div>
+                <div class="news-body">${n.body}</div>
+                <button onclick="deleteNews('${n.id}')" style="background:none; border:none; color:#666; cursor:pointer; float:right; margin-top:10px">🗑️</button>
+            </div>
+        `).join('');
+    }
+
+    function openNewsModal() { document.getElementById('newsModal').style.display = 'flex'; }
+    function closeNewsModal() { document.getElementById('newsModal').style.display = 'none'; }
+
+    function saveNews() {
+        const title = document.getElementById('newsTitle').value;
+        const body = document.getElementById('newsBody').value;
+        if (!title || !body) return;
+        const news = JSON.parse(localStorage.getItem(KEY_NEWS) || '[]');
+        news.push({ id: Date.now().toString(), title, body, type: document.getElementById('newsType').value, timestamp: Date.now() });
+        localStorage.setItem(KEY_NEWS, JSON.stringify(news));
+        loadNews();
+        closeNewsModal();
+    }
+
+    function deleteNews(id) {
+        let news = JSON.parse(localStorage.getItem(KEY_NEWS) || '[]');
+        news = news.filter(n => n.id !== id);
+        localStorage.setItem(KEY_NEWS, JSON.stringify(news));
+        loadNews();
+    }
+
+    init();
+</script>
+
+</body>
+</html>
