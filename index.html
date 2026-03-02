@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>F.Dussault</title>
+    <title>Interface F.Dussault</title>
 
     <link rel="apple-touch-icon" href="assets/logo_app.png">
     <link rel="icon" type="image/png" href="assets/logo_app.png">
@@ -67,9 +67,10 @@
         
         .nav-btn:hover { background-color: rgba(255,255,255, 0.3); }
         .nav-btn.active { background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .nav-btn img, .nav-btn svg { width: 32px; height: 32px; object-fit: contain; display: block; }
         
-        .menu-burger svg { width: 36px; height: 36px; stroke: black; stroke-width: 3; stroke-linecap: round; }
+        /* Ajustement des images et de l'icône accueil */
+        .nav-btn img, .nav-btn svg { width: 32px; height: 32px; object-fit: contain; display: block; }
+        .nav-btn svg { stroke: black; stroke-width: 3; stroke-linecap: round; }
 
         /* =========================================
            3. ZONE PRINCIPALE & VUES
@@ -87,13 +88,11 @@
             padding: 0; 
         }
 
+        /* Classe pour afficher la vue active */
         .view-section.active-view { display: flex; }
 
         .module-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
-            display: block;
+            width: 100%; height: 100%; border: none; display: block;
         }
 
         /* =========================================
@@ -102,70 +101,37 @@
         .menu-btn {
             display: none;
             position: fixed;
-            top: 15px;
-            right: 15px;
+            top: 15px; left: 15px;
             z-index: 1100;
             background-color: var(--sidebar-bg);
-            border: none;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
+            border: none; padding: 10px; border-radius: 8px; cursor: pointer;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
-        .menu-btn svg {
-            width: 24px; height: 24px; stroke: black; stroke-width: 3; stroke-linecap: round; display: block;
-        }
+        .menu-btn svg { width: 24px; height: 24px; stroke: black; stroke-width: 3; stroke-linecap: round; display: block; }
 
         #overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.4);
-            display: none;
-            z-index: 900;
-            backdrop-filter: blur(2px);
+            position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; z-index: 900; backdrop-filter: blur(2px);
         }
 
         #overlay.active { display: block; }
 
         /* =========================================
-           5. ADAPTATION MOBILE & TABLETTE (Responsive)
+           5. ADAPTATION MOBILE & TABLETTE
            ========================================= */
-           
         @media (min-width: 769px) and (max-width: 1024px) {
-            .sidebar {
-                position: relative;
-                left: 0;
-                width: 80px; 
-            }
-            .menu-btn {
-                display: none;
-            }
+            .sidebar { position: relative; left: 0; width: 80px; }
+            .menu-btn { display: none; }
         }
 
         @media (max-width: 768px) {
             .sidebar {
-                position: fixed;
-                top: 0;
-                left: -100px; 
-                width: 100px; 
-                height: 100vh;
-                background: var(--sidebar-bg);
-                transition: left 0.3s ease;
-                z-index: 1000;
+                position: fixed; top: 0; left: -100px; width: 100px; height: 100vh;
+                background: var(--sidebar-bg); transition: left 0.3s ease; z-index: 1000;
                 box-shadow: 2px 0 10px rgba(0,0,0,0.5);
             }
-
-            .sidebar.open {
-                left: 0;
-            }
-
-            .menu-btn { 
-                display: block; 
-            }
-            .menu-burger { 
-                display: none; 
-            } 
+            .sidebar.open { left: 0; }
+            .menu-btn { display: block; }
         }
     </style>
 </head>
@@ -177,19 +143,18 @@
 
 <aside id="sidebar" class="sidebar">
     <div class="sidebar-top">
-        <div class="menu-burger">
+        
+        <button class="nav-btn active" data-target="view-accueil" title="Accueil">
             <svg viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line></svg>
-        </div>
+        </button>
         
         <button class="nav-btn" data-target="view-factures" title="Factures">
             <img src="assets/logo_facture.png" alt="Factures" onerror="this.style.display='none'">
         </button>
-        
         <button class="nav-btn" data-target="view-soumissions" title="Soumissions">
             <img src="assets/logo_soumission.png" alt="Soumissions" onerror="this.style.display='none'">
         </button>
-
-        <button class="nav-btn active" data-target="view-temps" title="Feuille de temps">
+        <button class="nav-btn" data-target="view-temps" title="Feuille de temps">
             <img src="assets/logo_feuille_de_temps.png" alt="Temps" onerror="this.style.display='none'">
         </button>
         <button class="nav-btn" data-target="view-notes" title="Notes">
@@ -217,38 +182,35 @@
 </aside>
 
 <div class="main-content">
+
+    <div id="view-accueil" class="view-section active-view">
+        <iframe class="module-frame" src="code_accueil/code_accueil.html"></iframe>
+    </div>
+
     <div id="view-factures" class="view-section">
         <iframe class="module-frame" src="code_facture/code_facture.html"></iframe>
     </div>
-
     <div id="view-soumissions" class="view-section">
         <iframe class="module-frame" src="code_soumissions/code_soumissions.html"></iframe>
     </div>
-
-    <div id="view-temps" class="view-section active-view">
+    <div id="view-temps" class="view-section">
         <iframe class="module-frame" src="code_feuille_de_temps/code_feuille_de_temps.html"></iframe>
     </div>
-
     <div id="view-notes" class="view-section">
         <iframe class="module-frame" src="code_notes/code_notes.html"></iframe>
     </div>
-
    <div id="view-calendrier" class="view-section">
         <iframe class="module-frame" src="code_calendrier/code_calendrier.html"></iframe>
     </div>
-
     <div id="view-client" class="view-section">
         <iframe class="module-frame" src="code_clients/code_clients.html"></iframe>
     </div>
-    
     <div id="view-outils" class="view-section">
         <iframe class="module-frame" src="code_outils/code_outils.html"></iframe>
     </div>
-
     <div id="view-po" class="view-section">
         <iframe class="module-frame" src="code_po/code_po.html"></iframe>
     </div>
-
     <div id="view-parametres" class="view-section">
         <iframe class="module-frame" src="code_profil_parametres/code_profil_parametres.html"></iframe>
     </div>
@@ -264,26 +226,34 @@
     const navButtons = document.querySelectorAll('.nav-btn[data-target]');
     const views = document.querySelectorAll('.view-section');
 
+    // Ouverture du menu sur mobile
     menuBtn.addEventListener("click", () => {
         sidebar.classList.toggle("open");
         overlay.classList.toggle("active");
     });
 
+    // Fermeture en cliquant dans le vide
     overlay.addEventListener("click", () => {
         sidebar.classList.remove("open");
         overlay.classList.remove("active");
     });
 
+    // Logique de navigation
     navButtons.forEach(btn => {
         btn.addEventListener('click', function() {
+            // Retirer la classe 'active' de tous les boutons
             navButtons.forEach(b => b.classList.remove('active'));
+            // Ajouter la classe 'active' au bouton cliqué
             this.classList.add('active');
             
+            // Cacher toutes les vues
             views.forEach(view => view.classList.remove('active-view'));
             
+            // Afficher la vue correspondante
             const targetId = this.getAttribute('data-target');
             document.getElementById(targetId).classList.add('active-view');
 
+            // Sur mobile, refermer le menu automatiquement après le clic
             if (window.innerWidth <= 768) {
                 sidebar.classList.remove("open");
                 overlay.classList.remove("active");
@@ -293,5 +263,4 @@
 </script>
 
 </body>
-
 </html>
