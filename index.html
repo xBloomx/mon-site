@@ -13,6 +13,8 @@
     <meta name="apple-mobile-web-app-title" content="F.Dussault">
     <meta name="theme-color" content="#1e1f26">
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         /* =========================================
            1. VARIABLES & LAYOUT GÉNÉRAL
@@ -71,6 +73,9 @@
         /* Ajustement des images et de l'icône accueil */
         .nav-btn img, .nav-btn svg { width: 32px; height: 32px; object-fit: contain; display: block; }
         .nav-btn svg { stroke: black; stroke-width: 3; stroke-linecap: round; }
+
+        /* Classe utilitaire pour cacher les boutons non autorisés */
+        .hidden { display: none !important; }
 
         /* =========================================
            3. ZONE PRINCIPALE & VUES
@@ -219,6 +224,46 @@
 <div id="overlay"></div>
 
 <script>
+    // --- 1. INITIALISATION SUPABASE ---
+    const supabaseUrl = 'https://ipxmloqgoukieuerbxtl.supabase.co';
+    const supabaseKey = 'sb_publishable_jVOmm2g3WLxtIrr-rVRvtA_aWaUtB-E';
+    
+    // MODIFICATION ICI : On utilise supabaseClient au lieu de supabase
+    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    // --- 2. LOGIQUE DES RÔLES ---
+    async function initApp() {
+        // MODIFICATION ICI : On utilise supabaseClient
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        
+        if (user) {
+            // MODIFICATION ICI : On utilise supabaseClient
+            const { data: profil, error } = await supabaseClient
+                .from('profils')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (!error && profil) {
+                console.log("Connecté avec le rôle :", profil.role);
+                appliquerPermissions(profil.role);
+            }
+        } else {
+            console.log("Aucun utilisateur connecté.");
+        }
+    }
+
+    function appliquerPermissions(role) {
+        if (role === 'A3') {
+            const btnOutils = document.querySelector('[data-target="view-outils"]');
+            if (btnOutils) btnOutils.classList.add('hidden');
+        }
+    }
+
+    // On lance la vérification dès que la page charge
+    initApp();
+
+    // --- 3. LOGIQUE D'INTERFACE (Ton code original pour le menu) ---
     const menuBtn = document.getElementById("menu-toggle");
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("overlay");
@@ -226,34 +271,26 @@
     const navButtons = document.querySelectorAll('.nav-btn[data-target]');
     const views = document.querySelectorAll('.view-section');
 
-    // Ouverture du menu sur mobile
     menuBtn.addEventListener("click", () => {
         sidebar.classList.toggle("open");
         overlay.classList.toggle("active");
     });
 
-    // Fermeture en cliquant dans le vide
     overlay.addEventListener("click", () => {
         sidebar.classList.remove("open");
         overlay.classList.remove("active");
     });
 
-    // Logique de navigation
     navButtons.forEach(btn => {
         btn.addEventListener('click', function() {
-            // Retirer la classe 'active' de tous les boutons
             navButtons.forEach(b => b.classList.remove('active'));
-            // Ajouter la classe 'active' au bouton cliqué
             this.classList.add('active');
             
-            // Cacher toutes les vues
             views.forEach(view => view.classList.remove('active-view'));
             
-            // Afficher la vue correspondante
             const targetId = this.getAttribute('data-target');
             document.getElementById(targetId).classList.add('active-view');
 
-            // Sur mobile, refermer le menu automatiquement après le clic
             if (window.innerWidth <= 768) {
                 sidebar.classList.remove("open");
                 overlay.classList.remove("active");
