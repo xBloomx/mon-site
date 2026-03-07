@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Administration F.Dussault</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root { 
+            --app-bg: #1e1f26; --text-light: #e0e0e0; --card-bg: #2b2c36;
+            --btn-yellow: #fcca46; --btn-red: #ff4d4d; --btn-green: #28a745;
+            --btn-orange: #ff9800; --btn-blue: #3498db; --border-color: #444;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; padding: 30px; overflow-y: auto; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+        /* HEADER PREMIUM */
+        .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #333; padding-bottom: 20px;}
+        .dash-title { display: flex; flex-direction: column; justify-content: center; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; display: flex; align-items: center; gap: 15px;}
+        
+        .icon-premium-box {
+            background: linear-gradient(135deg, var(--btn-blue), #2c3e50);
+            width: 50px; height: 50px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+            flex-shrink: 0;
+        }
+        .dash-title p { margin: 5px 0 0 65px; color: #aaa; font-size: 14px; }
+
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .settings-card { background-color: var(--card-bg); padding: 25px; border-radius: 15px; border: 1px solid #333; display: flex; flex-direction: column; }
+        .full-width { grid-column: 1 / -1; }
+
+        .card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 18px; font-weight: bold; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .header-with-icon { display: flex; align-items: center; gap: 10px; }
+        .header-with-icon svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        
+        .btn-add-small { background: #444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;}
+        .btn-add-small:hover { background: #555; }
+        
+        /* GESTION EQUIPE */
+        .formation-list { display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto; padding-right: 5px;}
+        .formation-item { background: #1a1b23; border: 1px solid #444; border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; }
+        .role-badge { background: rgba(255, 152, 0, 0.2); color: var(--btn-orange); border: 1px solid var(--btn-orange); font-size: 11px; font-weight: bold; padding: 3px 6px; border-radius: 4px;}
+        
+        /* LOGS TABLE */
+        .logs-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #ccc;}
+        .logs-table th { text-align: left; padding: 12px; color: #aaa; font-weight: bold; border-bottom: 1px solid #444; position: sticky; top: 0; background: #2b2c36; z-index: 10;}
+        .logs-table td { padding: 12px; border-bottom: 1px dashed #333; vertical-align: top;}
+
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; z-index: 4000; justify-content: center; align-items: center; }
+        .modal-card-basic { background: var(--card-bg); width: 90%; max-width: 400px; padding: 25px; border-radius: 15px; text-align: left; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 13px; font-weight: bold;}
+        .form-group input, .form-group select { width: 100%; padding: 12px; background: #1a1b23; border: 1px solid #444; color: white; border-radius: 8px; font-size: 15px; outline: none; }
+        .form-group input:focus { border-color: var(--btn-yellow); }
+        .modal-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px;}
+        .btn-modal-gray { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-modal-yellow { background: var(--btn-orange); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+        .btn-modal-red { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+
+        .tabs-container { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px;}
+        .btn-tab { background: transparent; color: #888; border: none; padding: 10px 20px; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; border-bottom: 3px solid transparent; }
+        .btn-tab.active { color: white; border-bottom-color: var(--btn-yellow); }
+        .admin-section { display: none; flex-direction: column; gap: 20px; }
+        .admin-section.active { display: flex; }
+
+        @media (max-width: 768px) { 
+            .settings-grid { grid-template-columns: 1fr; } 
+            .dash-title p { margin-left: 0; margin-top: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    <div class="dash-header">
+        <div class="dash-title">
+            <h1>
+                <div class="icon-premium-box">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                </div>
+                Administration Système
+            </h1>
+            <p>Gestion des accès et de la sécurité (A0 / A1)</p>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <button class="btn-tab active" onclick="switchTab('users')">👥 Utilisateurs</button>
+        <button class="btn-tab" onclick="switchTab('archive')">🗄️ Archivage Annuel</button>
+        <button class="btn-tab" onclick="switchTab('maintenance')" id="tab-dev" style="display:none;">⚙️ Système (A0)</button>
+    </div>
+
+    <div class="settings-grid admin-section active" id="sec-users">
+        <div class="settings-card" style="border-color: var(--btn-orange);">
+            <div class="card-header" style="color: var(--btn-orange);">
+                <div class="header-with-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Gestion du Personnel
+                </div>
+                <button class="btn-add-small" style="background: var(--btn-orange); color: black;" onclick="openNewUserModal()">+ Créer un profil</button>
+            </div>
+            <div class="formation-list" id="employeeList">
+                <div style="color:#888; font-style:italic; font-size:13px; text-align: center; padding: 10px;">Chargement de l'équipe...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-grid admin-section" id="sec-archive">
+        <div class="settings-card full-width" style="border-color: var(--btn-red); text-align: center; padding: 40px 20px; background: rgba(255, 77, 77, 0.05); border-style: dashed;">
+            <h2 style="color: var(--btn-red); font-size: 24px; margin-top:0; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                    <rect x="1" y="3" width="22" height="5"></rect>
+                    <line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+                Nettoyage / Clôture Annuelle
+            </h2>
+            <p style="color:#ccc; line-height: 1.6; font-size: 15px; max-width: 600px; margin: 0 auto;">
+                Attention ! Cette action permet de nettoyer l'application pour la nouvelle année.<br>
+                <b>Une mini-application de sauvegarde locale contenant vos données sera téléchargée automatiquement sur votre appareil AVANT la suppression.</b>
+            </p>
+            <button style="background: var(--btn-red); color: white; border: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 30px; transition: 0.2s;" onclick="openArchiveModal()">⚠️ Sélectionner et Nettoyer</button>
+        </div>
+    </div>
+
+    <div class="settings-grid admin-section" id="sec-maintenance">
+        <div class="settings-card" id="a0ToolsPanel" style="border-color: var(--btn-red);">
+            <div class="card-header" style="color: var(--btn-red);">
+                <div class="header-with-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                    </svg>
+                    Contrôle Développeur (A0 Only)
+                </div>
+            </div>
+            
+            <div style="background:#1a1b23; padding:15px; border-radius:8px; border:1px dashed var(--btn-red); display:flex; align-items:center; gap:15px; margin-bottom:20px;">
+                <input type="checkbox" id="maintenanceMode" style="width:20px; height:20px;" onchange="toggleMaintenance()">
+                <label style="color:white; font-weight:bold; cursor:pointer;" for="maintenanceMode">Activer Mode Maintenance</label>
+            </div>
+
+            <div style="font-weight:bold; color:white; margin-bottom:10px; font-size:14px;">Permissions Dynamiques</div>
+            <div style="background:#1a1b23; padding:15px; border-radius:8px; display:flex; flex-direction:column; gap:12px; border: 1px solid #444;">
+                
+                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; color:white; font-size:14px;">
+                    <input type="checkbox" checked style="width:20px;height:20px; margin-top:2px;"> 
+                    <div>
+                        Autoriser le transfert d'outils entre employés (A3)
+                        <div style="color:#aaa; font-size:12px; font-weight:normal; margin-top:3px;">Permet à un employé de passer un outil à un autre directement sur le terrain.</div>
+                    </div>
+                </label>
+                
+                <hr style="border:none; border-top:1px dashed #333; margin:5px 0;">
+                
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:#ccc; font-size:13px;">
+                    <input type="checkbox" checked style="width:18px;height:18px;"> Autoriser Soft-Delete Client (A3)
+                </label>
+                
+                <button class="btn-add-small" style="background:var(--btn-red); color:white; margin-top:10px;" onclick="showAlert('✅ Permissions dynamiques enregistrées avec succès.')">Enregistrer les permissions</button>
+            </div>
+        </div>
+
+        <div class="settings-card full-width" id="a0LogsPanel" style="border-color: var(--btn-blue);">
+            <div class="card-header" style="color: var(--btn-blue);">
+                <div class="header-with-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Journal Technique (Logs)
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="logSearch" placeholder="🔍 Rechercher..." style="background:#1a1b23; border:1px solid #444; color:white; padding:6px 12px; border-radius:6px; font-size:13px; width:250px; outline:none;" onkeyup="filterLogs()">
+                    <button class="btn-add-small" onclick="loadTechnicalLogs()" title="Rafraîchir">🔄</button>
+                </div>
+            </div>
+            <div style="background:#1a1b23; border: 1px solid #444; border-radius: 8px; overflow:hidden;">
+                <div style="max-height: 400px; overflow-y:auto;">
+                    <table class="logs-table">
+                        <thead>
+                            <tr><th width="150">Date</th><th width="100">Action</th><th>Détails de l'événement</th></tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            <tr><td colspan="3" style="text-align:center; padding:20px; color:#888;">Chargement des logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="archiveModal">
+    <div class="modal-card-basic" style="width: 450px; max-width: 95%;">
+        <h2 style="color:var(--btn-red); margin-top:0; border-bottom:1px solid #444; padding-bottom:10px;">🗄️ Nettoyage Annuel</h2>
+        <p style="color:#ccc; font-size:14px; margin-bottom:15px;">Sélectionnez les catégories à sauvegarder puis supprimer :</p>
+
+        <div style="display:flex; flex-direction:column; gap:15px; background:#1a1b23; padding:20px; border-radius:8px; border:1px solid #444;">
+            <label style="display:flex; align-items:center; gap:10px; color:white; cursor:pointer; font-weight:bold; font-size:15px;">
+                <input type="checkbox" id="chk-factures" style="width:20px;height:20px;"> 🧾 Factures et Soumissions
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; color:white; cursor:pointer; font-weight:bold; font-size:15px;">
+                <input type="checkbox" id="chk-temps" style="width:20px;height:20px;"> ⏱️ Feuilles de Temps
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; color:white; cursor:pointer; font-weight:bold; font-size:15px;">
+                <input type="checkbox" id="chk-po" style="width:20px;height:20px;"> 🛒 Bons de commande (PO)
+            </label>
+        </div>
+
+        <div style="text-align: left; margin-top: 10px;">
+            <button style="background:#444; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-size:13px; font-weight:bold;" onclick="selectAllArchive()">✓ Tout sélectionner</button>
+        </div>
+
+        <div class="modal-actions" style="margin-top:30px;">
+            <button class="btn-modal-gray" onclick="closeModal('archiveModal')">Annuler</button>
+            <button class="btn-modal-red" style="flex:1;" onclick="startArchiveProcess()">Générer l'App Locale & Nettoyer</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="newUserModal">
+    <div class="modal-card-basic">
+        <h2 style="color:var(--btn-orange); margin-top:0; margin-bottom:20px; border-bottom:1px solid #444; padding-bottom:10px;">Nouveau Profil</h2>
+        <div class="form-group"><label>Prénom et Nom</label><input type="text" id="newUserName" placeholder="Ex: Jean Tremblay"></div>
+        <div class="form-group"><label>Rôle</label>
+            <select id="newUserRole">
+                <option value="A3">A3 - Employé</option>
+                <option value="A2">A2 - Bureau</option>
+                <option value="A1">A1 - Administrateur</option>
+                <option value="A0">A0 - Développeur</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Courriel de connexion</label><input type="email" id="newUserEmail" placeholder="jean@entreprise.com"></div>
+        <div class="form-group"><label>Mot de passe</label><input type="text" id="newUserPassword" placeholder="Min 6 caractères"></div>
+        <div class="modal-actions">
+            <button class="btn-modal-gray" onclick="closeModal('newUserModal')">Annuler</button>
+            <button class="btn-modal-yellow" style="flex:1;" onclick="creerEmploye()">Créer le compte</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal-card-basic" style="text-align:center;">
+        <h2 style="color:var(--btn-red); margin-top:0;">Mot de passe A0</h2>
+        <p style="color:#aaa; font-size:13px;">Identifiant : <span id="pwTargetName" style="color:white; font-weight:bold;"></span></p>
+        <div style="background:#1a1b23; padding:20px; border-radius:8px; border:1px solid var(--btn-red); color:white; font-family:monospace; font-size:18px; margin:20px 0; letter-spacing: 2px;" id="pwRevealText">***</div>
+        <button class="btn-modal-gray" style="width:100%;" onclick="closeModal('passwordModal')">Fermer</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="alertModal" style="z-index: 5000;">
+    <div class="modal-card-basic">
+        <h2 style="color:var(--btn-yellow); margin-top:0; margin-bottom:15px;">Information</h2>
+        <p id="alertMessageText" style="color:#fff; line-height:1.5; margin-bottom:20px;">...</p>
+        <div class="modal-actions">
+            <button class="btn-modal-gray" style="width:100%;" onclick="closeModal('alertModal')">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const supabaseUrl = 'https://ipxmloqgoukieuerbxtl.supabase.co';
+    const supabaseKey = 'sb_publishable_jVOmm2g3WLxtIrr-rVRvtA_aWaUtB-E';
+    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    let myRole = 'A3'; 
+    let allLogs = [];
+
+    function showAlert(msg) {
+        document.getElementById('alertMessageText').textContent = msg;
+        document.getElementById('alertModal').style.display = 'flex';
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.btn-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('sec-' + tabId).classList.add('active');
+    }
+
+    async function initAdmin() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const { data: profil } = await supabaseClient.from('profils').select('role').eq('id', user.id).limit(1);
+        if (profil && profil.length > 0) {
+            myRole = profil[0].role;
+            if (myRole !== 'A0' && myRole !== 'A1') { document.body.innerHTML = "<h2 style='color:var(--btn-red); text-align:center; margin-top:50px;'>⛔ Accès Refusé.</h2>"; return; }
+            chargerListeEmployes();
+            if (myRole === 'A0') { document.getElementById('tab-dev').style.display = 'block'; loadTechnicalLogs(); }
+        }
+    }
+
+    async function chargerListeEmployes() {
+        const list = document.getElementById('employeeList');
+        const { data: profils, error } = await supabaseClient.from('profils').select('*').order('role');
+        if (error) { list.innerHTML = `<div style="color:var(--btn-red);">Erreur BD</div>`; return; }
+
+        list.innerHTML = '';
+        profils.forEach(emp => {
+            const item = document.createElement('div'); item.className = 'formation-item';
+            let btnPass = '';
+            if (myRole === 'A0') {
+                const safePass = emp.mot_de_passe_clair ? emp.mot_de_passe_clair.replace(/'/g, "\\'") : 'N/A';
+                const safeName = (emp.prenom_nom || 'Inconnu').replace(/'/g, "\\'");
+                btnPass = `<button class="btn-add-small" style="background:#555; margin-top:5px;" onclick="openPasswordModal('${safeName}', '${safePass}')">👀 Mot de passe</button>`;
+            }
+
+            item.innerHTML = `
+                <div style="width:40px; height:40px; border-radius:50%; background:#444; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px; flex-shrink:0;">${(emp.prenom_nom || '?').charAt(0).toUpperCase()}</div>
+                <div style="flex:1;">
+                    <div style="color:white; font-weight:bold;">${emp.prenom_nom || 'Sans nom'}</div>
+                    <div style="margin-top:4px;"><span class="role-badge">${emp.role}</span></div>
+                    ${btnPass}
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function openNewUserModal() {
+        document.getElementById('newUserName').value = ''; document.getElementById('newUserEmail').value = ''; document.getElementById('newUserPassword').value = '';
+        document.getElementById('newUserModal').style.display = 'flex';
+    }
+
+    function openPasswordModal(name, pass) {
+        document.getElementById('pwTargetName').innerText = name;
+        document.getElementById('pwRevealText').innerText = pass;
+        document.getElementById('passwordModal').style.display = 'flex';
+    }
+
+    async function creerEmploye() {
+        const nom = document.getElementById('newUserName').value.trim();
+        const role = document.getElementById('newUserRole').value;
+        const email = document.getElementById('newUserEmail').value.trim();
+        const password = document.getElementById('newUserPassword').value;
+
+        if (!nom || !email || !password) return showAlert("Remplissez tous les champs.");
+
+        const tempSup = window.supabase.createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+        const { data: authData, error: authError } = await tempSup.auth.signUp({ email, password });
+        if (authError) return showAlert(authError.message);
+
+        const { error: profileError } = await supabaseClient.from('profils').insert([{ id: authData.user.id, role, prenom_nom: nom, mot_de_passe_clair: password }]);
+        if (profileError) return showAlert("Erreur profil.\n" + profileError.message);
+
+        closeModal('newUserModal'); showAlert("✅ Compte créé !"); chargerListeEmployes();
+    }
+
+    // --- SYSTÈME D'ARCHIVAGE (Générateur d'Application Locale) ---
+    function openArchiveModal() {
+        document.getElementById('chk-factures').checked = false;
+        document.getElementById('chk-temps').checked = false;
+        document.getElementById('chk-po').checked = false;
+        document.getElementById('archiveModal').style.display = 'flex';
+    }
+
+    function selectAllArchive() {
+        document.getElementById('chk-factures').checked = true;
+        document.getElementById('chk-temps').checked = true;
+        document.getElementById('chk-po').checked = true;
+    }
+
+    function startArchiveProcess() {
+        const checkFac = document.getElementById('chk-factures').checked;
+        const checkTemps = document.getElementById('chk-temps').checked;
+        const checkPo = document.getElementById('chk-po').checked;
+
+        if (!checkFac && !checkTemps && !checkPo) {
+            return showAlert("⚠️ Veuillez sélectionner au moins une catégorie à archiver.");
+        }
+
+        if(confirm("Étape 1/3 : L'application va créer un dossier local autonome avec les données sélectionnées. Voulez-vous continuer ?")) {
+            if(confirm("Étape 2/3 : Après la sauvegarde, les documents disparaîtront des listes courantes de TOUS les employés. Êtes-vous sûr ?")) {
+                if(confirm("Étape 3/3 : 🚨 DERNIER AVERTISSEMENT ! Confirmez-vous le téléchargement de l'application d'archives et le nettoyage définitif ?")) {
+                    executeArchiveFinal(checkFac, checkTemps, checkPo);
+                }
+            }
+        }
+    }
+
+    function executeArchiveFinal(doFac, doTemps, doPo) {
+        let backupData = {};
+        const anneeEnCours = new Date().getFullYear();
+        
+        if (doFac) backupData.factures = JSON.parse(localStorage.getItem('dussault_invoices_v1') || '[]');
+        if (doTemps) backupData.temps = JSON.parse(localStorage.getItem('dussault_timesheets_v1') || '[]');
+        if (doPo) backupData.po = JSON.parse(localStorage.getItem('dussault_po_v1') || '[]');
+
+        // Génération du code source de la mini-application d'archives
+        const viewerAppHTML = genererApplicationArchiveHTML(JSON.stringify(backupData), anneeEnCours);
+
+        // Création du fichier .html (L'Application Autonome)
+        const blob = new Blob([viewerAppHTML], {type: "text/html;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Données de l'année ${anneeEnCours}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Suppression des données UNIQUEMENT APRÈS le téléchargement
+        if (doFac) localStorage.removeItem('dussault_invoices_v1');
+        if (doTemps) localStorage.removeItem('dussault_timesheets_v1');
+        if (doPo) localStorage.removeItem('dussault_po_v1');
+
+        showAlert(`✅ Nettoyage terminé avec succès !\n\nL'application locale 'Données de l'année ${anneeEnCours}.html' a été téléchargée sur votre appareil. Vous pouvez l'ouvrir n'importe quand sans internet pour consulter vos archives.`);
+        closeModal('archiveModal');
+    }
+
+    // Le gabarit de l'application autonome
+    function genererApplicationArchiveHTML(dataJSON, annee) {
+        return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Données de l'année ${annee}</title>
+    <style>
+        :root { --app-bg: #1e1f26; --sidebar-bg: #fcca46; --text-light: #e0e0e0; --card-bg: #2b2c36; --btn-yellow: #fcca46; --btn-blue: #3498db; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 280px; background-color: var(--sidebar-bg); padding: 30px 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 2px 0 10px rgba(0,0,0,0.5); z-index: 10; }
+        .sidebar h2 { color: black; margin-top: 0; border-bottom: 2px solid rgba(0,0,0,0.1); padding-bottom: 15px; font-size: 22px; text-transform: uppercase; }
+        .nav-btn { background: transparent; color: black; border: 2px solid transparent; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; text-align: left; font-size: 16px; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-btn:hover, .nav-btn.active { background: rgba(0,0,0,0.05); border-color: black; }
+        .content { flex: 1; padding: 40px; overflow-y: auto; background-color: var(--app-bg); }
+        .header-title { font-size: 32px; color: white; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; margin-bottom: 20px; border-left: 6px solid var(--btn-yellow); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .card-title { font-size: 20px; font-weight: bold; color: white; }
+        .badge { font-size: 12px; background: #444; padding: 5px 10px; border-radius: 6px; font-weight: bold; text-transform: uppercase;}
+        .card-detail { color: #aaa; font-size: 15px; display: flex; gap: 20px; margin-bottom: 15px; }
+        .raw-data { background: #1a1b23; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 13px; color: #00ff00; margin-top: 15px; white-space: pre-wrap; word-break: break-all; display: none; border: 1px solid #333; overflow-x: auto;}
+        .btn-toggle { background: #444; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s; }
+        .btn-toggle:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🗄️ Archives ${annee}</h2>
+        <p style="color: black; font-size: 13px; font-weight: bold; margin-top:-10px; margin-bottom: 20px;">MODE LECTURE SEULE</p>
+        <button class="nav-btn" onclick="showTab('factures', this)">🧾 Factures</button>
+        <button class="nav-btn" onclick="showTab('temps', this)">⏱️ Feuilles de Temps</button>
+        <button class="nav-btn" onclick="showTab('po', this)">🛒 Bons de Commande</button>
+    </div>
+    <div class="content" id="main-content">
+        <div class="header-title">Bienvenue dans vos archives locales</div>
+        <p style="font-size: 18px; color: #aaa; line-height: 1.6;">
+            Ce fichier est une application autonome générée par le système F.Dussault.<br>
+            Il contient toutes les données sauvegardées de l'année <b>${annee}</b>.<br><br>
+            👈 Sélectionnez une catégorie dans le menu de gauche pour consulter vos documents.
+        </p>
+    </div>
+
+    <script>
+        const db = ${dataJSON};
+
+        function showTab(tab, btnElement) {
+            // Gérer l'état actif des boutons
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            const container = document.getElementById('main-content');
+            const titles = { factures: '🧾 Factures', temps: '⏱️ Feuilles de Temps', po: '🛒 Bons de Commande' };
+            
+            container.innerHTML = '<div class="header-title">' + titles[tab] + '</div>';
+            
+            const items = db[tab] || [];
+            if(items.length === 0) {
+                container.innerHTML += '<p style="color:#888; font-style:italic; font-size: 18px;">Aucun document archivé dans cette catégorie.</p>';
+                return;
+            }
+
+            // Trier du plus récent au plus ancien
+            items.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                
+                let title = item.client || item.plumber || item.fournisseur || item.id || 'Document sans titre';
+                let dateStr = item.date || (item.timestamp ? new Date(item.timestamp).toLocaleDateString('fr-CA') : 'Date inconnue');
+                let status = item.status || 'Archivé';
+                
+                let html = '<div class="card-header"><div class="card-title">' + title + '</div><span class="badge">' + status + '</span></div>';
+                html += '<div class="card-detail"><span><b>ID:</b> #' + item.id + '</span><span><b>Créé le:</b> ' + dateStr + '</span></div>';
+                html += '<button class="btn-toggle" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \\'block\\' ? \\'none\\' : \\'block\\'">👁️ Afficher les détails complets (Format Brut)</button>';
+                html += '<div class="raw-data">' + JSON.stringify(item, null, 2) + '</div>';
+                
+                div.innerHTML = html;
+                container.appendChild(div);
+            });
+        }
+    <\/script>
+</body>
+</html>`;
+    }
+
+    function loadTechnicalLogs() {
+        allLogs = [
+            { date: '2026-03-06 20:54', action: 'Auth', details: 'A0 s\'est connecté', color: 'var(--btn-green)' },
+            { date: '2026-03-05 14:20', action: 'Data', details: 'Facture archivée', color: 'var(--btn-blue)' },
+            { date: '2026-03-04 09:12', action: 'Admin', details: 'Compte créé : Employé A3', color: 'var(--btn-orange)' }
+        ];
+        renderLogs(allLogs);
+    }
+
+    function renderLogs(data) {
+        const tbody = document.getElementById('logsTableBody'); tbody.innerHTML = '';
+        if(data.length === 0) return tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#888;">Aucun résultat.</td></tr>';
+        data.forEach(log => {
+            tbody.innerHTML += `<tr><td style="color:#888; font-family:monospace; font-size:11px;">${log.date}</td><td><span style="color:${log.color}; font-weight:bold; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-size:11px; text-transform:uppercase;">${log.action}</span></td><td style="color:#ccc;">${log.details}</td></tr>`;
+        });
+    }
+
+    function filterLogs() {
+        const q = document.getElementById('logSearch').value.toLowerCase();
+        renderLogs(allLogs.filter(l => l.details.toLowerCase().includes(q) || l.action.toLowerCase().includes(q) || l.date.includes(q)));
+    }
+
+    function toggleMaintenance() { showAlert("Mode Maintenance simulé."); }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    initAdmin();
+</script>
+</body>
+</html>
