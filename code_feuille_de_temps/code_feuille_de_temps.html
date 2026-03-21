@@ -86,13 +86,14 @@
         .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
         .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
 
-        .scroll-area { flex: 1; overflow: auto; padding: 0; display: flex; flex-direction: column; touch-action: pan-x pan-y; }
-        #zoom-wrapper { display: flex; flex-direction: column; align-items: center; width: 8.5in; margin: 0 auto; gap: 20px; transform-origin: top center; transition: transform 0.1s ease-out; }
+        /* CORRECTIF 1 : STRUCTURE STABLE POUR ÉVITER LES BUGS MOBILES */
+        .scroll-area { flex: 1; overflow: auto; padding: 0; display: block; position: relative; touch-action: pan-x pan-y; }
+        #zoom-wrapper { position: absolute; top: 0; left: 0; width: 8.5in; display: block; transform-origin: 0px 0px; transition: transform 0.1s ease-out; }
 
         .zoom-controls { position: fixed; bottom: 20px; right: 20px; background: rgba(30, 31, 38, 0.95); padding: 5px 10px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2000; border: 1px solid #555; }
         .zoom-controls button { background: var(--btn-yellow); border: none; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #1e1f26; }
 
-        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; flex-shrink: 0; }
+        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; margin-left: auto; margin-right: auto; flex-shrink: 0; }
         .page input { outline: none; font-family: inherit; }
         .page input:focus { border-bottom: 2px solid #000 !important; background: transparent !important; }
 
@@ -135,20 +136,12 @@
             .zoom-controls { display: none !important; }
         }
         
-        /* CORRECTIONS D'IMPRESSION (Version robuste sans forcer les tailles) */
+        /* CORRECTIF 2 : IMPRESSION ULTRA-STRICTE SANS DÉBORDEMENT */
         @media print {
-            @page { 
-                margin: 0 !important; 
-                size: auto; 
-            }
+            @page { margin: 0 !important; size: letter portrait !important; }
             
             html, body, .main-content { 
-                height: auto !important; 
-                width: 100% !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                background: white !important; 
-                overflow: visible !important;
+                height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; overflow: hidden !important; 
             }
             
             .sidebar, .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay { 
@@ -156,41 +149,27 @@
             }
             
             #view-editor, .scroll-area, #zoom-wrapper { 
-                display: block !important; 
-                width: 100% !important; 
-                height: auto !important; 
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-                overflow: visible !important; 
-                transform: none !important; /* Retire le zoom d'écran lors de l'impression */
+                display: block !important; width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; transform: none !important; position: static !important; 
             }
             
             .page { 
-                width: 100% !important; 
-                max-width: 100% !important; 
-                height: auto !important; 
-                box-shadow: none !important; 
-                border: none !important; 
-                margin: 0 !important; 
-                padding: 0.25in !important; /* Marges du tableau à l'impression */
-                page-break-after: always !important; 
-                page-break-inside: avoid !important;
-                display: block !important; 
-                box-sizing: border-box !important;
-                background: white !important;
+                width: 8.5in !important; height: 11in !important; max-height: 11in !important; margin: 0 !important; 
+                padding: 0.25in 0.35in !important; /* Marges réduites */
+                page-break-after: avoid !important; page-break-inside: avoid !important; 
+                box-shadow: none !important; border: none !important; overflow: hidden !important; 
+                display: block !important; box-sizing: border-box !important; background: white !important;
             }
             
-            .temps-table td, .ts-field, .cell-input { 
-                background-color: transparent !important; 
-            }
+            /* COMPRESSION MATHÉMATIQUE POUR LES 20 LIGNES */
+            .header-main { margin-bottom: 5px !important; }
+            .ts-title { margin-bottom: 5px !important; font-size: 18px !important; }
+            .ts-emp-info { margin-bottom: 5px !important; }
+            .temps-table { margin-top: 5px !important; }
+            .temps-table td { height: 22px !important; } /* Normal: 28px. Forcé à 22px pour éviter de déborder */
+            .temps-table th { padding: 4px !important; }
             
-            .temps-table th { 
-                color: black !important; 
-                background-color: white !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
+            .temps-table td, .ts-field, .cell-input { background-color: transparent !important; }
+            .temps-table th { color: black !important; background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
             input::placeholder { color: transparent !important; }
             ::-webkit-input-placeholder { color: transparent !important; }
@@ -245,7 +224,7 @@
   
         <div class="scroll-area" id="scrollArea">
             <div id="zoom-wrapper"></div>
-        </div>
+            <div id="scroll-spacer"></div> </div>
         
         <div class="zoom-controls">
             <button onclick="adjustZoom(-0.1)">−</button>
@@ -384,8 +363,9 @@
         viewEditor.style.display = 'flex';
         wrapper.innerHTML = '';
         addPage(); 
+        
         applyEditorSecurity(null);
-        setTimeout(resetZoom, 50);
+        setTimeout(resetZoom, 50); // Le délai assure que la taille d'écran est bien détectée
     }
 
     function openExistingTimesheet(id) {
@@ -621,41 +601,35 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
+    // GESTION DU ZOOM MANUELLE (LE CORRECTIF 1)
     let currentZoom = 1.0; 
     const minZoom = 0.2; 
     const maxZoom = 3.0; 
     const zoomDisplay = document.getElementById('zoom-level');
     
-    // NOUVEAU CALCUL POUR LE CENTRAGE PARFAIT
     function updateZoom() { 
         if (currentZoom < minZoom) currentZoom = minZoom; 
         if (currentZoom > maxZoom) currentZoom = maxZoom; 
         
-        wrapper.style.transform = `scale(${currentZoom})`; 
-        zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
-        
-        // On récupère la vraie taille du document
-        const trueHeight = wrapper.offsetHeight || 1056; 
-        const visibleHeight = trueHeight * currentZoom;
-        
-        // On enlève le grand espace blanc laissé en bas par le "transform"
-        const marginBottom = visibleHeight - trueHeight;
-        wrapper.style.marginBottom = `${marginBottom}px`;
-
-        // Centrage vertical : si le doc est plus petit que l'écran, on pousse vers le bas
         const scrollArea = document.getElementById('scrollArea');
-        if (visibleHeight < scrollArea.clientHeight) {
-            const marginTop = (scrollArea.clientHeight - visibleHeight) / 2;
-            wrapper.style.marginTop = `${marginTop}px`;
-        } else {
-            wrapper.style.marginTop = '20px';
-        }
-    }
-    
-    function adjustZoom(delta) { 
-        currentZoom += delta; 
-        currentZoom = Math.round(currentZoom * 10) / 10; 
-        updateZoom(); 
+        const areaWidth = scrollArea.clientWidth;
+        
+        const docWidth = 816 * currentZoom; // 816px = 8.5 pouces (largeur de ta feuille)
+        
+        // Calcul mathématique du centrage exact pour la position absolue
+        let marginX = (areaWidth - docWidth) / 2;
+        if (marginX < 0) marginX = 10;
+        
+        wrapper.style.transformOrigin = '0px 0px'; // Oblige à zoomer depuis le coin en haut à gauche
+        wrapper.style.transform = `translate(${marginX}px, 20px) scale(${currentZoom})`; 
+        
+        // Compense la hauteur virtuelle pour que le scroll de la page fonctionne
+        const trueHeight = wrapper.offsetHeight || 1056;
+        const scaledHeight = trueHeight * currentZoom;
+        let spacer = document.getElementById('scroll-spacer');
+        if (spacer) spacer.style.height = `${scaledHeight + 60}px`;
+        
+        zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
     }
     
     function resetZoom() { 
@@ -663,12 +637,10 @@
         const areaWidth = scrollArea.clientWidth;
         const areaHeight = scrollArea.clientHeight;
         
-        // Taille fixe d'une feuille en pixels
         const pagePixelWidth = 816;
         const pagePixelHeight = 1056;
 
-        // Calcul exact pour que le document tienne à 100% dans la fenêtre
-        const zoomX = (areaWidth - 40) / pagePixelWidth; 
+        const zoomX = (areaWidth - 20) / pagePixelWidth; 
         const zoomY = (areaHeight - 40) / pagePixelHeight; 
         
         let targetZoom = Math.min(zoomX, zoomY);
