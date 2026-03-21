@@ -134,6 +134,25 @@
             .inv-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
             .zoom-controls { display: none !important; }
         }
+        
+        @media print {
+            @page { margin: 0; size: letter; }
+            html, body { margin: 0 !important; padding: 0 !important; height: 100% !important; width: 100% !important; background: white !important; overflow: visible !important;}
+            .sidebar, .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay { display: none !important; }
+            .main-content, #view-editor, .scroll-area { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; padding: 0 !important; }
+            
+            #zoom-wrapper { margin: 0 !important; padding: 0 !important; transform: none !important; width: 100% !important; display: block !important; }
+            
+            .page { 
+                width: 100% !important; max-width: 100% !important; height: auto !important; min-height: 11in !important; 
+                margin: 0 !important; box-shadow: none !important; page-break-after: always !important; 
+                padding: 20px !important; display: block !important;
+            }
+            .temps-table td, .ts-field, .cell-input { background-color: transparent !important; }
+            .temps-table th { background-color: white !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            input::placeholder { color: transparent !important; }
+            ::-webkit-input-placeholder { color: transparent !important; }
+        }
     </style>
 </head>
 <body>
@@ -323,7 +342,7 @@
         addPage(); 
         
         applyEditorSecurity(null);
-        setTimeout(resetZoom, 50); // Le délai assure le bon centrage à l'ouverture
+        resetZoom();
     }
 
     function openExistingTimesheet(id) {
@@ -345,7 +364,7 @@
         });
         
         applyEditorSecurity(sheet);
-        setTimeout(resetZoom, 50); // Le délai assure le bon centrage à l'ouverture
+        resetZoom();
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -559,61 +578,10 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
-    // LE SCRIPT MODIFIÉ POUR LE CENTRAGE COMMENCE ICI
-    let currentZoom = 1.0; 
-    const minZoom = 0.2; // Modifié pour permettre de dézoomer plus sur mobile
-    const maxZoom = 3.0; 
-    const zoomDisplay = document.getElementById('zoom-level');
-    
-    function updateZoom() { 
-        if (currentZoom < minZoom) currentZoom = minZoom; 
-        if (currentZoom > maxZoom) currentZoom = maxZoom; 
-        wrapper.style.transform = `scale(${currentZoom})`; 
-        zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
-        
-        // Ajustement des marges pour centrer verticalement quand on dézoome
-        const scrollArea = document.getElementById('scrollArea');
-        const trueHeight = wrapper.offsetHeight || 1056; 
-        const visibleHeight = trueHeight * currentZoom;
-
-        if(currentZoom > 1) { 
-            wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
-            wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; 
-        } else { 
-            // Si le document est plus petit que l'écran, on le centre verticalement
-            if (scrollArea && visibleHeight < scrollArea.clientHeight) {
-                const marginTop = (scrollArea.clientHeight - visibleHeight) / 2;
-                wrapper.style.marginTop = `${marginTop}px`;
-            } else {
-                wrapper.style.marginTop = "0px";
-            }
-            // Enlever l'espace vide en bas créé par le scale
-            const marginBottom = visibleHeight - trueHeight + 100;
-            wrapper.style.marginBottom = `${marginBottom}px`;
-        } 
-    }
-    
+    let currentZoom = 1.0; const minZoom = 0.5, maxZoom = 3.0, zoomDisplay = document.getElementById('zoom-level');
+    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; wrapper.style.transform = `scale(${currentZoom})`; zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; if(currentZoom > 1) { wrapper.style.marginBottom = (currentZoom * 400) + "px"; wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; } else { wrapper.style.marginBottom = "100px"; wrapper.style.marginTop = "0px"; } }
     function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
-    
-    function resetZoom() { 
-        const scrollArea = document.getElementById('scrollArea');
-        if (scrollArea) {
-            const areaWidth = scrollArea.clientWidth;
-            const areaHeight = scrollArea.clientHeight;
-            // Calcule le ratio pour que ça rentre parfaitement (816x1056 = taille d'une page)
-            const zoomX = (areaWidth - 40) / 816; 
-            const zoomY = (areaHeight - 40) / 1056;
-            
-            let targetZoom = Math.min(zoomX, zoomY);
-            if (targetZoom > 1.0) targetZoom = 1.0;
-            if (targetZoom < minZoom) targetZoom = minZoom;
-            
-            currentZoom = targetZoom;
-        } else {
-            currentZoom = 1.0;
-        }
-        updateZoom(); 
-    }
+    function resetZoom() { currentZoom = 1.0; updateZoom(); }
     
     let initialDistance = 0, initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
     scrollArea.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); initialZoomState = currentZoom; } }, { passive: false });
