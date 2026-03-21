@@ -135,34 +135,33 @@
             .zoom-controls { display: none !important; }
         }
         
+        /* CORRECTIONS D'IMPRESSION (FINI LE CARRÉ MINUSCULE) */
         @media print {
             @page { 
                 margin: 0 !important; 
                 size: letter portrait; 
             }
             
+            /* On enlève les limitations de hauteur qui causaient l'écrasement */
             html, body, .main-content { 
                 margin: 0 !important; 
                 padding: 0 !important; 
-                height: 100% !important; 
-                width: 8.5in !important; 
-                min-width: 8.5in !important;
                 background: white !important; 
-                background-color: white !important;
+                height: auto !important;
             }
             
             .sidebar, .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay { 
                 display: none !important; 
             }
             
+            /* On s'assure que le contenu est à 100% de la page et que le zoom JS ne l'affecte pas */
             #view-editor, .scroll-area, #zoom-wrapper { 
                 display: block !important; 
-                width: 8.5in !important; 
-                height: auto !important; 
+                width: 100% !important; 
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
-                overflow: hidden !important; 
+                transform: none !important; /* CRUCIAL : annule le dezoom JS lors de l'impression */
             }
             
             .page { 
@@ -170,15 +169,14 @@
                 border: none !important; 
                 margin: 0 auto !important; 
                 width: 8.5in !important; 
-                max-width: none !important; 
-                height: auto !important; 
-                max-height: 10.5in !important; 
-                page-break-after: auto !important; 
-                page-break-inside: avoid !important;
-                padding: 0.25in !important; 
+                height: 11in !important; /* Force la hauteur parfaite d'une feuille pour éviter la page vide */
+                padding: 0.3in !important; /* Marge réduite pour élargir le tableau */
                 display: block !important; 
                 box-sizing: border-box !important;
                 background: white !important;
+                page-break-after: always !important; 
+                page-break-inside: avoid !important;
+                overflow: hidden !important; 
             }
             
             .temps-table td, .ts-field, .cell-input { 
@@ -386,8 +384,8 @@
         addPage(); 
         
         applyEditorSecurity(null);
-        // On utilise un petit délai pour être sûr que l'écran est affiché avant de calculer sa taille
-        setTimeout(resetZoom, 10);
+        // Léger délai pour que l'écran soit visible, puis ajustement parfait du zoom
+        setTimeout(resetZoom, 50);
     }
 
     function openExistingTimesheet(id) {
@@ -409,8 +407,8 @@
         });
         
         applyEditorSecurity(sheet);
-        // On utilise un petit délai pour être sûr que l'écran est affiché avant de calculer sa taille
-        setTimeout(resetZoom, 10);
+        // Léger délai pour que l'écran soit visible, puis ajustement parfait du zoom
+        setTimeout(resetZoom, 50);
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -624,9 +622,8 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
-    // MODIFICATIONS DU ZOOM ICI
     let currentZoom = 1.0; 
-    const minZoom = 0.3; // Baissé de 0.5 à 0.3 pour les très petits écrans
+    const minZoom = 0.2; 
     const maxZoom = 3.0; 
     const zoomDisplay = document.getElementById('zoom-level');
     
@@ -650,13 +647,24 @@
         updateZoom(); 
     }
     
+    // NOUVELLE FONCTION POUR VOIR LA FEUILLE COMPLÈTE ET CENTRÉE
     function resetZoom() { 
-        // Calcule la largeur de la zone d'affichage (ou de l'écran par défaut)
-        const scrollAreaWidth = document.getElementById('scrollArea').clientWidth || window.innerWidth;
-        // 816 = La largeur en pixels d'une feuille 8.5 pouces. On retire 40px pour laisser une petite bordure.
-        let targetZoom = (scrollAreaWidth - 40) / 816; 
+        const scrollArea = document.getElementById('scrollArea');
+        const areaWidth = scrollArea.clientWidth;
+        const areaHeight = scrollArea.clientHeight;
         
-        if (targetZoom > 1.0) targetZoom = 1.0; // Ne jamais zoomer plus de 100% à l'ouverture (sur PC)
+        // Taille de ta feuille (8.5in x 11in) en pixels
+        const pagePixelWidth = 816;
+        const pagePixelHeight = 1056;
+
+        // Calcule le ratio nécessaire pour la largeur ET la hauteur
+        const zoomX = (areaWidth - 40) / pagePixelWidth; 
+        const zoomY = (areaHeight - 40) / pagePixelHeight; 
+        
+        // On prend le plus petit des deux pour que tout rentre à l'écran
+        let targetZoom = Math.min(zoomX, zoomY);
+        
+        if (targetZoom > 1.0) targetZoom = 1.0; 
         if (targetZoom < minZoom) targetZoom = minZoom;
         
         currentZoom = targetZoom; 
