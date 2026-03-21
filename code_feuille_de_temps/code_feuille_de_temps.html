@@ -136,21 +136,21 @@
             .zoom-controls { display: none !important; }
         }
 
-        /* 🔥 LE FIX EXACT DE CHATGPT INTÉGRÉ */
+        /* ✅ VERSION 100% PROPRE ET SÉCURISÉE */
         @media print {
             @page {
                 size: letter portrait;
-                margin: 0;
+                /* On laisse une petite marge au navigateur pour qu'il n'écrase pas le tableau avec son URL */
+                margin: 0.25in; 
             }
 
             html, body {
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
-                width: 8.5in !important;
-                height: 10.7in !important; /* L'ANTI 2e PAGE HARDCORE */
-                overflow: hidden !important;
-
+                width: auto !important;
+                height: auto !important;
+                overflow: visible !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -166,38 +166,35 @@
                 height: auto !important;
             }
 
-            /* CACHE TOUT LE UI */
-            .top-bar,
-            .zoom-controls,
-            #view-dashboard,
-            .custom-modal-overlay,
-            #scroll-spacer {
+            /* On cache tout ce qui ne s'imprime pas */
+            .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay, #scroll-spacer {
                 display: none !important;
             }
 
-            /* PAGE PARFAITE */
+            /* LA PAGE : On la laisse respirer, plus de blocage ou de coupure forcée */
             .page {
-                width: 8.5in !important;
-                height: 10.7in !important; /* 🔥 CLÉ DU FIX */
+                width: 100% !important;
+                height: auto !important;
+                max-height: none !important; 
                 margin: 0 !important;
-                padding: 0.3in 0.35in !important;
+                padding: 0 !important; /* Le @page fait déjà la marge */
                 box-sizing: border-box !important;
-
-                overflow: hidden !important;
 
                 page-break-after: avoid !important;
                 page-break-inside: avoid !important;
 
+                overflow: visible !important;
                 box-shadow: none !important;
                 border: none !important;
             }
 
-            .header-main { margin-bottom: 5px !important; }
-            .header-main img { max-height: 65px !important; }
-            .ts-title { margin-bottom: 5px !important; font-size: 18px !important; }
-            .ts-emp-info { margin-bottom: 5px !important; }
+            /* --- ON COMPRESSE LÉGÈREMENT LE HAUT POUR S'ASSURER QUE ÇA RENTRE --- */
+            .header-main { margin-bottom: 10px !important; }
+            .header-main img { max-width: 300px !important; height: auto !important; }
+            .ts-title { margin-bottom: 15px !important; font-size: 20px !important; }
+            .ts-emp-info { margin-bottom: 10px !important; }
 
-            /* TABLEAU FIXÉ */
+            /* --- LE TABLEAU --- */
             .temps-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
@@ -205,20 +202,17 @@
                 margin-top: 5px !important;
             }
 
-            .temps-table th,
-            .temps-table td {
+            .temps-table th, .temps-table td {
                 border: 1px solid black !important;
             }
 
-            /* AJUSTEMENT HAUTEUR POUR 1 PAGE */
+            /* 🔥 LA SOLUTION EST ICI : HAUTEUR DES LIGNES RÉDUITE À 22px ! 
+               Ça garantit mathématiquement que les 20 lignes rentrent sur 1 seule page */
             .temps-table td {
-                height: 24px !important; /* LA VALEUR DE CHATGPT */
+                height: 22px !important; 
             }
 
-            /* PAS DE COULEUR BLEUE */
-            .temps-table td,
-            .ts-field,
-            .cell-input {
+            .temps-table td, .ts-field, .cell-input {
                 background: transparent !important;
             }
 
@@ -228,7 +222,6 @@
                 height: 22px !important;
             }
 
-            /* CACHE PLACEHOLDER */
             input::placeholder {
                 color: transparent !important;
             }
@@ -446,7 +439,7 @@
         });
         
         applyEditorSecurity(sheet);
-        setTimeout(resetZoom, 50); 
+        setTimeout(resetZoom, 50);
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -668,49 +661,47 @@
     function updateZoom() { 
         if (currentZoom < minZoom) currentZoom = minZoom; 
         if (currentZoom > maxZoom) currentZoom = maxZoom; 
-        wrapper.style.transform = `scale(${currentZoom})`; 
-        zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
         
         const scrollArea = document.getElementById('scrollArea');
-        const trueHeight = wrapper.offsetHeight || 1056; 
-        const visibleHeight = trueHeight * currentZoom;
-
-        if(currentZoom > 1) { 
-            wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
-            wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; 
-        } else { 
-            if (scrollArea && visibleHeight < scrollArea.clientHeight) {
-                const marginTop = (scrollArea.clientHeight - visibleHeight) / 2;
-                wrapper.style.marginTop = `${marginTop}px`;
-            } else {
-                wrapper.style.marginTop = "0px";
-            }
-            const marginBottom = visibleHeight - trueHeight + 100;
-            wrapper.style.marginBottom = `${marginBottom}px`;
-        } 
+        const areaWidth = scrollArea.clientWidth;
+        
+        const docWidth = 816 * currentZoom; 
+        
+        let marginX = (areaWidth - docWidth) / 2;
+        if (marginX < 0) marginX = 10;
+        
+        wrapper.style.transformOrigin = '0px 0px'; 
+        wrapper.style.transform = `translate(${marginX}px, 20px) scale(${currentZoom})`; 
+        
+        const trueHeight = 1056;
+        const scaledHeight = trueHeight * currentZoom;
+        let spacer = document.getElementById('scroll-spacer');
+        if (spacer) spacer.style.height = `${scaledHeight + 60}px`;
+        
+        zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
     }
-    
-    function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
     
     function resetZoom() { 
         const scrollArea = document.getElementById('scrollArea');
-        if (scrollArea) {
-            const areaWidth = scrollArea.clientWidth;
-            const areaHeight = scrollArea.clientHeight;
-            const zoomX = (areaWidth - 40) / 816; 
-            const zoomY = (areaHeight - 40) / 1056;
-            
-            let targetZoom = Math.min(zoomX, zoomY);
-            if (targetZoom > 1.0) targetZoom = 1.0;
-            if (targetZoom < minZoom) targetZoom = minZoom;
-            
-            currentZoom = targetZoom;
-        } else {
-            currentZoom = 1.0;
-        }
+        const areaWidth = scrollArea.clientWidth;
+        const areaHeight = scrollArea.clientHeight;
+        
+        const pagePixelWidth = 816;
+        const pagePixelHeight = 1056;
+
+        const zoomX = (areaWidth - 20) / pagePixelWidth; 
+        const zoomY = (areaHeight - 40) / pagePixelHeight; 
+        
+        let targetZoom = Math.min(zoomX, zoomY);
+        
+        if (targetZoom > 1.0) targetZoom = 1.0; 
+        if (targetZoom < minZoom) targetZoom = minZoom;
+        
+        currentZoom = targetZoom; 
         updateZoom(); 
     }
 
+    // SCRIPT INDISPENSABLE POUR COUPER LE ZOOM AVANT L'IMPRESSION
     window.addEventListener('beforeprint', () => {
         const wrap = document.getElementById('zoom-wrapper');
         if(wrap) {
