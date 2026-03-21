@@ -68,12 +68,41 @@
 
         .correction-banner { background: rgba(255, 77, 77, 0.15); border: 1px dashed var(--btn-red); padding: 15px; margin: 20px auto 0 auto; max-width: 8.5in; border-radius: 8px; color: white; line-height: 1.5; font-size: 14px;}
 
-        .scroll-area { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: flex-start; flex-direction: column; align-items: center; touch-action: pan-x pan-y; }
+        /* NOUVEAU SYSTÈME DE SCROLL (Glissement débloqué) */
+        .scroll-area { 
+            flex: 1; 
+            overflow: auto; /* Autorise le défilement horizontal et vertical */
+            padding: 15px 0; 
+            display: block; /* Modifié pour permettre l'alignement à gauche */
+            touch-action: auto; 
+        }
         
-        .page { width: 8.5in; height: 11in; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; color: black; padding: 0.25in; flex-shrink:0;}
+        /* NOUVEAU SYSTÈME DE ZOOM (Centrage dynamique) */
+        #invoice-container { 
+            display: block; 
+            width: 8.5in; 
+            transform-origin: top left; /* Point de zoom en haut à gauche */
+            transition: transform 0.1s ease-out; 
+            padding-bottom: 50px; 
+        }
+        
+        .page { 
+            width: 8.5in; 
+            height: 11in; 
+            background: white; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+            box-sizing: border-box; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            margin: 0 0 20px 0; /* Centrage maintenant géré par JS */
+            color: black; 
+            padding: 0.25in; 
+            flex-shrink: 0;
+        }
+
         input { outline: none; border-radius: 0; }
         input:focus { background-color: transparent !important; border-bottom: 2px solid #000 !important; }
-        #invoice-container { display: flex; flex-direction: column; gap: 20px; transform-origin: top center; transition: transform 0.1s ease-out; padding-bottom: 100px; width: 8.5in; }
         
         .top-section { width: 100%; }
         .header-main { width: 100%; margin-top: -15px; margin-bottom: 0px; }
@@ -375,8 +404,9 @@
         document.getElementById('btn-del-page').style.display = canEdit ? 'flex' : 'none';
         document.getElementById('btn-clear').style.display = canEdit ? 'flex' : 'none';
         
+        // BOUTON ENVOYER TOUJOURS VISIBLE
         const btnSend = document.getElementById('btn-send');
-        if(btnSend) btnSend.style.display = (canEdit && (status === 'brouillon' || status === 'renvoye') && isAuthor) ? 'flex' : 'none';
+        if(btnSend) btnSend.style.display = 'flex';
 
         const btnUnlock = document.getElementById('btn-unlock');
         const btnReturn = document.getElementById('btn-return');
@@ -458,7 +488,8 @@
         if (invoice.sigValues) {
             allSigs.forEach((img, index) => { if (invoice.sigValues[index]) img.src = invoice.sigValues[index]; });
         }
-        applyEditorSecurity(invoice); resetZoom();
+        applyEditorSecurity(invoice); 
+        fitToScreen(); // Utilisation du nouveau zoom intelligent
     }
 
     function openNewInvoice() {
@@ -472,7 +503,8 @@
         const numInput = containerInvoice.querySelector('.red-invoice-input');
         if(numInput) numInput.value = nextNum;
         
-        applyEditorSecurity(null); resetZoom();
+        applyEditorSecurity(null); 
+        fitToScreen(); // Utilisation du nouveau zoom intelligent
     }
 
     function sendToOffice() {
@@ -619,10 +651,69 @@
     function moveDrawing(e) { if (!drawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); if(e.type === 'touchmove') e.preventDefault(); }
     modalCanvas.addEventListener('mousedown', startDrawing); window.addEventListener('mousemove', moveDrawing); window.addEventListener('mouseup', () => drawing = false); modalCanvas.addEventListener('touchstart', startDrawing, {passive: false}); modalCanvas.addEventListener('touchmove', moveDrawing, {passive: false}); modalCanvas.addEventListener('touchend', () => drawing = false);
 
-    let currentZoom = 1.0; const minZoom = 0.5, maxZoom = 3.0, zoomDisplay = document.getElementById('zoom-level');
-    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; containerInvoice.style.transform = `scale(${currentZoom})`; zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; if(currentZoom > 1) { containerInvoice.style.marginBottom = (currentZoom * 400) + "px"; containerInvoice.style.marginTop = ((currentZoom - 1) * 100) + "px"; } else { containerInvoice.style.marginBottom = "100px"; containerInvoice.style.marginTop = "0px"; } }
+    // --- ZOOM INTELLIGENT ET CENTRAGE DYNAMIQUE (Pour la Facture) ---
+    let currentZoom = 1.0; 
+    const minZoom = 0.3, maxZoom = 3.0;
+    const zoomDisplay = document.getElementById('zoom-level');
+
+    function fitToScreen() {
+        const scrollArea = document.querySelector('.scroll-area');
+        if(!scrollArea) return;
+        const screenWidth = scrollArea.clientWidth;
+        const pageWidth = 816; // 8.5 pouces en pixels environ (96dpi)
+
+        if (screenWidth > 0 && screenWidth < pageWidth) {
+            currentZoom = (screenWidth / pageWidth) * 0.98;
+        } else {
+            currentZoom = 1.0;
+        }
+        
+        currentZoom = Math.round(currentZoom * 100) / 100;
+        updateZoom();
+    }
+
+    function updateZoom() { 
+        if (currentZoom < minZoom) currentZoom = minZoom; 
+        if (currentZoom > maxZoom) currentZoom = maxZoom; 
+        
+        containerInvoice.style.transform = `scale(${currentZoom})`; 
+        if(zoomDisplay) zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
+        
+        const scrollArea = document.querySelector('.scroll-area');
+        if(scrollArea) {
+            const screenWidth = scrollArea.clientWidth;
+            const scaledWidth = 816 * currentZoom; 
+            
+            // Si la facture est plus petite que l'écran, on la centre.
+            // Si on a zoomé, on la colle à gauche pour permettre le glissement.
+            if (scaledWidth < screenWidth) {
+                containerInvoice.style.marginLeft = ((screenWidth - scaledWidth) / 2) + "px";
+            } else {
+                containerInvoice.style.marginLeft = "0px";
+            }
+        }
+
+        const unscaledHeight = containerInvoice.offsetHeight;
+        const scaledHeight = unscaledHeight * currentZoom;
+        
+        if (currentZoom < 1.0) {
+            containerInvoice.style.marginBottom = (scaledHeight - unscaledHeight + 50) + "px"; 
+        } else if (currentZoom > 1.0) {
+            containerInvoice.style.marginBottom = (currentZoom * 400) + "px"; 
+        } else {
+            containerInvoice.style.marginBottom = "100px"; 
+        }
+    }
+
     function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
-    function resetZoom() { currentZoom = 1.0; updateZoom(); }
+    function resetZoom() { fitToScreen(); } 
+
+    // Écouteur pour ajuster le zoom si on tourne le téléphone
+    window.addEventListener('resize', () => {
+        if (document.getElementById('view-editor').style.display === 'flex') {
+            fitToScreen();
+        }
+    });
     
     let initialDistance = 0, initialZoomState = 1.0; const scrollArea = document.querySelector('.scroll-area');
     scrollArea.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); initialZoomState = currentZoom; } }, { passive: false });
