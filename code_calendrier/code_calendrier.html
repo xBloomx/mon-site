@@ -96,7 +96,7 @@
         .cal-day.other-month { opacity: 0.3; background: #222; pointer-events: none; }
         .day-num {
             font-weight: bold; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;
-            border-radius: 50%; margin-bottom: 5px; font-size: 14px;
+            border-radius: 50%; margin-bottom: 5px; font-size: 14px; pointer-events: none;
         }
 
         /* EVENTS BAR */
@@ -165,45 +165,46 @@
         
         .note-box { background: #1e1f26; padding: 12px; border-radius: 8px; border: 1px solid #444; font-weight: normal; font-size: 14px; color: #e0e0e0; white-space: pre-wrap; line-height: 1.4; }
 
+        /* ITEM DÉTAIL JOURNÉE */
+        .day-detail-item {
+            padding: 12px; background: #1e1f26; border-radius: 8px; margin-bottom: 8px; 
+            cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 4px; border: 1px solid #555;
+        }
+        .day-detail-item:hover { background: #343542; border-color: var(--btn-blue); }
+
         /* =========================================
            2. OPTIMISATIONS MOBILE V2 (GRILLE ADAPTÉE)
            ========================================= */
         @media (max-width: 768px) {
             .main-content { padding: 0 10px 10px 10px; display: block; overflow-y: auto; }
             
-            /* Ajustement de l'entête : plus clair et sans padding bizarre */
             .header-bar { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; padding: 15px 0 10px 0; }
             .header-title { width: 100%; }
             .header-bar > div { width: 100%; }
             .btn-action { width: 100%; justify-content: center; padding: 12px; font-size: 16px; }
             
-            /* Onglets et contrôles */
             .tabs-container { flex-direction: column; width: 100%; margin-top: 10px; }
             .btn-tab { width: 100%; text-align: center; padding: 10px; }
             .cal-controls { padding: 10px; margin-bottom: 10px; }
             .cal-month-title { font-size: 18px; }
             .cal-nav-btn { width: 35px; height: 35px; font-size: 16px; }
             
-            /* LA MAGIE DE LA GRILLE MOBILE : Tout rentre à 100% de l'écran */
+            /* Grille responsive sans scroll */
             .calendar-wrapper { overflow-x: hidden; border-radius: 8px; }
             .day-headers, .cal-days-container { min-width: 100%; }
-            .cal-days-container { grid-auto-rows: minmax(75px, 1fr); } /* Cases un peu moins hautes pour tout voir */
+            .cal-days-container { grid-auto-rows: minmax(75px, 1fr); } 
             
-            /* Ajustement des éléments dans les petites cases */
             .day-header { font-size: 10px; padding: 5px 0; }
             .cal-day { padding: 2px; min-height: 75px; }
             .day-num { width: 18px; height: 18px; font-size: 10px; margin-bottom: 2px; }
             
-            /* Barres d'événements très compactes */
             .event-bar { font-size: 9px; padding: 2px 3px; margin-bottom: 2px; border-radius: 2px; }
             
-            /* Badge Urgence bien positionné et plus petit */
             .urgence-badge { top: 2px; right: 2px; width: 18px; height: 18px; font-size: 9px; border-width: 1px; }
 
             .legend-container { justify-content: center; gap: 8px; font-size: 10px; padding-bottom: 10px;}
             .legend-item { padding: 3px 6px; }
 
-            /* ANTI-ZOOM iOS : Les textes doivent être à 16px minimum dans les formulaires */
             .form-group input, .form-group select, .form-group textarea { font-size: 16px; padding: 12px; }
             .modal-card { width: 95%; padding: 15px; }
         }
@@ -241,6 +242,20 @@
             <div class="day-header">Mer</div><div class="day-header">Jeu</div><div class="day-header">Ven</div><div class="day-header">Sam</div>
         </div>
         <div class="cal-days-container" id="calendarDays"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="dayModal">
+    <div class="modal-card">
+        <div class="modal-title" id="dayModalTitle">Événements du ...</div>
+        
+        <div id="dayModalContent" style="display:flex; flex-direction:column; max-height: 50vh; overflow-y:auto; margin-bottom: 15px;">
+            </div>
+
+        <div class="modal-actions" style="justify-content: space-between;">
+            <button class="btn-cancel" onclick="closeModal('dayModal')">Fermer</button>
+            <button class="btn-submit" onclick="triggerAddFromDay()">+ Ajouter ici</button>
+        </div>
     </div>
 </div>
 
@@ -343,6 +358,7 @@
     let myUserName = 'Moi';
     let currentCalTab = 'mine'; 
     let teamMembers = [];
+    let selectedDayForAdd = ''; // Variable pour se souvenir du jour cliqué
 
     async function initAuth() {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -438,13 +454,6 @@
         list.push({ id: 'sys-'+Date.now()+7, start: sStart, end: sEnd, t: "Vacances CCQ", type:'ccq' });
         list.push({ id: 'sys-'+Date.now()+8, start: new Date(year, 11, 21), end: new Date(year+1, 0, 4), t: "Vacances Hiver", type:'ccq' });
 
-        const storedFormations = JSON.parse(localStorage.getItem(KEY_FORMATIONS)) || [];
-        storedFormations.forEach(form => {
-            if (form.dateExp && form.dateExp.startsWith(year.toString())) {
-                list.push({ id: 'sys-form-' + form.id, d: form.dateExp, t: "⚠️ Exp: " + form.name, type: 'formation', note: "Veuillez renouveler cette certification dans l'onglet Profil." });
-            }
-        });
-
         return list;
     }
 
@@ -473,8 +482,11 @@
             div.className = 'cal-day';
             if(dateStr === new Date().toISOString().split('T')[0]) div.classList.add('today');
             
+            // Événement Clic : Ouvre les détails de la journée (Sauf si on clique direct sur une urgence ou un event existant)
             div.onclick = (e) => {
-                if(e.target === div || e.target.classList.contains('day-num')) openAddModal(dateStr, false);
+                if(e.target === div || e.target.classList.contains('day-num') || e.target.classList.contains('cal-day')) {
+                    openDayDetails(dateStr);
+                }
             };
 
             let html = `<div class="day-num">${d}</div>`;
@@ -536,6 +548,77 @@
             div.innerHTML = `<div class="legend-dot" style="background:${cat.color}"></div> ${cat.name}`;
             leg.appendChild(div);
         });
+    }
+
+    // --- NOUVELLE FONCTION : DÉTAIL DE LA JOURNÉE ---
+    function openDayDetails(dateStr) {
+        selectedDayForAdd = dateStr; // On garde en mémoire la date
+        const formattedDate = formatDateFR(dateStr);
+        document.getElementById('dayModalTitle').textContent = `Le ${formattedDate}`;
+        
+        const content = document.getElementById('dayModalContent');
+        content.innerHTML = '';
+
+        let dayEvents = [];
+
+        // 1. Chercher Urgences
+        const urgEvent = events.find(evt => evt.catId === 'urgence' && dateStr >= evt.start && dateStr <= evt.end);
+        if (urgEvent) dayEvents.push({...urgEvent, isUrg: true});
+
+        // 2. Chercher Système (Fériés, CCQ)
+        currentSysEvents.forEach(sys => {
+            let show = false;
+            if(sys.d && sys.d === dateStr) show = true;
+            if(sys.start && new Date(dateStr) >= sys.start && new Date(dateStr) <= sys.end) show = true;
+            if(show) dayEvents.push({...sys, isSys: true});
+        });
+
+        // 3. Chercher Chantiers / Notes
+        events.filter(e => dateStr >= e.start && dateStr <= e.end).forEach(evt => {
+            if(evt.catId === 'urgence') return;
+            let canSee = false;
+            if (currentCalTab === 'all') canSee = true; 
+            else if (evt.authorId === myUserId || (evt.guests && evt.guests.includes(myUserId))) canSee = true;
+            if (canSee) dayEvents.push(evt);
+        });
+
+        // 4. Affichage
+        if (dayEvents.length === 0) {
+            content.innerHTML = '<div style="color:#aaa; font-style:italic; padding:15px 0; text-align:center; font-size:16px;">Rien de prévu pour cette journée.</div>';
+        } else {
+            dayEvents.forEach(evt => {
+                const cId = evt.type || evt.catId;
+                const cat = FIXED_CATEGORIES.find(c => c.id === cId) || {color: '#888'};
+                
+                const div = document.createElement('div');
+                div.className = 'day-detail-item';
+                div.style.borderLeft = `4px solid ${cat.color}`;
+                
+                let title = evt.t || evt.title;
+                let subtitle = cat.name;
+                if (evt.isUrg && evt.authorName) subtitle += ` - Assuré par ${evt.authorName}`;
+
+                div.innerHTML = `
+                    <div style="font-weight:bold; color:white; font-size:15px;">${title}</div>
+                    <div style="font-size:12px; color:#aaa;">${subtitle}</div>
+                `;
+                
+                // Si on clique sur l'item, ça ouvre les détails complets
+                div.onclick = (e) => {
+                    closeModal('dayModal');
+                    if (evt.isSys) openViewEvent(evt.id, e, true);
+                    else openViewEvent(evt.id, e, false);
+                };
+                content.appendChild(div);
+            });
+        }
+
+        document.getElementById('dayModal').style.display = 'flex';
+    }
+
+    function triggerAddFromDay() {
+        closeModal('dayModal');
+        openAddModal(selectedDayForAdd, false);
     }
 
     function openAddModal(dateStart='', isUrgence=false, e=null) {
@@ -636,7 +719,7 @@
     }
 
     function openViewEvent(id, e, isSys) {
-        e.stopPropagation();
+        if(e) e.stopPropagation();
         isSystemEvent = isSys;
         
         let evt;
