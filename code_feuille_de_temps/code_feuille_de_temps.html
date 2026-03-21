@@ -86,13 +86,46 @@
         .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
         .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
 
-        .scroll-area { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: flex-start; flex-direction: column; align-items: center; touch-action: pan-x pan-y; }
-        #zoom-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 20px; transform-origin: top center; transition: transform 0.1s ease-out; padding-bottom: 100px; }
+        /* SCROLL ET CENTRAGE AJUSTÉS POUR LE MOBILE */
+        .scroll-area { 
+            flex: 1; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            padding: 15px 0; 
+            display: flex; 
+            justify-content: flex-start;
+            flex-direction: column; 
+            align-items: center; 
+            touch-action: pan-y; 
+        }
+
+        #zoom-wrapper { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            width: 8.5in; 
+            transform-origin: top center; 
+            transition: transform 0.1s ease-out; 
+            padding-bottom: 50px;
+        }
 
         .zoom-controls { position: fixed; bottom: 20px; right: 20px; background: rgba(30, 31, 38, 0.95); padding: 5px 10px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2000; border: 1px solid #555; }
         .zoom-controls button { background: var(--btn-yellow); border: none; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #1e1f26; }
 
-        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; margin: 0 auto; flex-shrink: 0; }
+        .page { 
+            width: 8.5in; 
+            height: 11in; 
+            background: white; 
+            color: black; 
+            padding: 0.5in; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+            box-sizing: border-box; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            margin: 0 auto 20px auto; 
+            flex-shrink: 0; 
+        }
         .page input { outline: none; font-family: inherit; }
         .page input:focus { border-bottom: 2px solid #000 !important; background: transparent !important; }
 
@@ -186,6 +219,7 @@
         <div class="top-bar">
             <button class="action-btn btn-back" onclick="askGoBack()">⬅ Retour</button>
             <button class="action-btn btn-save" id="btn-save" onclick="saveCurrentTimesheet(false)">💾 SAUVEGARDER</button>
+            
             <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()">📤 ENVOYER AU BUREAU</button>
 
             <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockTimesheet()" style="display:none;">🔓 Débloquer</button>
@@ -298,7 +332,8 @@
         document.getElementById('btn-del-page').style.display = canEdit ? 'flex' : 'none';
         document.getElementById('btn-clear').style.display = canEdit ? 'flex' : 'none';
         
-        document.getElementById('btn-send').style.display = (!isBureau && isAuthor && status === 'brouillon') ? 'flex' : 'none';
+        // BOUTON ENVOYER VISIBLE POUR TOUT LE MONDE ET TOUT LE TEMPS
+        document.getElementById('btn-send').style.display = 'flex';
 
         const btnUnlock = document.getElementById('btn-unlock');
         if (isBureau && status !== 'brouillon') {
@@ -342,7 +377,7 @@
         addPage(); 
         
         applyEditorSecurity(null);
-        resetZoom();
+        fitToScreen();
     }
 
     function openExistingTimesheet(id) {
@@ -364,7 +399,7 @@
         });
         
         applyEditorSecurity(sheet);
-        resetZoom();
+        fitToScreen();
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -578,10 +613,60 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
-    let currentZoom = 1.0; const minZoom = 0.5, maxZoom = 3.0, zoomDisplay = document.getElementById('zoom-level');
-    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; wrapper.style.transform = `scale(${currentZoom})`; zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; if(currentZoom > 1) { wrapper.style.marginBottom = (currentZoom * 400) + "px"; wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; } else { wrapper.style.marginBottom = "100px"; wrapper.style.marginTop = "0px"; } }
+    // --- NOUVEAU SYSTÈME DE ZOOM AUTOMATIQUE ---
+    let currentZoom = 1.0; 
+    const minZoom = 0.3, maxZoom = 3.0;
+    const zoomDisplay = document.getElementById('zoom-level');
+
+    function fitToScreen() {
+        const scrollArea = document.getElementById('scrollArea');
+        if(!scrollArea) return;
+        const screenWidth = scrollArea.clientWidth;
+        const pageWidth = 816; // 8.5 pouces en pixels environ (96dpi)
+
+        if (screenWidth > 0 && screenWidth < pageWidth) {
+            // Ajuste parfaitement à la largeur de l'écran avec une micro-marge (98%)
+            currentZoom = (screenWidth / pageWidth) * 0.98;
+        } else {
+            currentZoom = 1.0;
+        }
+        
+        // Arrondir pour éviter les textes flous
+        currentZoom = Math.round(currentZoom * 100) / 100;
+        updateZoom();
+    }
+
+    function updateZoom() { 
+        if (currentZoom < minZoom) currentZoom = minZoom; 
+        if (currentZoom > maxZoom) currentZoom = maxZoom; 
+        
+        wrapper.style.transform = `scale(${currentZoom})`; 
+        if(zoomDisplay) zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
+        
+        const unscaledHeight = wrapper.offsetHeight;
+        const scaledHeight = unscaledHeight * currentZoom;
+        
+        if (currentZoom < 1.0) {
+            wrapper.style.marginBottom = (scaledHeight - unscaledHeight + 50) + "px"; 
+            wrapper.style.marginTop = "0px";
+        } else if (currentZoom > 1.0) {
+            wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
+            wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px";
+        } else {
+            wrapper.style.marginBottom = "100px"; 
+            wrapper.style.marginTop = "0px";
+        }
+    }
+
     function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
-    function resetZoom() { currentZoom = 1.0; updateZoom(); }
+    function resetZoom() { fitToScreen(); } // Le reset refait l'ajustement auto
+
+    // Écouteur pour réajuster si on tourne le téléphone
+    window.addEventListener('resize', () => {
+        if (document.getElementById('view-editor').style.display === 'flex') {
+            fitToScreen();
+        }
+    });
     
     let initialDistance = 0, initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
     scrollArea.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); initialZoomState = currentZoom; } }, { passive: false });
