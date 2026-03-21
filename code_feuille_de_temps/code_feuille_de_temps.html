@@ -135,7 +135,6 @@
             .zoom-controls { display: none !important; }
         }
         
-        /* CORRECTIONS FINALES POUR L'IMPRESSION PDF / MOBILE */
         @media print {
             @page { 
                 margin: 0 !important; 
@@ -145,7 +144,7 @@
             html, body, .main-content { 
                 margin: 0 !important; 
                 padding: 0 !important; 
-                height: 100% !important; /* Force la hauteur à ne pas dépasser pour éviter la page 2 */
+                height: 100% !important; 
                 width: 8.5in !important; 
                 min-width: 8.5in !important;
                 background: white !important; 
@@ -163,7 +162,7 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
-                overflow: hidden !important; /* Empêche tout débordement qui créerait une 2e page */
+                overflow: hidden !important; 
             }
             
             .page { 
@@ -173,10 +172,10 @@
                 width: 8.5in !important; 
                 max-width: none !important; 
                 height: auto !important; 
-                max-height: 10.5in !important; /* Garde une marge de sécurité en hauteur */
-                page-break-after: auto !important; /* Retiré le "always" pour ne plus avoir de page vide */
+                max-height: 10.5in !important; 
+                page-break-after: auto !important; 
                 page-break-inside: avoid !important;
-                padding: 0.25in !important; /* Baisse des marges (avant 0.5in) pour élargir le tableau */
+                padding: 0.25in !important; 
                 display: block !important; 
                 box-sizing: border-box !important;
                 background: white !important;
@@ -193,18 +192,10 @@
                 print-color-adjust: exact; 
             }
 
-            input::placeholder {
-                color: transparent !important;
-            }
-            ::-webkit-input-placeholder {
-                color: transparent !important;
-            }
-            :-moz-placeholder {
-                color: transparent !important;
-            }
-            ::-moz-placeholder {
-                color: transparent !important;
-            }
+            input::placeholder { color: transparent !important; }
+            ::-webkit-input-placeholder { color: transparent !important; }
+            :-moz-placeholder { color: transparent !important; }
+            ::-moz-placeholder { color: transparent !important; }
         }
     </style>
 </head>
@@ -395,7 +386,8 @@
         addPage(); 
         
         applyEditorSecurity(null);
-        resetZoom();
+        // On utilise un petit délai pour être sûr que l'écran est affiché avant de calculer sa taille
+        setTimeout(resetZoom, 10);
     }
 
     function openExistingTimesheet(id) {
@@ -417,7 +409,8 @@
         });
         
         applyEditorSecurity(sheet);
-        resetZoom();
+        // On utilise un petit délai pour être sûr que l'écran est affiché avant de calculer sa taille
+        setTimeout(resetZoom, 10);
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -631,10 +624,44 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
-    let currentZoom = 1.0; const minZoom = 0.5, maxZoom = 3.0, zoomDisplay = document.getElementById('zoom-level');
-    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; wrapper.style.transform = `scale(${currentZoom})`; zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; if(currentZoom > 1) { wrapper.style.marginBottom = (currentZoom * 400) + "px"; wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; } else { wrapper.style.marginBottom = "100px"; wrapper.style.marginTop = "0px"; } }
-    function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
-    function resetZoom() { currentZoom = 1.0; updateZoom(); }
+    // MODIFICATIONS DU ZOOM ICI
+    let currentZoom = 1.0; 
+    const minZoom = 0.3; // Baissé de 0.5 à 0.3 pour les très petits écrans
+    const maxZoom = 3.0; 
+    const zoomDisplay = document.getElementById('zoom-level');
+    
+    function updateZoom() { 
+        if (currentZoom < minZoom) currentZoom = minZoom; 
+        if (currentZoom > maxZoom) currentZoom = maxZoom; 
+        wrapper.style.transform = `scale(${currentZoom})`; 
+        zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
+        if(currentZoom > 1) { 
+            wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
+            wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; 
+        } else { 
+            wrapper.style.marginBottom = "100px"; 
+            wrapper.style.marginTop = "0px"; 
+        } 
+    }
+    
+    function adjustZoom(delta) { 
+        currentZoom += delta; 
+        currentZoom = Math.round(currentZoom * 10) / 10; 
+        updateZoom(); 
+    }
+    
+    function resetZoom() { 
+        // Calcule la largeur de la zone d'affichage (ou de l'écran par défaut)
+        const scrollAreaWidth = document.getElementById('scrollArea').clientWidth || window.innerWidth;
+        // 816 = La largeur en pixels d'une feuille 8.5 pouces. On retire 40px pour laisser une petite bordure.
+        let targetZoom = (scrollAreaWidth - 40) / 816; 
+        
+        if (targetZoom > 1.0) targetZoom = 1.0; // Ne jamais zoomer plus de 100% à l'ouverture (sur PC)
+        if (targetZoom < minZoom) targetZoom = minZoom;
+        
+        currentZoom = targetZoom; 
+        updateZoom(); 
+    }
     
     let initialDistance = 0, initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
     scrollArea.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); initialZoomState = currentZoom; } }, { passive: false });
