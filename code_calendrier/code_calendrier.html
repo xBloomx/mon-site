@@ -173,40 +173,57 @@
         .day-detail-item:hover { background: #343542; border-color: var(--btn-blue); }
 
         /* =========================================
-           2. OPTIMISATIONS MOBILE V2 (GRILLE ADAPTÉE)
+           2. OPTIMISATIONS MOBILE V3 (PLUS AÉRÉ)
            ========================================= */
         @media (max-width: 768px) {
-            .main-content { padding: 0 10px 10px 10px; display: block; overflow-y: auto; }
+            /* Plus d'espace autour du conteneur principal */
+            .main-content { padding: 0 15px 15px 15px; display: block; overflow-y: auto; }
             
-            .header-bar { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; padding: 15px 0 10px 0; }
+            /* Header plus espacé */
+            .header-bar { flex-direction: column; align-items: stretch; gap: 20px; text-align: center; padding: 20px 0 15px 0; }
             .header-title { width: 100%; }
             .header-bar > div { width: 100%; }
-            .btn-action { width: 100%; justify-content: center; padding: 12px; font-size: 16px; }
+            .btn-action { width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 30px;}
             
-            .tabs-container { flex-direction: column; width: 100%; margin-top: 10px; }
-            .btn-tab { width: 100%; text-align: center; padding: 10px; }
-            .cal-controls { padding: 10px; margin-bottom: 10px; }
+            /* Onglets avec plus de marge */
+            .tabs-container { flex-direction: column; width: 100%; margin-top: 15px; margin-bottom: 20px; gap: 10px; }
+            .btn-tab { width: 100%; text-align: center; padding: 12px; font-size: 14px; }
+            
+            /* Contrôles du mois */
+            .cal-controls { padding: 15px; margin-bottom: 15px; }
             .cal-month-title { font-size: 18px; }
-            .cal-nav-btn { width: 35px; height: 35px; font-size: 16px; }
+            .cal-nav-btn { width: 40px; height: 40px; font-size: 18px; }
             
-            /* Grille responsive sans scroll */
+            /* Grille responsive aérée */
             .calendar-wrapper { overflow-x: hidden; border-radius: 8px; }
             .day-headers, .cal-days-container { min-width: 100%; }
-            .cal-days-container { grid-auto-rows: minmax(75px, 1fr); } 
+            /* On augmente la hauteur minimale des cases pour que ça respire */
+            .cal-days-container { grid-auto-rows: minmax(85px, 1fr); } 
             
-            .day-header { font-size: 10px; padding: 5px 0; }
-            .cal-day { padding: 2px; min-height: 75px; }
-            .day-num { width: 18px; height: 18px; font-size: 10px; margin-bottom: 2px; }
+            .day-header { font-size: 11px; padding: 8px 0; }
             
-            .event-bar { font-size: 9px; padding: 2px 3px; margin-bottom: 2px; border-radius: 2px; }
+            /* Plus de padding dans les cases */
+            .cal-day { padding: 5px; min-height: 85px; }
             
-            .urgence-badge { top: 2px; right: 2px; width: 18px; height: 18px; font-size: 9px; border-width: 1px; }
+            /* Bulle de date un peu plus grande et espacée */
+            .day-num { width: 22px; height: 22px; font-size: 11px; margin-bottom: 6px; }
+            
+            /* Barres d'événements plus confortables à lire */
+            .event-bar { font-size: 10px; padding: 3px 5px; margin-bottom: 4px; border-radius: 3px; }
+            
+            /* Badge urgence légèrement repoussé des bords */
+            .urgence-badge { top: 4px; right: 4px; width: 20px; height: 20px; font-size: 10px; border-width: 1px; }
 
-            .legend-container { justify-content: center; gap: 8px; font-size: 10px; padding-bottom: 10px;}
-            .legend-item { padding: 3px 6px; }
+            /* Légende bien aérée */
+            .legend-container { justify-content: center; gap: 10px; font-size: 11px; padding-bottom: 15px; margin-top: 5px;}
+            .legend-item { padding: 4px 8px; }
 
+            /* Formulaires et popups plus larges et confortables */
             .form-group input, .form-group select, .form-group textarea { font-size: 16px; padding: 12px; }
-            .modal-card { width: 95%; padding: 15px; }
+            .modal-card { width: 95%; padding: 20px; border-radius: 12px; }
+            
+            /* Liste dans le popup aérée */
+            .day-detail-item { padding: 15px; margin-bottom: 10px; gap: 6px; }
         }
     </style>
 </head>
@@ -482,7 +499,7 @@
             div.className = 'cal-day';
             if(dateStr === new Date().toISOString().split('T')[0]) div.classList.add('today');
             
-            // Événement Clic : Ouvre les détails de la journée (Sauf si on clique direct sur une urgence ou un event existant)
+            // Événement Clic : Ouvre les détails de la journée
             div.onclick = (e) => {
                 if(e.target === div || e.target.classList.contains('day-num') || e.target.classList.contains('cal-day')) {
                     openDayDetails(dateStr);
@@ -550,9 +567,9 @@
         });
     }
 
-    // --- NOUVELLE FONCTION : DÉTAIL DE LA JOURNÉE ---
+    // --- FONCTION : DÉTAIL DE LA JOURNÉE ---
     function openDayDetails(dateStr) {
-        selectedDayForAdd = dateStr; // On garde en mémoire la date
+        selectedDayForAdd = dateStr; 
         const formattedDate = formatDateFR(dateStr);
         document.getElementById('dayModalTitle').textContent = `Le ${formattedDate}`;
         
@@ -561,11 +578,9 @@
 
         let dayEvents = [];
 
-        // 1. Chercher Urgences
         const urgEvent = events.find(evt => evt.catId === 'urgence' && dateStr >= evt.start && dateStr <= evt.end);
         if (urgEvent) dayEvents.push({...urgEvent, isUrg: true});
 
-        // 2. Chercher Système (Fériés, CCQ)
         currentSysEvents.forEach(sys => {
             let show = false;
             if(sys.d && sys.d === dateStr) show = true;
@@ -573,7 +588,6 @@
             if(show) dayEvents.push({...sys, isSys: true});
         });
 
-        // 3. Chercher Chantiers / Notes
         events.filter(e => dateStr >= e.start && dateStr <= e.end).forEach(evt => {
             if(evt.catId === 'urgence') return;
             let canSee = false;
@@ -582,7 +596,6 @@
             if (canSee) dayEvents.push(evt);
         });
 
-        // 4. Affichage
         if (dayEvents.length === 0) {
             content.innerHTML = '<div style="color:#aaa; font-style:italic; padding:15px 0; text-align:center; font-size:16px;">Rien de prévu pour cette journée.</div>';
         } else {
@@ -603,7 +616,6 @@
                     <div style="font-size:12px; color:#aaa;">${subtitle}</div>
                 `;
                 
-                // Si on clique sur l'item, ça ouvre les détails complets
                 div.onclick = (e) => {
                     closeModal('dayModal');
                     if (evt.isSys) openViewEvent(evt.id, e, true);
