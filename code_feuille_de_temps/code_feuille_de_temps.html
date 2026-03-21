@@ -85,6 +85,14 @@
         .btn-save { background-color: var(--btn-green) !important; color: white !important; padding: 10px 30px; font-size: 14px; }
         .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
         .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
+        .btn-return { background-color: var(--btn-red) !important; color: white !important; }
+
+        .office-status-panel { background: #1a1b23; border: 1px solid #444; padding: 5px 15px; border-radius: 50px; display: flex; align-items: center; gap: 10px; }
+        .office-status-panel select { background: transparent; color: white; border: none; font-weight: bold; cursor: pointer; outline: none; font-size: 13px;}
+        .office-status-panel select option { background: #1e1f26; }
+
+        .correction-banner { background: rgba(255, 77, 77, 0.15); border: 1px dashed var(--btn-red); padding: 15px; margin: 20px auto 0 auto; max-width: 8.5in; border-radius: 8px; color: white; line-height: 1.5; font-size: 14px;}
+        .custom-group { text-align: left; margin-bottom: 15px; }
 
         .scroll-area { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: flex-start; flex-direction: column; align-items: center; touch-action: pan-x pan-y; }
         #zoom-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 20px; transform-origin: top center; transition: transform 0.1s ease-out; padding-bottom: 100px; }
@@ -134,6 +142,26 @@
             .inv-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
             .zoom-controls { display: none !important; }
         }
+
+        /* --- BLOC IMPRESSION DIRECTEMENT COPIÉ DE TES FACTURES --- */
+        @media print {
+            @page { margin: 0; size: letter; }
+            html, body { margin: 0 !important; padding: 0 !important; height: 100% !important; width: 100% !important; background: white !important; overflow: visible !important;}
+            .sidebar, .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay, .correction-banner { display: none !important; }
+            .main-content, #view-editor, .scroll-area { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; padding: 0 !important; }
+            
+            #zoom-wrapper { margin: 0 !important; padding: 0 !important; transform: none !important; width: 100% !important; display: block !important; }
+            
+            .page { 
+                width: 100% !important; max-width: 100% !important; height: auto !important; min-height: 11in !important; 
+                margin: 0 !important; box-shadow: none !important; page-break-after: always !important; 
+                padding: 20px !important; display: block !important;
+            }
+            .temps-table td, .ts-field, .cell-input { background-color: transparent !important; }
+            .temps-table th { background-color: white !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            input::placeholder { color: transparent !important; }
+            ::-webkit-input-placeholder { color: transparent !important; }
+        }
     </style>
 </head>
 <body>
@@ -170,6 +198,17 @@
             <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()">📤 ENVOYER AU BUREAU</button>
 
             <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockTimesheet()" style="display:none;">🔓 Débloquer</button>
+            <button class="action-btn btn-return" id="btn-return" onclick="openReturnModal()" style="display:none;">↩️ Renvoyer (Correction)</button>
+
+            <div id="office-status-div" class="office-status-panel" style="display:none;">
+                <span style="color:#aaa; font-size:11px; text-transform:uppercase;">Statut :</span>
+                <select id="invoice-status-select" onchange="changeOfficeStatus(this.value)">
+                    <option value="envoye">📥 Reçu (À traiter)</option>
+                    <option value="attente">⏳ En attente de paiement</option>
+                    <option value="paye">💰 Payé</option>
+                    <option value="retard">🔴 En retard</option>
+                </select>
+            </div>
 
             <div style="flex:1" class="spacer-mobile"></div>
             
@@ -181,6 +220,11 @@
         </div>
   
         <div class="scroll-area" id="scrollArea">
+            <div id="correction-banner" class="correction-banner" style="display:none;">
+                <strong style="color:var(--btn-red);">⚠️ Feuille de temps renvoyée par le bureau pour correction :</strong><br>
+                <span id="correction-note-text" style="display:inline-block; margin-top:5px;"></span>
+            </div>
+
             <div id="zoom-wrapper"></div>
         </div>
         
@@ -189,6 +233,20 @@
             <span id="zoom-level">100%</span>
             <button onclick="adjustZoom(0.1)">+</button>
             <button onclick="resetZoom()" style="font-size: 14px;">↺</button>
+        </div>
+    </div>
+</div>
+
+<div class="custom-modal-overlay" id="returnModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title" style="color:var(--btn-red);">Renvoyer pour correction</div>
+        <div class="custom-group">
+            <label style="color:#aaa; display:block; margin-bottom:10px;">Note pour l'employé (Ce qui manque) :</label>
+            <textarea id="returnNote" placeholder="Ex: Il manque des heures..." style="width:100%; height:100px; background:#1e1f26; color:white; border:1px solid #555; padding:10px; border-radius:5px; font-family:sans-serif; outline:none; resize:none;"></textarea>
+        </div>
+        <div class="custom-modal-actions" style="margin-top:15px;">
+            <button class="btn-modal-cancel" onclick="closeModal('returnModal')">Annuler</button>
+            <button class="btn-modal-confirm" onclick="executeReturnTimesheet()">Renvoyer</button>
         </div>
     </div>
 </div>
@@ -238,6 +296,7 @@
     document.getElementById('confirmYesBtn').onclick = function() { if (confirmCallback) confirmCallback(); closeConfirmModal(); };
     function showAlert(msg) { document.getElementById('alertMsg').textContent = msg; document.getElementById('alertModal').style.display = 'flex'; }
     function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
     function loadData() {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -263,15 +322,25 @@
         showDashboard();
     }
 
+    function toggleInputs(canEdit) {
+        const allInputs = wrapper.querySelectorAll('input');
+        allInputs.forEach(inp => {
+            if (!canEdit) { inp.setAttribute('readonly', true); inp.style.pointerEvents = 'none'; } 
+            else { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; }
+        });
+    }
+
     function applyEditorSecurity(sheetObj) {
         const isBureau = ['A0', 'A1', 'A2'].includes(myRole);
         const status = sheetObj ? (sheetObj.status || 'brouillon') : 'brouillon';
         const isAuthor = sheetObj ? (sheetObj.authorId === myUserId || !sheetObj.authorId) : true;
         
         let canEdit = false;
-        
-        if (isAuthor && status === 'brouillon') canEdit = true;
-        if (isBureau && status === 'brouillon' && isAuthor) canEdit = true;
+        if (!isBureau) {
+            if (status === 'brouillon' || status === 'renvoye') canEdit = true;
+        } else {
+            if (status === 'brouillon' && isAuthor) canEdit = true;
+        }
 
         document.getElementById('btn-save').style.display = canEdit ? 'flex' : 'none';
         document.getElementById('btn-add-page').style.display = canEdit ? 'flex' : 'none';
@@ -279,33 +348,42 @@
         document.getElementById('btn-del-page').style.display = canEdit ? 'flex' : 'none';
         document.getElementById('btn-clear').style.display = canEdit ? 'flex' : 'none';
         
-        document.getElementById('btn-send').style.display = (!isBureau && isAuthor && status === 'brouillon') ? 'flex' : 'none';
+        const btnSend = document.getElementById('btn-send');
+        if(btnSend) btnSend.style.display = (canEdit && (status === 'brouillon' || status === 'renvoye') && isAuthor) ? 'flex' : 'none';
 
         const btnUnlock = document.getElementById('btn-unlock');
-        if (isBureau && status !== 'brouillon') {
+        const btnReturn = document.getElementById('btn-return');
+        if (isBureau && status !== 'brouillon' && status !== 'renvoye') {
             btnUnlock.style.display = 'flex';
+            btnReturn.style.display = 'flex';
         } else {
             btnUnlock.style.display = 'none';
+            btnReturn.style.display = 'none';
         }
 
-        const allInputs = wrapper.querySelectorAll('input');
-        allInputs.forEach(inp => {
-            if (!canEdit) {
-                inp.setAttribute('readonly', true);
-                inp.style.pointerEvents = 'none';
+        const statusDiv = document.getElementById('office-status-div');
+        if (statusDiv) {
+            if (isBureau && status !== 'brouillon' && status !== 'renvoye') {
+                statusDiv.style.display = 'flex';
+                document.getElementById('invoice-status-select').value = status;
             } else {
-                inp.removeAttribute('readonly');
-                inp.style.pointerEvents = 'auto';
+                statusDiv.style.display = 'none';
             }
-        });
+        }
+
+        const banner = document.getElementById('correction-banner');
+        if (status === 'renvoye' && sheetObj && sheetObj.returnNote) {
+            banner.style.display = 'block';
+            document.getElementById('correction-note-text').textContent = sheetObj.returnNote;
+        } else {
+            banner.style.display = 'none';
+        }
+
+        toggleInputs(canEdit);
     }
 
     function unlockTimesheet() {
-        const allInputs = wrapper.querySelectorAll('input');
-        allInputs.forEach(inp => {
-            inp.removeAttribute('readonly');
-            inp.style.pointerEvents = 'auto';
-        });
+        toggleInputs(true);
         document.getElementById('btn-save').style.display = 'flex';
         document.getElementById('btn-unlock').style.display = 'none';
         document.getElementById('btn-add-page').style.display = 'flex';
@@ -313,6 +391,27 @@
         document.getElementById('btn-del-page').style.display = 'flex';
         document.getElementById('btn-clear').style.display = 'flex';
         showAlert("🔓 Feuille de temps débloquée. Vous pouvez modifier les champs et sauvegarder.");
+    }
+
+    function openReturnModal() {
+        document.getElementById('returnNote').value = '';
+        document.getElementById('returnModal').style.display = 'flex';
+    }
+
+    function executeReturnTimesheet() {
+        const note = document.getElementById('returnNote').value.trim();
+        if(!note) return showAlert("Veuillez inscrire une note pour expliquer ce qui manque.");
+        
+        if (!currentSheetId) return;
+        const sheet = timesheetsData.find(i => i.id === currentSheetId);
+        if (sheet) {
+            sheet.status = 'renvoye';
+            sheet.returnNote = note;
+            saveData();
+            closeModal('returnModal');
+            showDashboard();
+            showAlert("✅ La feuille a été renvoyée à l'employé pour correction.");
+        }
     }
 
     function openNewTimesheet() {
@@ -323,7 +422,7 @@
         addPage(); 
         
         applyEditorSecurity(null);
-        setTimeout(resetZoom, 50); // Le délai assure le bon centrage à l'ouverture
+        setTimeout(resetZoom, 50); 
     }
 
     function openExistingTimesheet(id) {
@@ -345,7 +444,7 @@
         });
         
         applyEditorSecurity(sheet);
-        setTimeout(resetZoom, 50); // Le délai assure le bon centrage à l'ouverture
+        setTimeout(resetZoom, 50); 
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -385,7 +484,8 @@
             timestamp: Date.now(),
             authorId: existingSheet ? existingSheet.authorId : myUserId,
             authorName: existingSheet ? existingSheet.authorName : myUserName,
-            status: currentStatus
+            status: currentStatus,
+            returnNote: existingSheet ? existingSheet.returnNote : ""
         };
 
         if (existingSheet) {
@@ -452,7 +552,11 @@
             let badgeHTML = '';
             let st = sheet.status || 'brouillon';
             if(st === 'brouillon') badgeHTML = '<span style="background:#444; padding:4px 8px; border-radius:4px; font-size:11px;">📝 Brouillon</span>';
-            if(st === 'envoye') badgeHTML = `<span style="background:#3498db; padding:4px 8px; border-radius:4px; font-size:11px; color:white;">${myRole==='A3'?'📤 Envoyée':'📥 Reçue (À vérifier)'}</span>`;
+            if(st === 'envoye') badgeHTML = `<span style="background:#3498db; padding:4px 8px; border-radius:4px; font-size:11px; color:white;">${myRole==='A3'?'📤 Envoyée':'📥 Reçue (À traiter)'}</span>`;
+            if(st === 'attente') badgeHTML = '<span style="background:#fcca46; padding:4px 8px; border-radius:4px; font-size:11px; color:black;">⏳ En attente</span>';
+            if(st === 'paye') badgeHTML = '<span style="background:#28a745; padding:4px 8px; border-radius:4px; font-size:11px; color:white;">💰 Payé</span>';
+            if(st === 'retard') badgeHTML = '<span style="background:#ff4d4d; padding:4px 8px; border-radius:4px; font-size:11px; color:white;">🔴 En retard</span>';
+            if(st === 'renvoye') badgeHTML = '<span style="background:#ff4d4d; padding:4px 8px; border-radius:4px; font-size:11px; color:white;">⚠️ À corriger</span>';
 
             const item = document.createElement('div');
             item.className = 'invoice-item';
@@ -559,9 +663,8 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
-    // LE SCRIPT MODIFIÉ POUR LE CENTRAGE COMMENCE ICI
     let currentZoom = 1.0; 
-    const minZoom = 0.2; // Modifié pour permettre de dézoomer plus sur mobile
+    const minZoom = 0.2; 
     const maxZoom = 3.0; 
     const zoomDisplay = document.getElementById('zoom-level');
     
@@ -571,7 +674,6 @@
         wrapper.style.transform = `scale(${currentZoom})`; 
         zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
         
-        // Ajustement des marges pour centrer verticalement quand on dézoome
         const scrollArea = document.getElementById('scrollArea');
         const trueHeight = wrapper.offsetHeight || 1056; 
         const visibleHeight = trueHeight * currentZoom;
@@ -580,14 +682,12 @@
             wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
             wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; 
         } else { 
-            // Si le document est plus petit que l'écran, on le centre verticalement
             if (scrollArea && visibleHeight < scrollArea.clientHeight) {
                 const marginTop = (scrollArea.clientHeight - visibleHeight) / 2;
                 wrapper.style.marginTop = `${marginTop}px`;
             } else {
                 wrapper.style.marginTop = "0px";
             }
-            // Enlever l'espace vide en bas créé par le scale
             const marginBottom = visibleHeight - trueHeight + 100;
             wrapper.style.marginBottom = `${marginBottom}px`;
         } 
@@ -600,7 +700,6 @@
         if (scrollArea) {
             const areaWidth = scrollArea.clientWidth;
             const areaHeight = scrollArea.clientHeight;
-            // Calcule le ratio pour que ça rentre parfaitement (816x1056 = taille d'une page)
             const zoomX = (areaWidth - 40) / 816; 
             const zoomY = (areaHeight - 40) / 1056;
             
