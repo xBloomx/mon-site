@@ -86,13 +86,13 @@
         .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
         .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
 
-        .scroll-area { flex: 1; overflow: auto; padding: 0; display: block; position: relative; touch-action: pan-x pan-y; }
-        #zoom-wrapper { position: absolute; top: 0; left: 0; width: 8.5in; display: block; transform-origin: 0px 0px; transition: transform 0.1s ease-out; }
+        .scroll-area { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: flex-start; flex-direction: column; align-items: center; touch-action: pan-x pan-y; }
+        #zoom-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 20px; transform-origin: top center; transition: transform 0.1s ease-out; padding-bottom: 100px; }
 
         .zoom-controls { position: fixed; bottom: 20px; right: 20px; background: rgba(30, 31, 38, 0.95); padding: 5px 10px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2000; border: 1px solid #555; }
         .zoom-controls button { background: var(--btn-yellow); border: none; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #1e1f26; }
 
-        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; margin-left: auto; margin-right: auto; flex-shrink: 0; }
+        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; margin: 0 auto; flex-shrink: 0; }
         .page input { outline: none; font-family: inherit; }
         .page input:focus { border-bottom: 2px solid #000 !important; background: transparent !important; }
 
@@ -102,7 +102,6 @@
         .ts-emp-info { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; font-size: 13px; font-weight: bold; color: black; }
         .ts-row { display: flex; align-items: center; gap: 10px; width: 100%; }
         .ts-field { background: var(--blue-bg); border: none; border-bottom: 1px solid #000; height: 26px; padding: 0 5px; font-weight: bold; flex: 1; color: black; font-size: 14px;}
-        
         .temps-table { width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid black; }
         .temps-table th { border: 1px solid black; padding: 8px; font-size: 12px; text-align: center; background: #fff; color: black; font-weight: bold; }
         .temps-table td { border: 1px solid black; padding: 0; height: 28px; background-color: var(--blue-bg); }
@@ -134,97 +133,6 @@
             .inv-info { flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; }
             .inv-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
             .zoom-controls { display: none !important; }
-        }
-
-        /* ✅ VERSION 100% PROPRE ET SÉCURISÉE */
-        @media print {
-            @page {
-                size: letter portrait;
-                /* On laisse une petite marge au navigateur pour qu'il n'écrase pas le tableau avec son URL */
-                margin: 0.25in; 
-            }
-
-            html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-                width: auto !important;
-                height: auto !important;
-                overflow: visible !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
-            #zoom-wrapper {
-                transform: none !important;
-                position: static !important;
-                width: 100% !important;
-            }
-
-            .scroll-area {
-                overflow: visible !important;
-                height: auto !important;
-            }
-
-            /* On cache tout ce qui ne s'imprime pas */
-            .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay, #scroll-spacer {
-                display: none !important;
-            }
-
-            /* LA PAGE : On la laisse respirer, plus de blocage ou de coupure forcée */
-            .page {
-                width: 100% !important;
-                height: auto !important;
-                max-height: none !important; 
-                margin: 0 !important;
-                padding: 0 !important; /* Le @page fait déjà la marge */
-                box-sizing: border-box !important;
-
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
-
-                overflow: visible !important;
-                box-shadow: none !important;
-                border: none !important;
-            }
-
-            /* --- ON COMPRESSE LÉGÈREMENT LE HAUT POUR S'ASSURER QUE ÇA RENTRE --- */
-            .header-main { margin-bottom: 10px !important; }
-            .header-main img { max-width: 300px !important; height: auto !important; }
-            .ts-title { margin-bottom: 15px !important; font-size: 20px !important; }
-            .ts-emp-info { margin-bottom: 10px !important; }
-
-            /* --- LE TABLEAU --- */
-            .temps-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                border: 1px solid black !important;
-                margin-top: 5px !important;
-            }
-
-            .temps-table th, .temps-table td {
-                border: 1px solid black !important;
-            }
-
-            /* 🔥 LA SOLUTION EST ICI : HAUTEUR DES LIGNES RÉDUITE À 22px ! 
-               Ça garantit mathématiquement que les 20 lignes rentrent sur 1 seule page */
-            .temps-table td {
-                height: 22px !important; 
-            }
-
-            .temps-table td, .ts-field, .cell-input {
-                background: transparent !important;
-            }
-
-            .temps-table th {
-                background: white !important;
-                color: black !important;
-                height: 22px !important;
-            }
-
-            input::placeholder {
-                color: transparent !important;
-            }
         }
     </style>
 </head>
@@ -265,8 +173,7 @@
 
             <div style="flex:1" class="spacer-mobile"></div>
             
-            <button class="action-btn" id="btn-print" onclick="printFix()">🖨️ Imprimer</button>
-            
+            <button class="action-btn" id="btn-print" onclick="window.print()">🖨️ Imprimer</button>
             <button class="action-btn" id="btn-add-page" onclick="addPage()">➕ Page</button>
             <button class="action-btn" id="btn-dup-page" onclick="duplicatePage()">📄 Dupliquer</button>
             <button class="action-btn" id="btn-del-page" onclick="deletePage()">➖ Page</button>
@@ -275,7 +182,6 @@
   
         <div class="scroll-area" id="scrollArea">
             <div id="zoom-wrapper"></div>
-            <div id="scroll-spacer"></div>
         </div>
         
         <div class="zoom-controls">
@@ -417,7 +323,7 @@
         addPage(); 
         
         applyEditorSecurity(null);
-        setTimeout(resetZoom, 50); 
+        setTimeout(resetZoom, 50); // Le délai assure le bon centrage à l'ouverture
     }
 
     function openExistingTimesheet(id) {
@@ -439,7 +345,7 @@
         });
         
         applyEditorSecurity(sheet);
-        setTimeout(resetZoom, 50);
+        setTimeout(resetZoom, 50); // Le délai assure le bon centrage à l'ouverture
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -653,79 +559,60 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
+    // LE SCRIPT MODIFIÉ POUR LE CENTRAGE COMMENCE ICI
     let currentZoom = 1.0; 
-    const minZoom = 0.2; 
+    const minZoom = 0.2; // Modifié pour permettre de dézoomer plus sur mobile
     const maxZoom = 3.0; 
     const zoomDisplay = document.getElementById('zoom-level');
     
     function updateZoom() { 
         if (currentZoom < minZoom) currentZoom = minZoom; 
         if (currentZoom > maxZoom) currentZoom = maxZoom; 
-        
-        const scrollArea = document.getElementById('scrollArea');
-        const areaWidth = scrollArea.clientWidth;
-        
-        const docWidth = 816 * currentZoom; 
-        
-        let marginX = (areaWidth - docWidth) / 2;
-        if (marginX < 0) marginX = 10;
-        
-        wrapper.style.transformOrigin = '0px 0px'; 
-        wrapper.style.transform = `translate(${marginX}px, 20px) scale(${currentZoom})`; 
-        
-        const trueHeight = 1056;
-        const scaledHeight = trueHeight * currentZoom;
-        let spacer = document.getElementById('scroll-spacer');
-        if (spacer) spacer.style.height = `${scaledHeight + 60}px`;
-        
+        wrapper.style.transform = `scale(${currentZoom})`; 
         zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
+        
+        // Ajustement des marges pour centrer verticalement quand on dézoome
+        const scrollArea = document.getElementById('scrollArea');
+        const trueHeight = wrapper.offsetHeight || 1056; 
+        const visibleHeight = trueHeight * currentZoom;
+
+        if(currentZoom > 1) { 
+            wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
+            wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; 
+        } else { 
+            // Si le document est plus petit que l'écran, on le centre verticalement
+            if (scrollArea && visibleHeight < scrollArea.clientHeight) {
+                const marginTop = (scrollArea.clientHeight - visibleHeight) / 2;
+                wrapper.style.marginTop = `${marginTop}px`;
+            } else {
+                wrapper.style.marginTop = "0px";
+            }
+            // Enlever l'espace vide en bas créé par le scale
+            const marginBottom = visibleHeight - trueHeight + 100;
+            wrapper.style.marginBottom = `${marginBottom}px`;
+        } 
     }
+    
+    function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
     
     function resetZoom() { 
         const scrollArea = document.getElementById('scrollArea');
-        const areaWidth = scrollArea.clientWidth;
-        const areaHeight = scrollArea.clientHeight;
-        
-        const pagePixelWidth = 816;
-        const pagePixelHeight = 1056;
-
-        const zoomX = (areaWidth - 20) / pagePixelWidth; 
-        const zoomY = (areaHeight - 40) / pagePixelHeight; 
-        
-        let targetZoom = Math.min(zoomX, zoomY);
-        
-        if (targetZoom > 1.0) targetZoom = 1.0; 
-        if (targetZoom < minZoom) targetZoom = minZoom;
-        
-        currentZoom = targetZoom; 
+        if (scrollArea) {
+            const areaWidth = scrollArea.clientWidth;
+            const areaHeight = scrollArea.clientHeight;
+            // Calcule le ratio pour que ça rentre parfaitement (816x1056 = taille d'une page)
+            const zoomX = (areaWidth - 40) / 816; 
+            const zoomY = (areaHeight - 40) / 1056;
+            
+            let targetZoom = Math.min(zoomX, zoomY);
+            if (targetZoom > 1.0) targetZoom = 1.0;
+            if (targetZoom < minZoom) targetZoom = minZoom;
+            
+            currentZoom = targetZoom;
+        } else {
+            currentZoom = 1.0;
+        }
         updateZoom(); 
-    }
-
-    // SCRIPT INDISPENSABLE POUR COUPER LE ZOOM AVANT L'IMPRESSION
-    window.addEventListener('beforeprint', () => {
-        const wrap = document.getElementById('zoom-wrapper');
-        if(wrap) {
-            wrap.dataset.oldTransform = wrap.style.transform;
-            wrap.style.transform = 'none';
-        }
-    });
-
-    window.addEventListener('afterprint', () => {
-        const wrap = document.getElementById('zoom-wrapper');
-        if(wrap) {
-            wrap.style.transform = wrap.dataset.oldTransform || '';
-        }
-    });
-
-    function printFix() {
-        const wrap = document.getElementById('zoom-wrapper');
-        if(wrap) {
-            wrap.style.transform = 'none'; 
-        }
-        
-        setTimeout(() => {
-            window.print();
-        }, 100);
     }
     
     let initialDistance = 0, initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
