@@ -136,81 +136,102 @@
             .zoom-controls { display: none !important; }
         }
 
-        /* ✅ LE BLOC D'IMPRESSION PROPRE, SANS "HACKS" */
+        /* 🔥 LE FIX EXACT DE CHATGPT INTÉGRÉ */
         @media print {
-            /* Marge minime native pour laisser la place à l'URL du téléphone sans couper ton tableau */
-            @page { size: letter portrait; margin: 0.25in; }
+            @page {
+                size: letter portrait;
+                margin: 0;
+            }
 
-            html, body, .main-content {
-                width: 100% !important;
-                height: auto !important;
+            html, body {
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
-                overflow: visible !important;
-                display: block !important;
+                width: 8.5in !important;
+                height: 10.7in !important; /* L'ANTI 2e PAGE HARDCORE */
+                overflow: hidden !important;
+
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            #view-editor, .scroll-area, #zoom-wrapper {
-                display: block !important;
-                width: 100% !important;
-                height: auto !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                transform: none !important; /* Désactive le zoom JS pour l'impression */
+            #zoom-wrapper {
+                transform: none !important;
                 position: static !important;
-                overflow: visible !important;
+                width: 100% !important;
             }
 
-            /* On cache tout le superflu, incluant le spacer qui créait la 2e page */
-            .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay, .sidebar, #scroll-spacer {
+            .scroll-area {
+                overflow: visible !important;
+                height: auto !important;
+            }
+
+            /* CACHE TOUT LE UI */
+            .top-bar,
+            .zoom-controls,
+            #view-dashboard,
+            .custom-modal-overlay,
+            #scroll-spacer {
                 display: none !important;
             }
 
+            /* PAGE PARFAITE */
             .page {
-                width: 100% !important; /* On laisse la feuille prendre toute la largeur disponible */
-                height: auto !important; /* On arrête de forcer la hauteur, on laisse respirer */
+                width: 8.5in !important;
+                height: 10.7in !important; /* 🔥 CLÉ DU FIX */
                 margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
+                padding: 0.3in 0.35in !important;
+                box-sizing: border-box !important;
+
+                overflow: hidden !important;
+
                 page-break-after: avoid !important;
                 page-break-inside: avoid !important;
-                display: flex !important; 
-                flex-direction: column !important;
+
+                box-shadow: none !important;
+                border: none !important;
             }
 
-            /* Restauration de la taille normale du logo et de l'en-tête */
-            .header-main { margin-bottom: 15px !important; text-align: left !important; }
-            .header-main img { max-width: 350px !important; height: auto !important; max-height: none !important; display: block !important; }
-            .ts-title { font-size: 22px !important; margin-bottom: 20px !important; }
+            .header-main { margin-bottom: 5px !important; }
+            .header-main img { max-height: 65px !important; }
+            .ts-title { margin-bottom: 5px !important; font-size: 18px !important; }
+            .ts-emp-info { margin-bottom: 5px !important; }
 
-            /* Fixation stricte des bordures du tableau */
+            /* TABLEAU FIXÉ */
             .temps-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 border: 1px solid black !important;
-                margin-top: 10px !important;
+                margin-top: 5px !important;
             }
-            .temps-table th, .temps-table td {
+
+            .temps-table th,
+            .temps-table td {
                 border: 1px solid black !important;
             }
-            
-            /* Hauteur normale des lignes (ça va rentrer sur une page grâce à width: 100%) */
-            .temps-table td { height: 28px !important; }
+
+            /* AJUSTEMENT HAUTEUR POUR 1 PAGE */
+            .temps-table td {
+                height: 24px !important; /* LA VALEUR DE CHATGPT */
+            }
+
+            /* PAS DE COULEUR BLEUE */
+            .temps-table td,
+            .ts-field,
+            .cell-input {
+                background: transparent !important;
+            }
 
             .temps-table th {
                 background: white !important;
                 color: black !important;
-            }
-            .temps-table td, .ts-field, .cell-input {
-                background: transparent !important;
+                height: 22px !important;
             }
 
-            input::placeholder { color: transparent !important; }
-            ::-webkit-input-placeholder { color: transparent !important; }
+            /* CACHE PLACEHOLDER */
+            input::placeholder {
+                color: transparent !important;
+            }
         }
     </style>
 </head>
@@ -687,6 +708,7 @@
         updateZoom(); 
     }
 
+    // SCRIPT DE CHATGPT INTÉGRÉ
     window.addEventListener('beforeprint', () => {
         const wrap = document.getElementById('zoom-wrapper');
         if(wrap) {
