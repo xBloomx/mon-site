@@ -73,34 +73,32 @@
         /* STRUCTURE DE GRILLE */
         .calendar-wrapper {
             flex: 1; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--cal-grid-border);
-            overflow-x: auto; overflow-y: hidden; display: flex; flex-direction: column;
+            overflow: hidden; display: flex; flex-direction: column;
         }
-        .day-headers { display: grid; grid-template-columns: repeat(7, 1fr); min-width: 700px; }
+        .day-headers { display: grid; grid-template-columns: repeat(7, 1fr); min-width: 100%; }
         .day-header {
             background: var(--cal-header-bg); color: #aaa; display: flex; align-items: center; justify-content: center;
             font-weight: bold; border-bottom: 1px solid var(--cal-grid-border); border-right: 1px solid var(--cal-grid-border);
             padding: 10px 0;
         }
         .cal-days-container {
-            display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(110px, 1fr); 
-            overflow-y: auto; min-width: 700px; flex: 1;
+            display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: minmax(60px, 1fr); 
+            overflow-y: auto; min-width: 100%; flex: 1;
         }
         
         .cal-day {
             border-right: 1px solid var(--cal-grid-border); border-bottom: 1px solid var(--cal-grid-border);
             padding: 5px; position: relative; background: var(--card-bg); cursor: pointer; transition: background 0.2s;
+            overflow: hidden; /* Empêche les barres de dépasser */
         }
         .cal-day:hover { background: #343542; }
         .cal-day.today { background: rgba(252, 202, 70, 0.05); }
         .cal-day.today .day-num { background: var(--btn-yellow); color: black; }
-        .cal-day.other-month { opacity: 0.3; background: #222; pointer-events: none; }
-        
-        .mobile-day-title { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-        .day-name { display: none; } /* Caché sur desktop */
+        .cal-day.other-month { opacity: 0.3; background: #222; }
         
         .day-num {
             font-weight: bold; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;
-            border-radius: 50%; font-size: 14px;
+            border-radius: 50%; margin-bottom: 5px; font-size: 14px; pointer-events: none;
         }
 
         /* EVENTS BAR */
@@ -167,64 +165,48 @@
         .view-value { color: white; font-weight: bold; font-size: 16px; margin-top: 2px;}
         .note-box { background: #1e1f26; padding: 12px; border-radius: 8px; border: 1px solid #444; font-weight: normal; font-size: 14px; color: #e0e0e0; white-space: pre-wrap; line-height: 1.4; }
 
+        /* ITEM DÉTAIL JOURNÉE */
+        .day-detail-item {
+            padding: 12px; background: #1e1f26; border-radius: 8px; margin-bottom: 8px; 
+            cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 4px; border: 1px solid #444;
+        }
+        .day-detail-item:hover { background: #343542; }
+
         /* =========================================
-           2. OPTIMISATIONS MOBILE (MODE AGENDA)
+           2. OPTIMISATIONS MOBILE (GRILLE MINIATURE)
            ========================================= */
         @media (max-width: 768px) {
-            .main-content { padding: 0 15px 15px 15px; overflow-y: auto; display: block; }
+            .main-content { padding: 0 5px 10px 5px; }
+            .header-bar { padding-top: 20px; flex-direction: row; flex-wrap: wrap; gap: 10px;}
+            .header-title h1 { font-size: 20px; }
+            .btn-action { padding: 8px 15px; font-size: 12px; }
             
-            /* Ajustement de l'entête */
-            .header-bar { flex-direction: column; align-items: stretch; gap: 15px; padding: 20px 0 10px 0; }
-            .header-bar > div { width: 100%; }
-            .btn-action { width: 100%; justify-content: center; padding: 12px; font-size: 16px; }
+            .tabs-container { margin-bottom: 10px; margin-top: 10px;}
+            .btn-tab { padding: 8px; font-size: 12px; flex: 1; text-align: center; }
+
+            .cal-controls { padding: 8px; margin-bottom: 10px; }
+            .cal-month-title { font-size: 16px; }
+            .cal-nav-btn { width: 32px; height: 32px; font-size: 16px; }
+
+            /* Grille responsive 100% */
+            .calendar-wrapper { border-radius: 8px; }
+            .day-header { font-size: 11px; padding: 5px 0; }
+            .cal-day { padding: 2px; min-height: 65px; }
             
-            /* Onglets plus clairs */
-            .tabs-container { flex-direction: column; width: 100%; margin-top: 5px; gap: 8px; }
-            .btn-tab { width: 100%; text-align: center; padding: 12px; font-size: 14px; }
-
-            /* Contrôles du mois */
-            .cal-controls { padding: 10px; margin-bottom: 15px; justify-content: space-between; }
-            .cal-month-title { font-size: 18px; text-align: center; flex: 1; }
-            .cal-nav-btn { width: 40px; height: 40px; }
-
-            /* TRANSFORMATION EN LISTE VERTICALE (AGENDA) */
-            .calendar-wrapper { border: none; background: transparent; overflow: visible; display: block; }
-            .day-headers { display: none; } /* On cache Lundi, Mardi, etc. de la grille */
+            .day-num { width: 18px; height: 18px; font-size: 11px; margin-bottom: 2px; }
             
-            .cal-days-container {
-                display: flex; flex-direction: column; min-width: 100%; gap: 12px; overflow-y: visible;
-            }
+            /* Badge urgence plus petit mais visible */
+            .urgence-badge { top: 2px; right: 2px; width: 18px; height: 18px; font-size: 10px; border-width: 1px;}
+            
+            /* Barres d'événements compressées */
+            .event-bar { font-size: 9px; padding: 1px 3px; border-radius: 2px; margin-bottom: 1px; }
 
-            .cal-day {
-                min-height: auto;
-                background: var(--card-bg);
-                border: 1px solid var(--cal-grid-border);
-                border-radius: 12px;
-                padding: 15px;
-                display: flex; flex-direction: column; gap: 8px;
-            }
-            .cal-day.other-month { display: none; } /* On cache les cases vides du mois précédent/suivant */
-
-            /* Affichage clair de la date sur mobile */
-            .mobile-day-title { margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 8px; }
-            .day-name { display: block; color: #aaa; font-weight: bold; font-size: 15px; text-transform: uppercase;}
-            .day-num { width: 32px; height: 32px; font-size: 15px; background: #333; border-radius: 8px; margin-bottom: 0; }
-            .cal-day.today .day-name { color: var(--btn-yellow); }
-
-            /* Insigne Urgence mieux placé */
-            .urgence-badge { top: 15px; right: 15px; width: 32px; height: 32px; font-size: 15px; }
-
-            /* Événements plus lisibles */
-            .event-bar {
-                font-size: 13px; padding: 10px 12px; border-radius: 8px;
-                white-space: normal; /* Permet au texte de revenir à la ligne */
-            }
-
-            .legend-container { justify-content: center; padding-bottom: 5px; margin-top: 10px;}
-
-            /* Modals adaptés pour éviter le zoom iOS */
-            .modal-card { width: 95%; padding: 20px; }
+            .legend-container { gap: 8px; font-size: 10px; justify-content: center; }
+            .legend-item { padding: 3px 6px; }
+            
+            /* Anti-zoom iOS */
             .form-group input, .form-group select, .form-group textarea { font-size: 16px; } 
+            .modal-card { width: 95%; padding: 15px; }
         }
     </style>
 </head>
@@ -260,6 +242,18 @@
             <div class="day-header">Mer</div><div class="day-header">Jeu</div><div class="day-header">Ven</div><div class="day-header">Sam</div>
         </div>
         <div class="cal-days-container" id="calendarDays"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="dayModal">
+    <div class="modal-card">
+        <div class="modal-title" id="dayModalTitle">Événements du ...</div>
+        <div id="dayModalContent" style="display:flex; flex-direction:column; gap:0px; max-height: 50vh; overflow-y:auto; margin-bottom: 15px;"></div>
+        
+        <div class="modal-actions" style="justify-content: space-between;">
+            <button class="btn-cancel" onclick="closeModal('dayModal')">Fermer</button>
+            <button class="btn-action" onclick="triggerAddFromDay()">+ Ajouter ici</button>
+        </div>
     </div>
 </div>
 
@@ -362,6 +356,7 @@
     let myUserName = 'Moi';
     let currentCalTab = 'mine'; 
     let teamMembers = [];
+    let selectedDayForAdd = ''; // Sauvegarde la date quand on ouvre le modal journalier
 
     async function initAuth() {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -457,13 +452,6 @@
         list.push({ id: 'sys-'+Date.now()+7, start: sStart, end: sEnd, t: "Vacances CCQ", type:'ccq' });
         list.push({ id: 'sys-'+Date.now()+8, start: new Date(year, 11, 21), end: new Date(year+1, 0, 4), t: "Vacances Hiver", type:'ccq' });
 
-        const storedFormations = JSON.parse(localStorage.getItem(KEY_FORMATIONS)) || [];
-        storedFormations.forEach(form => {
-            if (form.dateExp && form.dateExp.startsWith(year.toString())) {
-                list.push({ id: 'sys-form-' + form.id, d: form.dateExp, t: "⚠️ Exp: " + form.name, type: 'formation', note: "Veuillez renouveler cette certification dans l'onglet Profil." });
-            }
-        });
-
         return list;
     }
 
@@ -485,35 +473,30 @@
 
         for(let i=0; i<firstDay; i++) container.innerHTML += `<div class="cal-day other-month"></div>`;
 
-        const joursSemaine = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-
         for(let d=1; d<=daysInMonth; d++) {
             const currentDt = new Date(year, month, d);
             const dateStr = currentDt.toISOString().split('T')[0]; 
-            const nomJour = joursSemaine[currentDt.getDay()];
-
             const div = document.createElement('div');
             div.className = 'cal-day';
             if(dateStr === new Date().toISOString().split('T')[0]) div.classList.add('today');
             
+            // Nouveau comportement au clic : Ouvre toujours le détail de la journée
             div.onclick = (e) => {
-                if(e.target === div || e.target.classList.contains('day-num') || e.target.classList.contains('mobile-day-title')) openAddModal(dateStr, false);
+                if(e.target === div || e.target.classList.contains('day-num') || e.target.classList.contains('event-bar') || e.target.classList.contains('urgence-badge')) {
+                    e.stopPropagation();
+                    openDayDetails(dateStr);
+                }
             };
 
-            // Structure modifiée pour inclure le nom du jour (visible uniquement sur mobile)
-            let html = `
-                <div class="mobile-day-title">
-                    <div class="day-num">${d}</div>
-                    <div class="day-name">${nomJour}.</div>
-                </div>
-            `;
+            let html = `<div class="day-num">${d}</div>`;
 
             const urgEvent = events.find(evt => evt.catId === 'urgence' && dateStr >= evt.start && dateStr <= evt.end);
             if (urgEvent) {
                 const letter = urgEvent.authorName ? urgEvent.authorName.charAt(0).toUpperCase() : 'U';
-                html += `<div class="urgence-badge filled" onclick="openViewEvent('${urgEvent.id}', event, false)" title="Garde: ${urgEvent.title}">${letter}</div>`;
+                html += `<div class="urgence-badge filled">${letter}</div>`;
             } else {
-                html += `<div class="urgence-badge empty" onclick="openAddModal('${dateStr}', true, event)" title="Ajouter Garde d'urgence">+</div>`;
+                // Le "+" pour ajouter l'urgence directement est enlevé pour simplifier le clic sur la case
+                // Il sera accessible via le bouton "Ajouter ici" dans le modal du jour.
             }
 
             currentSysEvents.forEach(sys => {
@@ -523,7 +506,7 @@
                 if(show) {
                     const cat = FIXED_CATEGORIES.find(c => c.id === sys.type) || {color: '#888'};
                     const textColor = (cat.color === '#ffffff' || cat.color === '#ffc107') ? 'black' : 'white';
-                    html += `<div class="event-bar" style="background:${cat.color}; color:${textColor}; font-weight:bold;" onclick="openViewEvent('${sys.id}', event, true)" title="${sys.t}">${sys.t}</div>`;
+                    html += `<div class="event-bar" style="background:${cat.color}; color:${textColor}; font-weight:bold;">${sys.t}</div>`;
                 }
             });
 
@@ -546,7 +529,7 @@
                 if (canSee) {
                     const cat = FIXED_CATEGORIES.find(c => c.id === evt.catId) || {color: '#333'};
                     const borderStyle = isMine ? 'event-mine' : '';
-                    html += `<div class="event-bar ${borderStyle}" style="background:${cat.color};" onclick="openViewEvent('${evt.id}', event, false)" title="${evt.title}">${evt.title}</div>`;
+                    html += `<div class="event-bar ${borderStyle}" style="background:${cat.color};">${evt.title}</div>`;
                 }
             });
 
@@ -565,6 +548,78 @@
             div.innerHTML = `<div class="legend-dot" style="background:${cat.color}"></div> ${cat.name}`;
             leg.appendChild(div);
         });
+    }
+
+    // --- NOUVEAU MODAL : DÉTAIL DE LA JOURNÉE ---
+    function openDayDetails(dateStr) {
+        selectedDayForAdd = dateStr;
+        const formattedDate = formatDateFR(dateStr);
+        document.getElementById('dayModalTitle').textContent = `Événements du ${formattedDate}`;
+        
+        const content = document.getElementById('dayModalContent');
+        content.innerHTML = '';
+
+        let dayEvents = [];
+
+        // 1. Urgences
+        const urgEvent = events.find(evt => evt.catId === 'urgence' && dateStr >= evt.start && dateStr <= evt.end);
+        if (urgEvent) dayEvents.push({...urgEvent, isUrg: true});
+
+        // 2. Événements système (Fériés, CCQ)
+        currentSysEvents.forEach(sys => {
+            let show = false;
+            if(sys.d && sys.d === dateStr) show = true;
+            if(sys.start && new Date(dateStr) >= sys.start && new Date(dateStr) <= sys.end) show = true;
+            if(show) dayEvents.push({...sys, isSys: true});
+        });
+
+        // 3. Chantiers / Notes
+        events.filter(e => dateStr >= e.start && dateStr <= e.end).forEach(evt => {
+            if(evt.catId === 'urgence') return;
+            let canSee = false;
+            if (currentCalTab === 'all') canSee = true; 
+            else if (evt.authorId === myUserId || (evt.guests && evt.guests.includes(myUserId))) canSee = true;
+            if (canSee) dayEvents.push(evt);
+        });
+
+        if (dayEvents.length === 0) {
+            content.innerHTML = '<div style="color:#aaa; font-style:italic; padding:10px 0;">Aucun événement prévu pour cette journée.</div>';
+        } else {
+            dayEvents.forEach(evt => {
+                const cId = evt.type || evt.catId;
+                const cat = FIXED_CATEGORIES.find(c => c.id === cId) || {color: '#888'};
+                
+                const div = document.createElement('div');
+                div.className = 'day-detail-item';
+                div.style.borderLeft = `4px solid ${cat.color}`;
+                
+                let title = evt.t || evt.title;
+                let subtitle = cat.name;
+                if (evt.isUrg && evt.authorName) subtitle += ` - Assuré par ${evt.authorName}`;
+
+                div.innerHTML = `
+                    <div style="font-weight:bold; color:white; font-size:15px;">${title}</div>
+                    <div style="font-size:12px; color:#aaa;">${subtitle}</div>
+                `;
+                
+                div.onclick = (e) => {
+                    closeModal('dayModal');
+                    if (evt.isSys) {
+                        openViewEvent(evt.id, e, true);
+                    } else {
+                        openViewEvent(evt.id, e, false);
+                    }
+                };
+                content.appendChild(div);
+            });
+        }
+
+        document.getElementById('dayModal').style.display = 'flex';
+    }
+
+    function triggerAddFromDay() {
+        closeModal('dayModal');
+        openAddModal(selectedDayForAdd, false);
     }
 
     function openAddModal(dateStart='', isUrgence=false, e=null) {
@@ -597,12 +652,24 @@
             grpGuests.style.display = 'block';
             sel.innerHTML = '';
             
+            // Ajout dynamique de l'option "Garde Urgence" dans le menu déroulant si on passe par le bouton Ajouter standard
             FIXED_CATEGORIES.forEach(cat => {
-                if(ALLOWED_ADD_CATS.includes(cat.id)) {
+                if(ALLOWED_ADD_CATS.includes(cat.id) || cat.id === 'urgence') {
                     const opt = document.createElement('option');
                     opt.value = cat.id; opt.textContent = cat.name; sel.appendChild(opt);
                 }
             });
+
+            // Gérer le changement de catégorie pour adapter le formulaire
+            sel.onchange = function() {
+                if (this.value === 'urgence') {
+                    document.getElementById('evtTitle').value = myUserName;
+                    grpGuests.style.display = 'none';
+                } else {
+                    document.getElementById('evtTitle').value = '';
+                    grpGuests.style.display = 'block';
+                }
+            };
 
             const gList = document.getElementById('guestListContainer');
             if (teamMembers.length > 0) {
@@ -628,14 +695,11 @@
     }
 
     function saveEvent() {
-        let catId;
+        const catId = document.getElementById('evtCategory').value;
         const title = document.getElementById('evtTitle').value.trim();
         const start = document.getElementById('evtStart').value;
         const end = document.getElementById('evtEnd').value;
         const note = document.getElementById('evtNote').value.trim(); 
-
-        if (isUrgenceMode) { catId = 'urgence'; } 
-        else { catId = document.getElementById('evtCategory').value; }
 
         if(!title || !start || !end) return openAlert("Merci de remplir les champs obligatoires (Titre et Dates) !");
         if(end < start) return openAlert("La date de fin ne peut pas être avant le début.");
@@ -665,7 +729,7 @@
     }
 
     function openViewEvent(id, e, isSys) {
-        e.stopPropagation();
+        if(e) e.stopPropagation();
         isSystemEvent = isSys;
         
         let evt;
@@ -676,6 +740,7 @@
             document.getElementById('viewAuthorBadge').style.background = "#555";
         } else {
             evt = events.find(ev => ev.id === id);
+            if(!evt) return;
             
             if (myRole !== 'A3' || evt.authorId === myUserId) {
                 document.getElementById('btnDeleteEvent').style.display = 'block';
