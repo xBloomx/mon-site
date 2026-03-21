@@ -136,73 +136,75 @@
             .zoom-controls { display: none !important; }
         }
 
-        /* 🔥 LE FIX EXACT DE CHATGPT INTÉGRÉ */
+        /* 🚨 LE FIX DE L'ULTIME RECOURS : DIMENSIONS EN PIXELS STRICTS 🚨 */
         @media print {
             @page {
                 size: letter portrait;
-                margin: 0;
+                margin: 0; /* On coupe les marges du navigateur */
             }
 
             html, body {
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
-                width: 8.5in !important;
-                height: 10.7in !important; /* L'ANTI 2e PAGE HARDCORE */
+                
+                /* On force la taille d'un écran d'ordinateur en pixels (816px = 8.5 pouces) */
+                width: 816px !important;
+                min-width: 816px !important;
+                
                 overflow: hidden !important;
-
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
+            /* On désactive totalement le zoom pour l'impression */
             #zoom-wrapper {
                 transform: none !important;
                 position: static !important;
-                width: 100% !important;
+                width: 816px !important;
+                margin: 0 !important;
             }
 
             .scroll-area {
                 overflow: visible !important;
                 height: auto !important;
+                padding: 0 !important;
             }
 
-            /* CACHE TOUT LE UI */
-            .top-bar,
-            .zoom-controls,
-            #view-dashboard,
-            .custom-modal-overlay,
-            #scroll-spacer {
+            /* On cache l'interface */
+            .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay, #scroll-spacer {
                 display: none !important;
             }
 
-            /* PAGE PARFAITE */
+            /* LA PAGE : On force les dimensions exactes d'un ordinateur */
             .page {
-                width: 8.5in !important;
-                height: 10.7in !important; /* 🔥 CLÉ DU FIX */
+                width: 816px !important;
+                height: 1040px !important; /* Laisse une minuscule marge de sécurité pour le navigateur */
                 margin: 0 !important;
-                padding: 0.3in 0.35in !important;
+                
+                /* On remet les mêmes grandes marges que sur ton PC (environ 40 pixels) */
+                padding: 40px !important; 
                 box-sizing: border-box !important;
 
                 overflow: hidden !important;
-
                 page-break-after: avoid !important;
                 page-break-inside: avoid !important;
-
                 box-shadow: none !important;
                 border: none !important;
             }
 
-            .header-main { margin-bottom: 5px !important; }
-            .header-main img { max-height: 65px !important; }
-            .ts-title { margin-bottom: 5px !important; font-size: 18px !important; }
-            .ts-emp-info { margin-bottom: 5px !important; }
+            /* LE LOGO : On lui redonne de la place pour qu'il soit gros comme sur PC */
+            .header-main { margin-bottom: 15px !important; }
+            .header-main img { max-height: 85px !important; width: auto !important; }
+            .ts-title { margin-bottom: 15px !important; font-size: 24px !important; }
+            .ts-emp-info { margin-bottom: 10px !important; }
 
-            /* TABLEAU FIXÉ */
+            /* LE TABLEAU : On force les bordures et les dimensions exactes */
             .temps-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
-                border: 1px solid black !important;
-                margin-top: 5px !important;
+                border: 2px solid black !important; /* Bordure extérieure légèrement plus épaisse */
+                margin-top: 10px !important;
             }
 
             .temps-table th,
@@ -210,25 +212,25 @@
                 border: 1px solid black !important;
             }
 
-            /* AJUSTEMENT HAUTEUR POUR 1 PAGE */
+            /* HAUTEUR EXACTE DES LIGNES POUR REMPLIR L'ESPACE SANS DÉBORDER */
             .temps-table td {
-                height: 24px !important; /* LA VALEUR DE CHATGPT */
+                height: 28px !important; 
             }
 
-            /* PAS DE COULEUR BLEUE */
             .temps-table td,
             .ts-field,
             .cell-input {
                 background: transparent !important;
+                color: black !important;
             }
 
             .temps-table th {
                 background: white !important;
                 color: black !important;
-                height: 22px !important;
+                height: 25px !important;
+                padding: 5px !important;
             }
 
-            /* CACHE PLACEHOLDER */
             input::placeholder {
                 color: transparent !important;
             }
@@ -708,7 +710,6 @@
         updateZoom(); 
     }
 
-    // SCRIPT DE CHATGPT INTÉGRÉ
     window.addEventListener('beforeprint', () => {
         const wrap = document.getElementById('zoom-wrapper');
         if(wrap) {
