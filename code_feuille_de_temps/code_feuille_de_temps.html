@@ -86,13 +86,13 @@
         .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
         .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
 
-        .scroll-area { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: flex-start; flex-direction: column; align-items: center; touch-action: pan-x pan-y; }
-        #zoom-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 20px; transform-origin: top center; transition: transform 0.1s ease-out; padding-bottom: 100px; }
+        .scroll-area { flex: 1; overflow: auto; padding: 0; display: block; position: relative; touch-action: pan-x pan-y; }
+        #zoom-wrapper { position: absolute; top: 0; left: 0; width: 8.5in; display: block; transform-origin: 0px 0px; transition: transform 0.1s ease-out; }
 
         .zoom-controls { position: fixed; bottom: 20px; right: 20px; background: rgba(30, 31, 38, 0.95); padding: 5px 10px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2000; border: 1px solid #555; }
         .zoom-controls button { background: var(--btn-yellow); border: none; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #1e1f26; }
 
-        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; margin: 0 auto; flex-shrink: 0; }
+        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; margin-left: auto; margin-right: auto; flex-shrink: 0; }
         .page input { outline: none; font-family: inherit; }
         .page input:focus { border-bottom: 2px solid #000 !important; background: transparent !important; }
 
@@ -102,6 +102,7 @@
         .ts-emp-info { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; font-size: 13px; font-weight: bold; color: black; }
         .ts-row { display: flex; align-items: center; gap: 10px; width: 100%; }
         .ts-field { background: var(--blue-bg); border: none; border-bottom: 1px solid #000; height: 26px; padding: 0 5px; font-weight: bold; flex: 1; color: black; font-size: 14px;}
+        
         .temps-table { width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid black; }
         .temps-table th { border: 1px solid black; padding: 8px; font-size: 12px; text-align: center; background: #fff; color: black; font-weight: bold; }
         .temps-table td { border: 1px solid black; padding: 0; height: 28px; background-color: var(--blue-bg); }
@@ -133,6 +134,104 @@
             .inv-info { flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; }
             .inv-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
             .zoom-controls { display: none !important; }
+        }
+
+        /* 🔥 LE FIX EXACT DE CHATGPT INTÉGRÉ */
+        @media print {
+            @page {
+                size: letter portrait;
+                margin: 0;
+            }
+
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 8.5in !important;
+                height: 10.7in !important; /* L'ANTI 2e PAGE HARDCORE */
+                overflow: hidden !important;
+
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            #zoom-wrapper {
+                transform: none !important;
+                position: static !important;
+                width: 100% !important;
+            }
+
+            .scroll-area {
+                overflow: visible !important;
+                height: auto !important;
+            }
+
+            /* CACHE TOUT LE UI */
+            .top-bar,
+            .zoom-controls,
+            #view-dashboard,
+            .custom-modal-overlay,
+            #scroll-spacer {
+                display: none !important;
+            }
+
+            /* PAGE PARFAITE */
+            .page {
+                width: 8.5in !important;
+                height: 10.7in !important; /* 🔥 CLÉ DU FIX */
+                margin: 0 !important;
+                padding: 0.3in 0.35in !important;
+                box-sizing: border-box !important;
+
+                overflow: hidden !important;
+
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            .header-main { margin-bottom: 5px !important; }
+            .header-main img { max-height: 65px !important; }
+            .ts-title { margin-bottom: 5px !important; font-size: 18px !important; }
+            .ts-emp-info { margin-bottom: 5px !important; }
+
+            /* TABLEAU FIXÉ */
+            .temps-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                border: 1px solid black !important;
+                margin-top: 5px !important;
+            }
+
+            .temps-table th,
+            .temps-table td {
+                border: 1px solid black !important;
+            }
+
+            /* AJUSTEMENT HAUTEUR POUR 1 PAGE */
+            .temps-table td {
+                height: 24px !important; /* LA VALEUR DE CHATGPT */
+            }
+
+            /* PAS DE COULEUR BLEUE */
+            .temps-table td,
+            .ts-field,
+            .cell-input {
+                background: transparent !important;
+            }
+
+            .temps-table th {
+                background: white !important;
+                color: black !important;
+                height: 22px !important;
+            }
+
+            /* CACHE PLACEHOLDER */
+            input::placeholder {
+                color: transparent !important;
+            }
         }
     </style>
 </head>
@@ -173,7 +272,8 @@
 
             <div style="flex:1" class="spacer-mobile"></div>
             
-            <button class="action-btn" id="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+            <button class="action-btn" id="btn-print" onclick="printFix()">🖨️ Imprimer</button>
+            
             <button class="action-btn" id="btn-add-page" onclick="addPage()">➕ Page</button>
             <button class="action-btn" id="btn-dup-page" onclick="duplicatePage()">📄 Dupliquer</button>
             <button class="action-btn" id="btn-del-page" onclick="deletePage()">➖ Page</button>
@@ -182,6 +282,7 @@
   
         <div class="scroll-area" id="scrollArea">
             <div id="zoom-wrapper"></div>
+            <div id="scroll-spacer"></div>
         </div>
         
         <div class="zoom-controls">
@@ -323,7 +424,7 @@
         addPage(); 
         
         applyEditorSecurity(null);
-        resetZoom();
+        setTimeout(resetZoom, 50); 
     }
 
     function openExistingTimesheet(id) {
@@ -345,7 +446,7 @@
         });
         
         applyEditorSecurity(sheet);
-        resetZoom();
+        setTimeout(resetZoom, 50); 
     }
 
     function saveCurrentTimesheet(isSending = false) {
@@ -559,10 +660,82 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
-    let currentZoom = 1.0; const minZoom = 0.5, maxZoom = 3.0, zoomDisplay = document.getElementById('zoom-level');
-    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; wrapper.style.transform = `scale(${currentZoom})`; zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; if(currentZoom > 1) { wrapper.style.marginBottom = (currentZoom * 400) + "px"; wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; } else { wrapper.style.marginBottom = "100px"; wrapper.style.marginTop = "0px"; } }
+    let currentZoom = 1.0; 
+    const minZoom = 0.2; 
+    const maxZoom = 3.0; 
+    const zoomDisplay = document.getElementById('zoom-level');
+    
+    function updateZoom() { 
+        if (currentZoom < minZoom) currentZoom = minZoom; 
+        if (currentZoom > maxZoom) currentZoom = maxZoom; 
+        wrapper.style.transform = `scale(${currentZoom})`; 
+        zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
+        
+        const scrollArea = document.getElementById('scrollArea');
+        const trueHeight = wrapper.offsetHeight || 1056; 
+        const visibleHeight = trueHeight * currentZoom;
+
+        if(currentZoom > 1) { 
+            wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
+            wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px"; 
+        } else { 
+            if (scrollArea && visibleHeight < scrollArea.clientHeight) {
+                const marginTop = (scrollArea.clientHeight - visibleHeight) / 2;
+                wrapper.style.marginTop = `${marginTop}px`;
+            } else {
+                wrapper.style.marginTop = "0px";
+            }
+            const marginBottom = visibleHeight - trueHeight + 100;
+            wrapper.style.marginBottom = `${marginBottom}px`;
+        } 
+    }
+    
     function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
-    function resetZoom() { currentZoom = 1.0; updateZoom(); }
+    
+    function resetZoom() { 
+        const scrollArea = document.getElementById('scrollArea');
+        if (scrollArea) {
+            const areaWidth = scrollArea.clientWidth;
+            const areaHeight = scrollArea.clientHeight;
+            const zoomX = (areaWidth - 40) / 816; 
+            const zoomY = (areaHeight - 40) / 1056;
+            
+            let targetZoom = Math.min(zoomX, zoomY);
+            if (targetZoom > 1.0) targetZoom = 1.0;
+            if (targetZoom < minZoom) targetZoom = minZoom;
+            
+            currentZoom = targetZoom;
+        } else {
+            currentZoom = 1.0;
+        }
+        updateZoom(); 
+    }
+
+    window.addEventListener('beforeprint', () => {
+        const wrap = document.getElementById('zoom-wrapper');
+        if(wrap) {
+            wrap.dataset.oldTransform = wrap.style.transform;
+            wrap.style.transform = 'none';
+        }
+    });
+
+    window.addEventListener('afterprint', () => {
+        const wrap = document.getElementById('zoom-wrapper');
+        if(wrap) {
+            wrap.style.transform = wrap.dataset.oldTransform || '';
+        }
+    });
+
+    function printFix() {
+        const wrap = document.getElementById('zoom-wrapper');
+        if(wrap) {
+            wrap.style.transform = 'none'; 
+        }
+        
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    }
     
     let initialDistance = 0, initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
     scrollArea.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); initialZoomState = currentZoom; } }, { passive: false });
