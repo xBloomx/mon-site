@@ -136,101 +136,81 @@
             .zoom-controls { display: none !important; }
         }
 
-        /* 🔥 SOLUTION DÉFINITIVE : ÉCRASEMENT DES HAUTEURS ET GUILLOTINE SUR LA PAGE 2 */
+        /* ✅ LE BLOC D'IMPRESSION PROPRE, SANS "HACKS" */
         @media print {
-            @page {
-                size: letter portrait;
-                margin: 0;
-            }
+            /* Marge minime native pour laisser la place à l'URL du téléphone sans couper ton tableau */
+            @page { size: letter portrait; margin: 0.25in; }
 
-            html, body {
+            html, body, .main-content {
+                width: 100% !important;
+                height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
-                width: 8.5in !important;
-                height: 100% !important;
-                max-height: 11in !important;
-                overflow: hidden !important; /* BLOQUE TOUT DÉBORDEMENT VERS UNE PAGE 2 */
+                overflow: visible !important;
+                display: block !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            #zoom-wrapper {
-                transform: none !important;
-                position: static !important;
+            #view-editor, .scroll-area, #zoom-wrapper {
+                display: block !important;
                 width: 100% !important;
-                height: 100% !important;
-                overflow: hidden !important; /* DOUBLE SÉCURITÉ */
-            }
-
-            .scroll-area {
-                overflow: hidden !important;
-                height: 100% !important;
+                height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                transform: none !important; /* Désactive le zoom JS pour l'impression */
+                position: static !important;
+                overflow: visible !important;
             }
 
-            /* ON CACHE TOUT LE RESTE */
-            .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay, #scroll-spacer {
+            /* On cache tout le superflu, incluant le spacer qui créait la 2e page */
+            .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay, .sidebar, #scroll-spacer {
                 display: none !important;
             }
 
-            /* LA PAGE EST PLUS PETITE QUE 11 POUCES ET VERROUILLÉE */
             .page {
-                width: 8.5in !important;
-                height: 10.5in !important; /* Strictement moins que 11 pouces */
-                max-height: 10.5in !important;
+                width: 100% !important; /* On laisse la feuille prendre toute la largeur disponible */
+                height: auto !important; /* On arrête de forcer la hauteur, on laisse respirer */
                 margin: 0 !important;
-                padding: 0.25in 0.4in !important;
-                box-sizing: border-box !important;
-
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
-
-                overflow: hidden !important; /* COUPE AU CISEAU LE BAS DE LA PAGE */
+                padding: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                display: flex !important; 
+                flex-direction: column !important;
             }
 
-            /* RÉDUCTION MASSIVE DES ESPACES EN HAUT */
-            .header-main { margin-bottom: 5px !important; }
-            .header-main img { max-height: 65px !important; }
-            .ts-title { margin-bottom: 5px !important; font-size: 18px !important; }
-            .ts-emp-info { margin-bottom: 5px !important; }
+            /* Restauration de la taille normale du logo et de l'en-tête */
+            .header-main { margin-bottom: 15px !important; text-align: left !important; }
+            .header-main img { max-width: 350px !important; height: auto !important; max-height: none !important; display: block !important; }
+            .ts-title { font-size: 22px !important; margin-bottom: 20px !important; }
 
-            /* LE TABLEAU */
+            /* Fixation stricte des bordures du tableau */
             .temps-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 border: 1px solid black !important;
-                margin-top: 5px !important;
+                margin-top: 10px !important;
             }
-
             .temps-table th, .temps-table td {
                 border: 1px solid black !important;
-                padding: 0 !important;
             }
-
-            /* 🔥 LE FIX EST ICI : ON ÉCRASE LA HAUTEUR DES 20 LIGNES */
-            .temps-table td {
-                height: 20px !important; /* Avant : 26px. C'est ça qui dépassait ! */
-                max-height: 20px !important;
-                line-height: 20px !important;
-            }
-
-            .temps-table td, .ts-field, .cell-input {
-                background: transparent !important;
-            }
+            
+            /* Hauteur normale des lignes (ça va rentrer sur une page grâce à width: 100%) */
+            .temps-table td { height: 28px !important; }
 
             .temps-table th {
                 background: white !important;
                 color: black !important;
-                height: 22px !important;
+            }
+            .temps-table td, .ts-field, .cell-input {
+                background: transparent !important;
             }
 
-            input::placeholder {
-                color: transparent !important;
-            }
+            input::placeholder { color: transparent !important; }
+            ::-webkit-input-placeholder { color: transparent !important; }
         }
     </style>
 </head>
