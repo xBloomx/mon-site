@@ -86,25 +86,19 @@
         .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
         .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
 
-        /* SCROLL ET CENTRAGE AJUSTÉS POUR LE MOBILE */
+        /* SCROLL ET CENTRAGE CORRIGÉS POUR PERMETTRE LE GLISSEMENT H/V */
         .scroll-area { 
             flex: 1; 
-            overflow-y: auto; 
-            overflow-x: hidden; 
+            overflow: auto; /* Autorise le défilement horizontal ET vertical */
             padding: 15px 0; 
-            display: flex; 
-            justify-content: flex-start;
-            flex-direction: column; 
-            align-items: center; 
-            touch-action: pan-y; 
+            display: block; /* Retire le flexbox qui bloquait le côté gauche */
+            touch-action: auto; /* Autorise les mouvements de glissement naturels */
         }
 
         #zoom-wrapper { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
+            display: block; 
             width: 8.5in; 
-            transform-origin: top center; 
+            transform-origin: top left; /* Le zoom commence du coin en haut à gauche pour ne rien couper */
             transition: transform 0.1s ease-out; 
             padding-bottom: 50px;
         }
@@ -123,7 +117,7 @@
             display: flex; 
             flex-direction: column; 
             position: relative; 
-            margin: 0 auto 20px auto; 
+            margin: 0 0 20px 0; /* Plus de centrage forcé, géré par le JavaScript maintenant */
             flex-shrink: 0; 
         }
         .page input { outline: none; font-family: inherit; }
@@ -332,7 +326,7 @@
         document.getElementById('btn-del-page').style.display = canEdit ? 'flex' : 'none';
         document.getElementById('btn-clear').style.display = canEdit ? 'flex' : 'none';
         
-        // BOUTON ENVOYER VISIBLE POUR TOUT LE MONDE ET TOUT LE TEMPS
+        // BOUTON ENVOYER VISIBLE POUR TOUT LE MONDE
         document.getElementById('btn-send').style.display = 'flex';
 
         const btnUnlock = document.getElementById('btn-unlock');
@@ -613,7 +607,7 @@
     function duplicatePage() { const pages = wrapper.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const sourceInputs = sourcePage.querySelectorAll('.ts-emp-info input'); const newInputs = newPage.querySelectorAll('.ts-emp-info input'); sourceInputs.forEach((input, index) => { if(newInputs[index]) newInputs[index].value = input.value; }); updateZoom(); }
     function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); }); }
 
-    // --- NOUVEAU SYSTÈME DE ZOOM AUTOMATIQUE ---
+    // --- ZOOM INTELLIGENT ET CENTRAGE DYNAMIQUE ---
     let currentZoom = 1.0; 
     const minZoom = 0.3, maxZoom = 3.0;
     const zoomDisplay = document.getElementById('zoom-level');
@@ -625,13 +619,11 @@
         const pageWidth = 816; // 8.5 pouces en pixels environ (96dpi)
 
         if (screenWidth > 0 && screenWidth < pageWidth) {
-            // Ajuste parfaitement à la largeur de l'écran avec une micro-marge (98%)
             currentZoom = (screenWidth / pageWidth) * 0.98;
         } else {
             currentZoom = 1.0;
         }
         
-        // Arrondir pour éviter les textes flous
         currentZoom = Math.round(currentZoom * 100) / 100;
         updateZoom();
     }
@@ -643,23 +635,34 @@
         wrapper.style.transform = `scale(${currentZoom})`; 
         if(zoomDisplay) zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; 
         
+        const scrollArea = document.getElementById('scrollArea');
+        if(scrollArea) {
+            const screenWidth = scrollArea.clientWidth;
+            const scaledWidth = 816 * currentZoom; 
+            
+            // Si la feuille est plus petite que l'écran, on la centre.
+            // Si elle est plus grande (zoom), on la colle à gauche pour permettre le scroll.
+            if (scaledWidth < screenWidth) {
+                wrapper.style.marginLeft = ((screenWidth - scaledWidth) / 2) + "px";
+            } else {
+                wrapper.style.marginLeft = "0px";
+            }
+        }
+
         const unscaledHeight = wrapper.offsetHeight;
         const scaledHeight = unscaledHeight * currentZoom;
         
         if (currentZoom < 1.0) {
             wrapper.style.marginBottom = (scaledHeight - unscaledHeight + 50) + "px"; 
-            wrapper.style.marginTop = "0px";
         } else if (currentZoom > 1.0) {
             wrapper.style.marginBottom = (currentZoom * 400) + "px"; 
-            wrapper.style.marginTop = ((currentZoom - 1) * 100) + "px";
         } else {
             wrapper.style.marginBottom = "100px"; 
-            wrapper.style.marginTop = "0px";
         }
     }
 
     function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
-    function resetZoom() { fitToScreen(); } // Le reset refait l'ajustement auto
+    function resetZoom() { fitToScreen(); } 
 
     // Écouteur pour réajuster si on tourne le téléphone
     window.addEventListener('resize', () => {
