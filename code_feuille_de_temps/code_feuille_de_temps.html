@@ -136,47 +136,95 @@
             .zoom-controls { display: none !important; }
         }
         
-        /* CORRECTIF DÉFINITIF IMPRESSION (LIGNES FORCÉES + BLOCAGE HAUTEUR) */
+        /* ✅ ÉTAPE 1 : NOUVEAU MEDIA PRINT */
         @media print {
-            @page { margin: 0 !important; size: letter portrait !important; }
-            
-            html, body, .main-content { 
-                height: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; overflow: hidden !important; 
-            }
-            
-            .sidebar, .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay { 
-                display: none !important; 
-            }
-            
-            #view-editor, .scroll-area, #zoom-wrapper { 
-                display: block !important; width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; transform: none !important; position: static !important; overflow: hidden !important;
-            }
-            
-            .page { 
-                width: 8.5in !important; 
-                height: 10.5in !important; /* Force constraint physique pour éviter la 2eme page */
-                margin: 0 !important; 
-                padding: 0.25in 0.4in !important; /* Marges de sécurité */
-                page-break-after: avoid !important; page-break-inside: avoid !important; 
-                box-shadow: none !important; border: none !important; 
-                overflow: hidden !important; /* L'arme secrète : empêche tout débordement de créer une 2e page */
-                display: block !important; box-sizing: border-box !important; background: white !important;
-            }
-            
-            /* FORCE LES BORDURES DU TABLEAU */
-            .temps-table { border-collapse: collapse !important; width: 100% !important; border: 1px solid black !important; margin-top: 10px !important;}
-            .temps-table th, .temps-table td { border: 1px solid black !important; padding: 0 !important; }
-            
-            /* Ajustement pour que les 20 lignes rentrent parfaitement dans le 10.5in */
-            .temps-table td { height: 26px !important; } 
-            
-            .temps-table td, .ts-field, .cell-input { background-color: transparent !important; }
-            .temps-table th { color: black !important; background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 5px !important;}
 
-            input::placeholder { color: transparent !important; }
-            ::-webkit-input-placeholder { color: transparent !important; }
-            :-moz-placeholder { color: transparent !important; }
-            ::-moz-placeholder { color: transparent !important; }
+            @page {
+                size: letter portrait;
+                margin: 0;
+            }
+
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 8.5in !important;
+                height: 11in !important;
+                overflow: hidden !important;
+
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* ❌ ON DÉTRUIT LE ZOOM (CAUSE #1 DU BUG) */
+            #zoom-wrapper {
+                transform: none !important;
+                position: static !important;
+                width: 100% !important;
+            }
+
+            .scroll-area {
+                overflow: visible !important;
+                height: auto !important;
+            }
+
+            /* ❌ CACHE TOUT LE UI */
+            .top-bar,
+            .zoom-controls,
+            #view-dashboard,
+            .custom-modal-overlay {
+                display: none !important;
+            }
+
+            /* ✅ PAGE PARFAITE */
+            .page {
+                width: 8.5in !important;
+                height: 11in !important;
+                margin: 0 !important;
+                padding: 0.4in !important;
+                box-sizing: border-box !important;
+
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+
+                overflow: hidden !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            /* ✅ TABLEAU FIXÉ */
+            .temps-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                border: 1px solid black !important;
+            }
+
+            .temps-table th,
+            .temps-table td {
+                border: 1px solid black !important;
+            }
+
+            /* ✅ AJUSTEMENT HAUTEUR POUR 1 PAGE */
+            .temps-table td {
+                height: 26px !important;
+            }
+
+            /* ❌ PAS DE COULEUR BLEUE (bug mobile print) */
+            .temps-table td,
+            .ts-field,
+            .cell-input {
+                background: transparent !important;
+            }
+
+            .temps-table th {
+                background: white !important;
+                color: black !important;
+            }
+
+            /* ❌ CACHE PLACEHOLDER */
+            input::placeholder {
+                color: transparent !important;
+            }
         }
     </style>
 </head>
@@ -217,7 +265,8 @@
 
             <div style="flex:1" class="spacer-mobile"></div>
             
-            <button class="action-btn" id="btn-print" onclick="window.print()">🖨️ Imprimer</button>
+            <button class="action-btn" id="btn-print" onclick="printFix()">🖨️ Imprimer</button>
+            
             <button class="action-btn" id="btn-add-page" onclick="addPage()">➕ Page</button>
             <button class="action-btn" id="btn-dup-page" onclick="duplicatePage()">📄 Dupliquer</button>
             <button class="action-btn" id="btn-del-page" onclick="deletePage()">➖ Page</button>
@@ -650,6 +699,34 @@
         
         currentZoom = targetZoom; 
         updateZoom(); 
+    }
+
+    // ✅ ÉTAPE 2 : SCRIPT ULTRA IMPORTANT POUR L'IMPRESSION MOBILE
+    window.addEventListener('beforeprint', () => {
+        const wrap = document.getElementById('zoom-wrapper');
+        if(wrap) {
+            wrap.dataset.oldTransform = wrap.style.transform;
+            wrap.style.transform = 'none';
+        }
+    });
+
+    window.addEventListener('afterprint', () => {
+        const wrap = document.getElementById('zoom-wrapper');
+        if(wrap) {
+            wrap.style.transform = wrap.dataset.oldTransform || '';
+        }
+    });
+
+    // ✅ NOUVELLE FONCTION POUR BOUTON IMPRIMER
+    function printFix() {
+        const wrap = document.getElementById('zoom-wrapper');
+        if(wrap) {
+            wrap.style.transform = 'none'; // reset zoom AVANT impression
+        }
+        
+        setTimeout(() => {
+            window.print();
+        }, 100);
     }
     
     let initialDistance = 0, initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
