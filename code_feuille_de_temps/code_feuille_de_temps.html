@@ -45,7 +45,6 @@
             display: flex; flex-direction: column; gap: 20px;
         }
 
-        /* CORRECTION DES ESPACEMENTS ICI (Retrait des margin-bottom) */
         .dash-header { display: flex; justify-content: space-between; align-items: center; }
         .dash-title h1 { margin: 0; font-size: 28px; color: white; }
         .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
@@ -136,15 +135,64 @@
             .zoom-controls { display: none !important; }
         }
         
+        /* NOUVEAU BLOC @media print POUR FIXER LA VERSION MOBILE */
         @media print {
-            @page { margin: 0; size: letter; }
-            html, body { margin: 0 !important; padding: 0 !important; height: auto !important; width: 100% !important; background: white !important; }
-            .sidebar, .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay { display: none !important; }
-            #view-editor { display: block !important; width: 100% !important; height: auto !important; }
-            .scroll-area { overflow: visible !important; padding: 0 !important; height: auto !important; display: block !important; }
-            #zoom-wrapper { margin: 0 !important; padding: 0 !important; transform: none !important; width: 100% !important; display: block !important; }
-            .page { box-shadow: none !important; margin: 0 auto !important; width: 100% !important; max-width: 100% !important; height: auto !important; min-height: 11in !important; page-break-after: always !important; padding: 0.5in !important; display: block !important; }
-            .temps-table td, .ts-field, .cell-input { background-color: transparent !important; }
+            @page { 
+                margin: 0; 
+                size: letter portrait; 
+            }
+            html, body { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                height: auto !important; 
+                /* Force la largeur stricte d'une feuille pour éviter l'écrasement mobile */
+                width: 8.5in !important; 
+                min-width: 8.5in !important;
+                background: white !important; 
+            }
+            .sidebar, .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay { 
+                display: none !important; 
+            }
+            #view-editor { 
+                display: block !important; 
+                width: 8.5in !important; 
+                height: auto !important; 
+            }
+            .scroll-area { 
+                overflow: visible !important; 
+                padding: 0 !important; 
+                height: auto !important; 
+                display: block !important; 
+            }
+            #zoom-wrapper { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                transform: none !important; 
+                width: 8.5in !important; 
+                display: block !important; 
+            }
+            .page { 
+                box-shadow: none !important; 
+                margin: 0 auto !important; 
+                /* Utiliser 8.5in au lieu de 100% empêche le tableau de casser */
+                width: 8.5in !important; 
+                max-width: none !important; 
+                min-height: 11in !important; 
+                page-break-after: always !important; 
+                padding: 0.5in !important; 
+                display: block !important; 
+                box-sizing: border-box !important;
+            }
+            .temps-table td, .ts-field, .cell-input { 
+                background-color: transparent !important; 
+            }
+            /* Assure que les bordures et les couleurs de fond de la table impriment bien */
+            .temps-table th { 
+                color: black !important; 
+                background-color: white !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
         }
     </style>
 </head>
