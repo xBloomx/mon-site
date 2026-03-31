@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boîte Courriel - F.Dussault</title>
+    
+    <script>
+        if (window.self === window.top) { window.location.href = '../login.html'; }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* =========================================
+           1. VARIABLES & THEME
+           ========================================= */
+        :root { 
+            --app-bg: #1e1f26;
+            --text-light: #e0e0e0;
+            --card-bg: #2b2c36;
+            --btn-yellow: #fcca46; 
+            --btn-red: #ff4d4d;
+            --btn-green: #28a745;
+            --btn-blue: #3498db;
+            --border-color: #444;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden;
+        }
+
+        .svg-icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+
+        .main-content {
+            flex: 1; display: flex; flex-direction: column; position: relative;
+            background-color: var(--app-bg); overflow: hidden;
+        }
+
+        #view-dashboard { padding: 20px 30px; height: 100%; display: flex; flex-direction: column; gap: 15px; }
+
+        .dash-header { display: flex; justify-content: space-between; align-items: center; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        
+        .btn-compose { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-compose:hover { background-color: #ffd66b; transform: translateY(-2px); }
+
+        /* =========================================
+           2. STRUCTURE MESSAGERIE (GRILLE)
+           ========================================= */
+        .email-layout {
+            display: flex; flex: 1; gap: 20px; overflow: hidden;
+            background: var(--card-bg); border-radius: 15px; border: 1px solid var(--border-color);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* PANNEAU DOSSIERS (GAUCHE) */
+        .email-folders {
+            width: 220px; background: #22232c; border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; padding: 20px 0;
+        }
+        .folder-item {
+            padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+            color: #aaa; cursor: pointer; transition: 0.2s; border-left: 4px solid transparent;
+        }
+        .folder-item:hover { background: #2b2c36; color: white; }
+        .folder-item.active { background: #2b2c36; color: var(--btn-yellow); border-left-color: var(--btn-yellow); font-weight: bold;}
+        .folder-item-left { display: flex; align-items: center; gap: 12px; }
+        .badge-unread { background: var(--btn-red); color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+
+        /* LISTE DES COURRIELS (MILIEU) */
+        .email-list-col {
+            width: 350px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column;
+            background: var(--card-bg);
+        }
+        .email-toolbar { padding: 15px; border-bottom: 1px solid var(--border-color); display: flex; gap: 10px; }
+        .search-box { position: relative; flex: 1; }
+        .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 10px 10px 10px 35px; border-radius: 8px; outline: none; }
+        .search-box svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888; }
+        
+        .email-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        .email-item {
+            padding: 15px; border-bottom: 1px solid #333; cursor: pointer; transition: 0.2s;
+            position: relative; border-left: 3px solid transparent;
+        }
+        .email-item:hover { background: #343542; }
+        .email-item.active { background: #343542; border-left-color: var(--btn-blue); }
+        .email-item.unread .email-subject { font-weight: bold; color: white; }
+        .email-item.unread .email-sender { font-weight: bold; color: white; }
+        .email-item.unread::after {
+            content: ''; position: absolute; top: 18px; right: 15px;
+            width: 8px; height: 8px; background: var(--btn-blue); border-radius: 50%;
+        }
+
+        .email-sender { font-size: 14px; color: #ccc; margin-bottom: 5px; padding-right: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .email-subject { font-size: 13px; color: #aaa; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .email-preview-text { font-size: 12px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .email-date { font-size: 11px; color: #666; position: absolute; top: 15px; right: 15px; }
+
+        /* LECTURE DU COURRIEL (DROITE) */
+        .email-view-col {
+            flex: 1; display: flex; flex-direction: column; background: var(--app-bg);
+            position: relative;
+        }
+        .empty-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #666; }
+        .empty-view svg { width: 60px; height: 60px; margin-bottom: 15px; opacity: 0.5; }
+
+        .reading-pane { display: none; flex-direction: column; height: 100%; }
+        .reading-toolbar { padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; background: var(--card-bg); }
+        .reading-actions { display: flex; gap: 10px; }
+        .btn-tool { background: transparent; border: 1px solid #444; color: #aaa; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-tool:hover { background: #444; color: white; }
+        
+        .reading-header { padding: 25px 30px; border-bottom: 1px solid #333; }
+        .reading-subject { font-size: 22px; color: white; margin: 0 0 15px 0; }
+        .reading-meta { display: flex; justify-content: space-between; align-items: center; }
+        .reading-sender-info { display: flex; align-items: center; gap: 12px; }
+        .sender-avatar { width: 40px; height: 40px; background: var(--btn-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 16px;}
+        .sender-name { color: white; font-weight: bold; font-size: 15px; }
+        .sender-email { color: #888; font-size: 13px; }
+        .reading-date { color: #888; font-size: 13px; }
+
+        .reading-body { padding: 30px; flex: 1; overflow-y: auto; color: #ccc; line-height: 1.6; font-size: 15px; white-space: pre-wrap; }
+
+        /* MODALE NOUVEAU MESSAGE */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; z-index: 5000; justify-content: center; align-items: center; }
+        .compose-card { background: var(--card-bg); width: 90%; max-width: 600px; border-radius: 15px; border: 1px solid #555; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
+        .compose-header { background: #22232c; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; }
+        .compose-header h3 { margin: 0; color: white; font-size: 16px; }
+        .btn-close { background: none; border: none; color: #888; font-size: 24px; cursor: pointer; line-height: 1; padding: 0; }
+        
+        .compose-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .compose-field { display: flex; border-bottom: 1px solid #444; padding-bottom: 10px; align-items: center;}
+        .compose-field label { width: 60px; color: #aaa; font-size: 14px; }
+        .compose-field input { flex: 1; background: transparent; border: none; color: white; outline: none; font-size: 14px; }
+        
+        .compose-textarea { flex: 1; background: transparent; border: none; color: white; outline: none; font-size: 15px; min-height: 200px; resize: none; font-family: inherit; line-height: 1.5; margin-top: 10px;}
+        
+        .compose-footer { padding: 15px 20px; border-top: 1px solid #444; display: flex; justify-content: space-between; align-items: center; background: #22232c; }
+        .btn-send { background: var(--btn-blue); color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;}
+        .btn-send:hover { background: #2980b9; }
+
+        .btn-mobile-back { display: none; }
+
+        @media (max-width: 900px) {
+            .email-folders { display: none; } /* Caché sur mobile, on garde juste la boîte de réception */
+            .email-list-col { width: 100%; border-right: none; }
+            .email-view-col { display: none; position: absolute; top:0; left:0; width:100%; height:100%; z-index:10; }
+            .show-reading .email-list-col { display: none; }
+            .show-reading .email-view-col { display: flex; }
+            .btn-mobile-back { display: flex; background: transparent; border: none; color: var(--btn-yellow); cursor: pointer; align-items: center; gap: 5px; font-weight: bold; padding: 0; margin-right: 15px;}
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .btn-compose { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="security-loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--app-bg); z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.4s ease;">
+    <img src="../assets/logo+nom.png" alt="Logo F.Dussault" style="width: 220px; height: auto; margin-bottom: 25px; display: block; filter: none; padding: 0;">
+    <svg width="200" height="3" viewBox="0 0 200 3">
+        <rect width="200" height="3" fill="rgba(255,255,255,0.05)" rx="1.5"></rect>
+        <rect width="70" height="3" fill="var(--btn-yellow)" rx="1.5">
+            <animate attributeName="x" values="-70; 200" dur="1.7s" repeatCount="indefinite" />
+        </rect>
+    </svg>
+</div>
+<svg style="display: none;">
+    <symbol id="icon-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><polyline points="3 7 12 13 21 7"></polyline></symbol>
+    
+    <symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></symbol>
+    <symbol id="icon-chevron-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 0 20.49 15"></path></symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol>
+</svg>
+
+<div class="main-content">
+    <div id="view-dashboard">
+        
+        <div class="dash-header">
+            <div class="dash-title">
+                <h1>Boîte Courriel</h1>
+                <p>Gestion des emails de l'entreprise</p>
+            </div>
+            <button class="btn-compose" onclick="openComposeModal()">
+                <svg class="svg-icon"><use href="#icon-edit"></use></svg> Rédiger un message
+            </button>
+        </div>
+
+        <div class="email-layout" id="emailLayout">
+            
+            <div class="email-folders">
+                <div class="folder-item active" onclick="switchFolder('inbox')">
+                    <div class="folder-item-left"><svg class="svg-icon"><use href="#icon-mail"></use></svg> Boîte de réception</div>
+                    <span class="badge-unread" id="unreadCount">2</span>
+                </div>
+                <div class="folder-item" onclick="switchFolder('sent')">
+                    <div class="folder-item-left"><svg class="svg-icon"><use href="#icon-send"></use></svg> Éléments envoyés</div>
+                </div>
+                <div class="folder-item" onclick="switchFolder('trash')">
+                    <div class="folder-item-left"><svg class="svg-icon"><use href="#icon-trash"></use></svg> Corbeille</div>
+                </div>
+            </div>
+
+            <div class="email-list-col">
+                <div class="email-toolbar">
+                    <div class="search-box">
+                        <svg class="svg-icon"><use href="#icon-search"></use></svg>
+                        <input type="text" id="emailSearch" placeholder="Rechercher..." onkeyup="filterEmails()">
+                    </div>
+                </div>
+                <div class="email-list" id="emailList">
+                    </div>
+            </div>
+
+            <div class="email-view-col">
+                <div class="empty-view" id="emptyView">
+                    <svg class="svg-icon"><use href="#icon-mail"></use></svg>
+                    <p>Sélectionnez un message pour le lire</p>
+                </div>
+                
+                <div class="reading-pane" id="readingPane">
+                    <div class="reading-toolbar">
+                        <button class="btn-mobile-back" onclick="closeReadingPane()">
+                            <svg class="svg-icon"><use href="#icon-chevron-left"></use></svg> Retour
+                        </button>
+                        <div class="reading-actions" style="margin-left: auto;">
+                            <button class="btn-tool" title="Répondre" onclick="replyEmail()"><svg class="svg-icon"><use href="#icon-edit"></use></svg></button>
+                            <button class="btn-tool" title="Supprimer" onclick="deleteCurrentEmail()"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>
+                        </div>
+                    </div>
+                    
+                    <div class="reading-header">
+                        <h2 class="reading-subject" id="readSubject">Sujet du courriel</h2>
+                        <div class="reading-meta">
+                            <div class="reading-sender-info">
+                                <div class="sender-avatar" id="readAvatar">?</div>
+                                <div>
+                                    <div class="sender-name" id="readSender">Nom de l'expéditeur</div>
+                                    <div class="sender-email" id="readEmailAddress">email@domaine.com</div>
+                                </div>
+                            </div>
+                            <div class="reading-date" id="readDate">Date</div>
+                        </div>
+                    </div>
+                    
+                    <div class="reading-body" id="readBody">
+                        Contenu du message...
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="composeModal">
+    <div class="compose-card">
+        <div class="compose-header">
+            <h3>Nouveau message</h3>
+            <button class="btn-close" onclick="closeComposeModal()">&times;</button>
+        </div>
+        <div class="compose-body">
+            <div class="compose-field">
+                <label>À :</label>
+                <input type="email" id="composeTo" placeholder="client@entreprise.com">
+            </div>
+            <div class="compose-field">
+                <label>Sujet :</label>
+                <input type="text" id="composeSubject" placeholder="Objet du message">
+            </div>
+            <textarea class="compose-textarea" id="composeBody" placeholder="Écrivez votre message ici..."></textarea>
+        </div>
+        <div class="compose-footer">
+            <button class="btn-tool" style="border:none;" onclick="alert('Fonction joindre bientôt disponible')"><svg class="svg-icon"><use href="#icon-paperclip"></use></svg></button>
+            <button class="btn-send" onclick="sendEmail()">
+                Envoyer <svg class="svg-icon"><use href="#icon-send"></use></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const supabaseUrl = 'https://ipxmloqgoukieuerbxtl.supabase.co';
+    const supabaseKey = 'sb_publishable_jVOmm2g3WLxtIrr-rVRvtA_aWaUtB-E';
+    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    let myUserId = 'local-user';
+    let myUserName = 'Employé';
+
+    // Faux courriels pour l'interface visuelle
+    let emailsData = [
+        {
+            id: 1,
+            folder: 'inbox',
+            sender: 'Ville de Montréal',
+            emailAddress: 'permis@montreal.ca',
+            subject: 'Approbation du permis #84920',
+            body: 'Bonjour F.Dussault,\n\nVotre demande de permis pour le chantier de la rue Sherbrooke a été approuvée.\n\nVeuillez trouver en pièce jointe les documents officiels (Simulation).\n\nCordialement,\nService d\'urbanisme',
+            date: '10:30',
+            fullDate: 'Aujourd\'hui, 10:30',
+            unread: true
+        },
+        {
+            id: 2,
+            folder: 'inbox',
+            sender: 'Fournisseur Deschênes',
+            emailAddress: 'commandes@deschenes.ca',
+            subject: 'Confirmation de commande PO-260415-4029',
+            body: 'Bonjour,\n\nNous avons bien reçu votre bon de commande.\nLe matériel sera livré directement sur le chantier ce vendredi matin avant 8h00.\n\nMerci de faire affaire avec nous.',
+            date: 'Hier',
+            fullDate: 'Hier, 14:15',
+            unread: true
+        },
+        {
+            id: 3,
+            folder: 'inbox',
+            sender: 'Marie (Client résidentiel)',
+            emailAddress: 'marie.tremblay@gmail.com',
+            subject: 'Fuite au sous-sol',
+            body: 'Bonjour,\n\nSuite à votre passage la semaine dernière, tout fonctionne parfaitement ! La fuite est complètement réparée et le plancher est sec.\n\nJe voulais juste vous remercier pour votre rapidité.\nJe garde votre numéro !',
+            date: 'Lun',
+            fullDate: 'Lundi, 09:12',
+            unread: false
+        }
+    ];
+
+    let currentFolder = 'inbox';
+    let currentEmailId = null;
+
+    async function initAuth() {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
+                window.top.location.href = '../login.html';
+                return;
+            }
+
+            myUserId = user.id;
+            const { data: profil } = await supabaseClient.from('profils').select('prenom_nom').eq('id', user.id).maybeSingle();
+            if (profil) {
+                myUserName = profil.prenom_nom || user.email.split('@')[0];
+            }
+            
+            // Initialisation de l'UI
+            renderEmailList();
+            updateUnreadCount();
+
+        } catch (error) {
+            console.error("Erreur d'initialisation :", error);
+            // On charge quand même le visuel pour ne pas bloquer l'utilisateur
+            renderEmailList();
+        } finally {
+            // On enlève le rideau local du sous-fichier
+            const loader = document.getElementById('security-loader');
+            if (loader) loader.style.display = 'none';
+            
+            // On avertit le grand patron (index.html) qu'on est à 100% prêt !
+            window.parent.postMessage({ type: 'module_ready', module: 'view-courriel' }, '*');
+        }
+    }
+
+    function switchFolder(folder) {
+        currentFolder = folder;
+        document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+        currentEmailId = null;
+        closeReadingPane();
+        renderEmailList();
+    }
+
+    function renderEmailList() {
+        const container = document.getElementById('emailList');
+        const searchTerm = document.getElementById('emailSearch').value.toLowerCase();
+        container.innerHTML = '';
+
+        const filteredEmails = emailsData.filter(e => 
+            e.folder === currentFolder &&
+            (e.subject.toLowerCase().includes(searchTerm) || e.sender.toLowerCase().includes(searchTerm))
+        );
+
+        if (filteredEmails.length === 0) {
+            container.innerHTML = '<div style="padding:20px; text-align:center; color:#888; font-style:italic;">Dossier vide</div>';
+            return;
+        }
+
+        filteredEmails.sort((a, b) => b.id - a.id).forEach(email => {
+            const isActive = email.id === currentEmailId ? 'active' : '';
+            const isUnread = email.unread ? 'unread' : '';
+            const preview = email.body.substring(0, 40).replace(/\n/g, ' ') + '...';
+
+            const div = document.createElement('div');
+            div.className = `email-item ${isActive} ${isUnread}`;
+            div.onclick = () => openEmail(email.id);
+            
+            div.innerHTML = `
+                <div class="email-sender">${email.sender}</div>
+                <div class="email-subject">${email.subject}</div>
+                <div class="email-preview-text">${preview}</div>
+                <div class="email-date">${email.date}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function filterEmails() {
+        renderEmailList();
+    }
+
+    function openEmail(id) {
+        currentEmailId = id;
+        const email = emailsData.find(e => e.id === id);
+        if (!email) return;
+
+        email.unread = false; // Marquer comme lu
+        updateUnreadCount();
+        renderEmailList();
+
+        document.getElementById('readSubject').textContent = email.subject;
+        document.getElementById('readSender').textContent = email.sender;
+        document.getElementById('readEmailAddress').textContent = email.emailAddress;
+        document.getElementById('readDate').textContent = email.fullDate;
+        document.getElementById('readBody').textContent = email.body;
+        document.getElementById('readAvatar').textContent = email.sender.charAt(0).toUpperCase();
+
+        document.getElementById('emptyView').style.display = 'none';
+        document.getElementById('readingPane').style.display = 'flex';
+
+        // Pour mobile
+        document.getElementById('emailLayout').classList.add('show-reading');
+    }
+
+    function closeReadingPane() {
+        document.getElementById('emptyView').style.display = 'flex';
+        document.getElementById('readingPane').style.display = 'none';
+        document.getElementById('emailLayout').classList.remove('show-reading');
+        currentEmailId = null;
+        renderEmailList();
+    }
+
+    function updateUnreadCount() {
+        const count = emailsData.filter(e => e.folder === 'inbox' && e.unread).length;
+        const badge = document.getElementById('unreadCount');
+        if (count > 0) {
+            badge.style.display = 'inline-block';
+            badge.textContent = count;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    function deleteCurrentEmail() {
+        if (!currentEmailId) return;
+        const email = emailsData.find(e => e.id === currentEmailId);
+        if (email) {
+            if (email.folder === 'trash') {
+                emailsData = emailsData.filter(e => e.id !== currentEmailId); // Definitif
+            } else {
+                email.folder = 'trash'; // Corbeille
+            }
+            closeReadingPane();
+        }
+    }
+
+    function openComposeModal() {
+        document.getElementById('composeTo').value = '';
+        document.getElementById('composeSubject').value = '';
+        document.getElementById('composeBody').value = '';
+        document.getElementById('composeModal').style.display = 'flex';
+    }
+
+    function closeComposeModal() {
+        document.getElementById('composeModal').style.display = 'none';
+    }
+
+    function replyEmail() {
+        if (!currentEmailId) return;
+        const email = emailsData.find(e => e.id === currentEmailId);
+        if (email) {
+            document.getElementById('composeTo').value = email.emailAddress;
+            document.getElementById('composeSubject').value = 'Re: ' + email.subject;
+            document.getElementById('composeBody').value = '\n\n--- Message original ---\nDe: ' + email.sender + '\n' + email.body;
+            document.getElementById('composeModal').style.display = 'flex';
+        }
+    }
+
+    function sendEmail() {
+        const to = document.getElementById('composeTo').value.trim();
+        const subject = document.getElementById('composeSubject').value.trim();
+        const body = document.getElementById('composeBody').value.trim();
+
+        if (!to) {
+            alert('Veuillez entrer une adresse destinataire.');
+            return;
+        }
+
+        // Ajouter aux éléments envoyés
+        emailsData.push({
+            id: Date.now(),
+            folder: 'sent',
+            sender: 'Moi (' + myUserName + ')',
+            emailAddress: to,
+            subject: subject || '(Sans objet)',
+            body: body,
+            date: 'À l\'instant',
+            fullDate: 'Aujourd\'hui',
+            unread: false
+        });
+
+        closeComposeModal();
+        if (currentFolder === 'sent') renderEmailList();
+        
+        // Explication technique pour le propriétaire
+        alert("Message enregistré dans les Éléments Envoyés.\n\nNOTE TECHNIQUE : Pour que ce message soit RÉELLEMENT envoyé sur internet, il faudra lier la base de données Supabase à un service d'envoi comme Resend, SendGrid ou Zapier.");
+    }
+
+    // Démarrage
+    window.onload = initAuth;
+</script>
+</body>
+</html>
