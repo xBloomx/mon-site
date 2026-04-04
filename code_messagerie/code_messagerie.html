@@ -562,41 +562,26 @@
 
     const allEmployees = [
         { id: 'emp1', name: 'Marc Tremblay', initials: 'MT' },
-        { id: 'emp2', name: 'Jean Tremblay', initials: 'JT' },
-        { id: 'emp3', name: 'Sophie Martin', initials: 'SM' },
-        { id: 'emp4', name: 'Alexandre Dubois', initials: 'AD' },
-        { id: 'emp5', name: 'Lucie Bélanger', initials: 'LB' }
+        { id: 'emp2', name: 'Jean Tremblay', initials: 'JT' }
     ];
 
+    // On garde tes données fictives pour les chats privés, mais le "global" sera écrasé par Supabase
     const conversationsData = {
         'global': {
             name: 'Équipe (Général)',
-            status: '🟢 Tous les employés',
+            status: '🟢 Connecté à Supabase',
             isGroup: true,
-            messages: [
-                { id: 1, sender: 'Marc Tremblay', text: "Salut l'équipe, n'oubliez pas d'envoyer vos heures svp.", time: '10:42', isMine: false, type: 'text', reaction: null }
-            ]
+            messages: [] // Sera rempli par la base de données
         },
         'private_jt': {
-            name: 'Jean Tremblay',
-            status: 'En ligne',
-            isGroup: false,
-            messages: [
-                { id: 1, sender: 'Jean Tremblay', text: 'facture_matériaux.pdf', time: '11:02', isMine: false, type: 'file', fileName: 'facture_matériaux.pdf', fileSize: '1.2 MB', icon: '📄', reaction: '👍' }
-            ]
-        },
-        'private_sm': {
-            name: 'Sophie Martin',
+            name: 'Jean Tremblay (Test Local)',
             status: 'Hors ligne',
             isGroup: false,
-            messages: [
-                { id: 1, sender: 'Sophie Martin', text: 'La cliente a appelé pour confirmer le rendez-vous.', time: 'Hier', isMine: false, type: 'text', reaction: null },
-                { id: 2, sender: 'Moi', text: 'Parfait, je note ça à mon horaire.', time: 'Hier', isMine: true, type: 'text', reaction: '❤️' }
-            ]
+            messages: [{ id: 1, sender: 'Jean Tremblay', text: 'Ceci est un test non connecté.', time: '11:02', isMine: false, type: 'text', reaction: null }]
         }
     };
 
-    // --- 3. LE VIDEUR : CONFIGURATION SUPABASE ET AUTH ---
+    // --- CONFIGURATION SUPABASE ---
     const supabaseUrl = 'https://ipxmloqgoukieuerbxtl.supabase.co';
     const supabaseKey = 'sb_publishable_jVOmm2g3WLxtIrr-rVRvtA_aWaUtB-E';
     const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -604,6 +589,7 @@
     let myUserId = 'local-user';
     let myUserName = 'Moi';
 
+    // 1. INITIALISATION ET AUTHENTIFICATION
     async function initAuth() {
         try {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -615,27 +601,29 @@
 
             myUserId = user.id;
             const { data: profil } = await supabaseClient.from('profils').select('prenom_nom').eq('id', user.id).maybeSingle();
-            if (profil) {
-                myUserName = profil.prenom_nom || user.email.split('@')[0];
+            if (profil && profil.prenom_nom) {
+                myUserName = profil.prenom_nom;
+            } else {
+                myUserName = user.email.split('@')[0];
             }
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
         } finally {
-            // S'assure que le rideau se lève TOUJOURS
             const loader = document.getElementById('security-loader');
             if (loader) loader.style.display = 'none';
             initApp();
-            
-            // Signal au Chef d'orchestre
             window.parent.postMessage({ type: 'module_ready', module: 'view-messagerie' }, '*');
         }
     }
 
-    // --- INITIALISATION DE L'APPLICATION ---
+    // 2. DÉMARRAGE DE L'APPLICATION
     function initApp() {
         renderQuickReactions();
         renderContactList();
         
+        // Charger l'historique depuis Supabase pour le groupe Général
+        chargerMessagesSupabase();
+
         const emojiPicker = document.getElementById('myEmojiPicker');
         if (emojiPicker) {
             emojiPicker.addEventListener('emoji-click', event => {
@@ -652,19 +640,151 @@
         }
     }
 
+    // 3. LECTURE DE L'HISTORIQUE SUPABASE
+    async function chargerMessagesSupabase() {
+        // On va chercher tous les messages, plus le nom du profil attaché grâce à ta clé étrangère (le petit crochet)
+        const { data, error } = await supabaseClient
+            .from('message')
+            .select('id, created_at, contenu, expediteur_id, profils(prenom_nom)')
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            console.error("Erreur Supabase:", error);
+            return;
+        }
+
+        conversationsData['global'].messages = [];
+
+        data.forEach(msgDB => {
+            const date = new Date(msgDB.created_at);
+            const timeStr = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
+            const isMine = msgDB.expediteur_id === myUserId;
+            // On extrait le nom depuis la table profils liée
+            const senderName = msgDB.profils ? msgDB.profils.prenom_nom : 'Inconnu';
+
+            conversationsData['global'].messages.push({
+                id: msgDB.id,
+                sender: senderName,
+                text: msgDB.contenu,
+                time: timeStr,
+                isMine: isMine,
+                type: 'text',
+                reaction: null
+            });
+        });
+
+        if (currentChatId === 'global') {
+            renderMessages(conversationsData['global'].messages, true);
+        }
+        renderContactList();
+        
+        // On active l'écouteur Temps Réel
+        ecouterNouveauxMessages();
+    }
+
+    // 4. LE TEMPS RÉEL (REALTIME)
+    function ecouterNouveauxMessages() {
+        supabaseClient
+            .channel('messagerie-globale')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message' }, async (payload) => {
+                const newMsg = payload.new;
+                
+                // Si c'est notre propre message, on l'a déjà affiché en cliquant sur envoyer
+                if (newMsg.expediteur_id === myUserId) return;
+
+                // On va chercher le nom de la personne qui vient d'écrire
+                const { data: profil } = await supabaseClient.from('profils').select('prenom_nom').eq('id', newMsg.expediteur_id).maybeSingle();
+                const senderName = profil ? profil.prenom_nom : 'Inconnu';
+
+                const date = new Date(newMsg.created_at);
+                const timeStr = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
+
+                conversationsData['global'].messages.push({
+                    id: newMsg.id,
+                    sender: senderName,
+                    text: newMsg.contenu,
+                    time: timeStr,
+                    isMine: false,
+                    type: 'text',
+                    reaction: null
+                });
+
+                if (currentChatId === 'global') {
+                    renderMessages(conversationsData['global'].messages, true);
+                }
+                renderContactList();
+            })
+            .subscribe();
+    }
+
+    // 5. ENVOI DES MESSAGES
+    async function sendMessage() {
+        if(!messageInput) return;
+        const text = messageInput.value.trim();
+        const hasFiles = selectedFiles.length > 0;
+
+        if ((!text && !hasFiles) || !currentChatId) return;
+
+        const activeChat = conversationsData[currentChatId];
+        const now = new Date();
+        const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+
+        // GESTION DU CHAT CONNECTÉ À SUPABASE
+        if (currentChatId === 'global') {
+            if (hasFiles) {
+                showAlert("L'envoi de fichiers nécessite une configuration Supabase Storage (prochaine étape !).");
+                selectedFiles = []; renderPreviews();
+                return;
+            }
+
+            if (text) {
+                // 1. Affichage immédiat pour l'utilisateur (pour que ça paraisse instantané)
+                const tempId = Date.now();
+                activeChat.messages.push({ id: tempId, sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
+                messageInput.value = '';
+                renderMessages(activeChat.messages, true);
+                renderContactList();
+
+                // 2. Envoi silencieux à Supabase en arrière-plan
+                const { error } = await supabaseClient
+                    .from('message')
+                    .insert([{ contenu: text, expediteur_id: myUserId }]);
+
+                if (error) {
+                    console.error("Erreur d'envoi:", error);
+                    showAlert("Erreur lors de l'envoi du message à la base de données.");
+                }
+            }
+        } 
+        // GESTION DES CHATS LOCAUX (Fictifs)
+        else {
+            if (hasFiles) {
+                selectedFiles.forEach(file => {
+                    const isImg = file.type.startsWith('image/');
+                    const newFileMsg = { id: Date.now() + Math.random(), sender: myUserName, time: timeStr, isMine: true, type: isImg ? 'image' : 'file', text: file.name, reaction: null };
+                    if (isImg) { newFileMsg.url = URL.createObjectURL(file); } else { newFileMsg.fileName = file.name; newFileMsg.fileSize = Math.round(file.size / 1024) + ' KB'; }
+                    activeChat.messages.push(newFileMsg);
+                });
+            }
+            if (text) {
+                activeChat.messages.push({ id: Date.now(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
+            }
+            messageInput.value = ''; selectedFiles = []; renderPreviews(); 
+            renderMessages(activeChat.messages, true); renderContactList();
+        }
+    }
+
+    // --- LE RESTE DES FONCTIONS UI (Inchangées, mais nécessaires) ---
     function showAlert(msg) {
         document.getElementById('alertMessage').innerHTML = msg;
         document.getElementById('alertModal').style.display = 'flex';
-        // Cache le menu jaune
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
 
-    // --- SUPPRESSION DE CONVERSATION ---
     function askDeleteChat(chatId) {
         if (chatId === 'global') return; 
         currentChatIdToDelete = chatId;
         document.getElementById('confirmDeleteModal').style.display = 'flex';
-        // Cache le menu jaune
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
 
@@ -672,28 +792,23 @@
         if (currentChatIdToDelete && currentChatIdToDelete !== 'global') {
             delete conversationsData[currentChatIdToDelete];
             closeModal('confirmDeleteModal');
-            
             if (currentChatId === currentChatIdToDelete) {
-                // Si la conversation supprimée était ouverte, on réinitialise l'affichage
                 currentChatId = null;
                 document.getElementById('chatHeaderName').textContent = "Sélectionnez une discussion";
                 document.getElementById('chatHeaderStatus').textContent = "";
                 document.getElementById('chatHeaderAvatar').innerHTML = "";
                 document.getElementById('chatHeaderAvatar').className = "avatar";
-                document.getElementById('chatHeaderAvatar').style.background = "transparent";
                 document.getElementById('chatMessages').innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Aucune conversation sélectionnée.</div>';
-                closeChat(); // S'assure de revenir à la liste sur mobile
+                closeChat(); 
             }
             renderContactList();
             currentChatIdToDelete = null;
         }
     }
 
-    // --- NOUVELLE DISCUSSION ---
     function openNewChatModal() {
         const list = document.getElementById('newChatUserList');
         list.innerHTML = '';
-        
         allEmployees.forEach(emp => {
             list.innerHTML += `
                 <label class="user-select-row" id="row-${emp.id}">
@@ -706,12 +821,9 @@
                 </label>
             `;
         });
-        
         document.getElementById('newGroupName').value = '';
         document.getElementById('groupNameGroup').classList.remove('show');
         document.getElementById('newChatModal').style.display = 'flex';
-        
-        // Cache le menu jaune pendant la création d'un groupe
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
 
@@ -732,100 +844,18 @@
     function createNewChat() {
         const selected = document.querySelectorAll('.new-chat-cb:checked');
         if (selected.length === 0) return showAlert("Veuillez sélectionner au moins une personne.");
-
         const newChatId = 'chat_' + Date.now();
         let newChat = null;
-
         if (selected.length === 1) {
-            const user = selected[0];
-            newChat = {
-                name: user.dataset.name, status: 'Hors ligne', isGroup: false, messages: []
-            };
+            newChat = { name: selected[0].dataset.name, status: 'Hors ligne (Local)', isGroup: false, messages: [] };
         } else {
-            let groupName = document.getElementById('newGroupName').value.trim();
-            if (!groupName) groupName = Array.from(selected).map(cb => cb.dataset.name.split(' ')[0]).join(', ');
-            newChat = {
-                name: groupName, status: '🟢 ' + selected.length + ' participants', isGroup: true, messages: []
-            };
+            let groupName = document.getElementById('newGroupName').value.trim() || Array.from(selected).map(cb => cb.dataset.name.split(' ')[0]).join(', ');
+            newChat = { name: groupName, status: '🟢 Local', isGroup: true, messages: [] };
         }
-
         conversationsData[newChatId] = newChat;
         closeModal('newChatModal');
         renderContactList();
         openChat(newChatId);
-    }
-
-    // --- LISTE CONTACTS & SWIPE ---
-    function attachSwipeEvents() {
-        const items = document.querySelectorAll('.contact-item');
-        items.forEach(item => {
-            const chatId = item.id.replace('contact-', '');
-            if (chatId === 'global') return; 
-
-            let startX = 0;
-            let currentX = 0;
-            let isDragging = false;
-
-            item.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-                currentX = startX;
-                isDragging = true;
-                item.style.transition = 'none';
-            }, {passive: true});
-
-            item.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                currentX = e.touches[0].clientX;
-                let deltaX = currentX - startX;
-                if (deltaX < -80) deltaX = -80; 
-                if (deltaX > 0) deltaX = 0;   
-                item.style.transform = `translateX(${deltaX}px)`;
-            }, {passive: true});
-
-            item.addEventListener('touchend', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                item.style.transition = 'transform 0.3s ease';
-                let deltaX = currentX - startX;
-                if (deltaX < -40) {
-                    item.style.transform = `translateX(-80px)`;
-                } else {
-                    item.style.transform = `translateX(0px)`;
-                }
-            });
-
-            item.addEventListener('mousedown', (e) => {
-                startX = e.clientX;
-                currentX = startX;
-                isDragging = true;
-                item.style.transition = 'none';
-            });
-            item.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                currentX = e.clientX;
-                let deltaX = currentX - startX;
-                if (deltaX < -80) deltaX = -80;
-                if (deltaX > 0) deltaX = 0;
-                item.style.transform = `translateX(${deltaX}px)`;
-            });
-            item.addEventListener('mouseup', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                item.style.transition = 'transform 0.3s ease';
-                let deltaX = currentX - startX;
-                if (deltaX < -40) {
-                    item.style.transform = `translateX(-80px)`;
-                } else {
-                    item.style.transform = `translateX(0px)`;
-                }
-            });
-            item.addEventListener('mouseleave', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                item.style.transition = 'transform 0.3s ease';
-                item.style.transform = `translateX(0px)`;
-            });
-        });
     }
 
     function renderContactList() {
@@ -837,9 +867,6 @@
             const isActive = id === currentChatId ? 'active' : '';
             const avatarLet = chat.isGroup ? `<svg class="svg-icon"><use href="#icon-users"></use></svg>` : (chat.name ? chat.name.charAt(0).toUpperCase() : '?');
             const avatarClass = chat.isGroup ? 'avatar-group' : '';
-            const unreadCount = chat.unread || 0;
-            const notifHtml = unreadCount > 0 ? `<div class="avatar-notif">${unreadCount}</div>` : '';
-            
             let lastMsg = 'Nouvelle discussion';
             let lastTime = '';
             if (chat.messages && chat.messages.length > 0) {
@@ -847,18 +874,13 @@
                 lastMsg = lastM.type === 'text' ? lastM.text : (lastM.type === 'image' ? '📷 Image' : '📎 Fichier');
                 lastTime = lastM.time;
             }
-
-            const deleteBg = id !== 'global' ? `
-                <div class="delete-btn-bg" onclick="askDeleteChat('${id}')" title="Supprimer">
-                    <svg class="svg-icon"><use href="#icon-trash"></use></svg>
-                </div>
-            ` : '';
+            const deleteBg = id !== 'global' ? `<div class="delete-btn-bg" onclick="askDeleteChat('${id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg></div>` : '';
 
             list.insertAdjacentHTML('beforeend', `
                 <div class="contact-wrapper" id="wrapper-${id}">
                     ${deleteBg}
                     <div class="contact-item ${isActive}" id="contact-${id}" onclick="openChat('${id}', event)">
-                        <div class="avatar ${avatarClass}">${avatarLet}${notifHtml}</div>
+                        <div class="avatar ${avatarClass}">${avatarLet}</div>
                         <div class="contact-info">
                             <div class="contact-name"><span>${chat.name}</span> <span class="contact-time">${lastTime}</span></div>
                             <div class="contact-last-msg">${chat.messages && chat.messages.length > 0 && chat.messages[chat.messages.length-1].isMine ? 'Vous: ' : ''}${lastMsg}</div>
@@ -867,33 +889,19 @@
                 </div>
             `);
         });
-        
-        attachSwipeEvents();
     }
 
     function filterContacts() {
         const searchTerm = document.getElementById('searchContactInput').value.toLowerCase();
         document.querySelectorAll('#contactListContainer .contact-wrapper').forEach(wrapper => {
-            const text = wrapper.textContent.toLowerCase();
-            wrapper.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            wrapper.style.display = wrapper.textContent.toLowerCase().includes(searchTerm) ? 'block' : 'none';
         });
     }
 
-    // --- CHAT ACTIF ---
     function openChat(chatId, e) {
-        const item = document.getElementById(`contact-${chatId}`);
-        if (item && item.style.transform === 'translateX(-80px)') {
-            item.style.transform = 'translateX(0px)';
-            if(e) e.preventDefault();
-            return;
-        }
-
-        document.querySelectorAll('.contact-item').forEach(el => el.style.transform = 'translateX(0px)');
-
         if (!conversationsData[chatId]) return;
         currentChatId = chatId;
         const chat = conversationsData[chatId];
-        chat.unread = 0; 
         
         const nameEl = document.getElementById('chatHeaderName');
         const statusEl = document.getElementById('chatHeaderStatus');
@@ -902,11 +910,10 @@
         if(nameEl) nameEl.textContent = chat.name || "Inconnu";
         if(statusEl) {
             statusEl.textContent = chat.status || "";
-            statusEl.style.color = (chat.status && chat.status.includes('En ligne')) || chat.isGroup ? 'var(--btn-green)' : '#888';
+            statusEl.style.color = (chat.status && chat.status.includes('Connecté')) ? 'var(--btn-green)' : '#888';
         }
         if(avatarBox) {
             avatarBox.className = chat.isGroup ? 'avatar avatar-group' : 'avatar';
-            avatarBox.style.background = "";
             avatarBox.innerHTML = chat.isGroup ? `<svg class="svg-icon"><use href="#icon-users"></use></svg>` : (chat.name ? chat.name.charAt(0).toUpperCase() : '?');
         }
 
@@ -914,15 +921,11 @@
         renderMessages(chat.messages || [], true);
 
         if (dashboard && window.innerWidth <= 900) { dashboard.classList.add('show-chat'); }
-        selectedFiles = []; 
-        if(typeof renderPreviews === 'function') renderPreviews();
+        selectedFiles = []; renderPreviews();
     }
 
-    function closeChat() { 
-        if(dashboard) dashboard.classList.remove('show-chat');
-    }
+    function closeChat() { if(dashboard) dashboard.classList.remove('show-chat'); }
 
-    // --- MESSAGES ---
     function renderMessages(messages, scroll = false) {
         if(!messagesContainer) return;
         const scrollPos = messagesContainer.scrollTop;
@@ -936,15 +939,14 @@
         messages.forEach(msg => {
             const wrapper = document.createElement('div');
             wrapper.className = `message-wrapper ${msg.isMine ? 'sent' : 'received'}`;
-            
             let senderHtml = !msg.isMine ? `<span class="message-sender">${msg.sender}</span>` : '';
-            let reactionHtml = msg.reaction ? `<div class="msg-reaction-badge" onclick="removeReaction(${msg.id})">${msg.reaction}</div>` : '';
+            let reactionHtml = msg.reaction ? `<div class="msg-reaction-badge" onclick="removeReaction('${msg.id}')">${msg.reaction}</div>` : '';
 
             let innerBubble = '';
             if (msg.type === 'text') {
                 innerBubble = `<div class="message-bubble">${msg.text}<span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
             } else if (msg.type === 'image') {
-                innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}" onclick="window.open('${msg.url}')"><span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
+                innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}"><span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
             } else if (msg.type === 'file') {
                 innerBubble = `<div class="message-bubble bubble-file"><div class="file-icon"><svg class="svg-icon" style="width:28px;height:28px;"><use href="#icon-file"></use></svg></div><div class="file-meta"><span class="file-name">${msg.fileName}</span><span class="file-size">${msg.fileSize}</span></div><div class="file-download-icon"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-download"></use></svg></div><span class="message-time" style="position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: #333;">${msg.time}</span>${reactionHtml}</div>`;
             }
@@ -952,7 +954,7 @@
             wrapper.innerHTML = senderHtml + `
                 <div class="message-content-row">
                     ${innerBubble}
-                    <button class="msg-react-btn" onclick="showReactionPicker(event, ${msg.id})" title="Réagir">
+                    <button class="msg-react-btn" onclick="showReactionPicker(event, '${msg.id}')">
                         <svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-smile"></use></svg>
                     </button>
                 </div>`;
@@ -962,7 +964,8 @@
         if (scroll) { scrollToBottom(); } else { messagesContainer.scrollTop = scrollPos; }
     }
 
-    // --- SYSTÈME DE RÉACTIONS ---
+    function scrollToBottom() { if(messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight; }
+
     function renderQuickReactions() {
         const list = document.getElementById('quickReactionsList');
         if(!list) return;
@@ -976,19 +979,15 @@
     }
 
     function showReactionPicker(e, msgId) {
-        e.stopPropagation();
-        currentReactMsgId = msgId;
-        if(reactionPicker) reactionPicker.style.display = 'flex';
-        
-        const rect = e.currentTarget.getBoundingClientRect();
-        let topPos = rect.top - 55; let leftPos = rect.left - 130; 
-        if (topPos < 10) topPos = rect.bottom + 10;
-        if (leftPos < 10) leftPos = 10;
-        if (reactionPicker && leftPos + reactionPicker.offsetWidth > window.innerWidth) leftPos = window.innerWidth - reactionPicker.offsetWidth - 10;
-        
+        e.stopPropagation(); currentReactMsgId = msgId;
         if(reactionPicker) {
-            reactionPicker.style.top = topPos + 'px'; 
-            reactionPicker.style.left = leftPos + 'px';
+            reactionPicker.style.display = 'flex';
+            const rect = e.currentTarget.getBoundingClientRect();
+            let topPos = rect.top - 55; let leftPos = rect.left - 130; 
+            if (topPos < 10) topPos = rect.bottom + 10;
+            if (leftPos < 10) leftPos = 10;
+            if (leftPos + reactionPicker.offsetWidth > window.innerWidth) leftPos = window.innerWidth - reactionPicker.offsetWidth - 10;
+            reactionPicker.style.top = topPos + 'px'; reactionPicker.style.left = leftPos + 'px';
         }
     }
 
@@ -996,7 +995,7 @@
         if(!currentReactMsgId || !currentChatId) return;
         const chat = conversationsData[currentChatId];
         if(!chat) return;
-        const msg = chat.messages.find(m => m.id === currentReactMsgId);
+        const msg = chat.messages.find(m => m.id === currentReactMsgId || m.id == currentReactMsgId);
         if(msg) { msg.reaction = emoji; renderMessages(chat.messages, false); }
         if(reactionPicker) reactionPicker.style.display = 'none';
     }
@@ -1005,23 +1004,16 @@
         if(!currentChatId) return;
         const chat = conversationsData[currentChatId];
         if(!chat) return;
-        const msg = chat.messages.find(m => m.id === msgId);
+        const msg = chat.messages.find(m => m.id === msgId || m.id == msgId);
         if(msg) { msg.reaction = null; renderMessages(chat.messages, false); }
     }
 
     function openFullPicker() {
         isCustomizing = false;
-        const btnCust = document.getElementById('btnToggleCustomize');
-        if(btnCust) {
-            btnCust.textContent = "Personnaliser";
-            btnCust.style.color = "var(--btn-blue)";
-        }
         const fullPicker = document.getElementById('fullPickerModal');
         if(fullPicker) fullPicker.style.display = 'flex';
         if(reactionPicker) reactionPicker.style.display = 'none';
         renderTopQuickReactions();
-        
-        // Cache le menu jaune pendant qu'on choisit un emoji
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
 
@@ -1030,15 +1022,10 @@
         const btn = document.getElementById('btnToggleCustomize');
         if(!btn) return;
         if (isCustomizing) {
-            btn.textContent = "Terminé";
-            btn.style.color = "var(--btn-green)";
-            selectedCustomizeIndex = 0; 
+            btn.textContent = "Terminé"; btn.style.color = "var(--btn-green)"; selectedCustomizeIndex = 0; 
         } else {
-            btn.textContent = "Personnaliser";
-            btn.style.color = "var(--btn-blue)";
-            selectedCustomizeIndex = null;
-            localStorage.setItem('dussault_quick_reacts', JSON.stringify(quickReactions));
-            renderQuickReactions(); 
+            btn.textContent = "Personnaliser"; btn.style.color = "var(--btn-blue)"; selectedCustomizeIndex = null;
+            localStorage.setItem('dussault_quick_reacts', JSON.stringify(quickReactions)); renderQuickReactions(); 
         }
         renderTopQuickReactions();
     }
@@ -1051,12 +1038,8 @@
             const div = document.createElement('div');
             div.className = 'top-react-slot' + (isCustomizing && selectedCustomizeIndex === index ? ' active-slot' : '');
             div.textContent = emoji;
-            
-            if (isCustomizing) {
-                div.onclick = () => { selectedCustomizeIndex = index; renderTopQuickReactions(); };
-            } else {
-                div.onclick = () => { selectReaction(emoji); closeModal('fullPickerModal'); };
-            }
+            if (isCustomizing) { div.onclick = () => { selectedCustomizeIndex = index; renderTopQuickReactions(); }; } 
+            else { div.onclick = () => { selectReaction(emoji); closeModal('fullPickerModal'); }; }
             container.appendChild(div);
         });
     }
@@ -1064,19 +1047,12 @@
     function closeModal(id) { 
         const el = document.getElementById(id);
         if(el) el.style.display = 'none'; 
-        
-        // Fait réapparaître le menu jaune quand on ferme n'importe quelle modale
         window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
     }
     
     document.addEventListener('click', (e) => { 
         if (reactionPicker && !reactionPicker.contains(e.target)) { reactionPicker.style.display = 'none'; } 
     });
-
-    // --- PIÈCES JOINTES ---
-    const inputCamera = document.getElementById('inputCamera');
-    const inputGallery = document.getElementById('inputGallery');
-    const inputFile = document.getElementById('inputFile');
 
     if(attachBtn && attachMenu) {
         attachBtn.addEventListener('click', (e) => { e.stopPropagation(); attachMenu.classList.toggle('show'); attachBtn.classList.toggle('active'); });
@@ -1085,6 +1061,10 @@
 
     function triggerInput(inputId) { const inp = document.getElementById(inputId); if(inp) inp.click(); if(attachMenu) attachMenu.classList.remove('show'); }
     
+    const inputCamera = document.getElementById('inputCamera');
+    const inputGallery = document.getElementById('inputGallery');
+    const inputFile = document.getElementById('inputFile');
+
     if(inputCamera) inputCamera.addEventListener('change', handleFileSelect);
     if(inputGallery) inputGallery.addEventListener('change', handleFileSelect);
     if(inputFile) inputFile.addEventListener('change', handleFileSelect);
@@ -1117,40 +1097,6 @@
 
     function removeFile(index) { selectedFiles.splice(index, 1); renderPreviews(); }
 
-    // --- ENVOI DE MESSAGE ---
-    function sendMessage() {
-        if(!messageInput) return;
-        const text = messageInput.value.trim();
-        const hasFiles = selectedFiles.length > 0;
-
-        if ((!text && !hasFiles) || !currentChatId) return;
-
-        const now = new Date();
-        const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-        const activeChat = conversationsData[currentChatId];
-        if(!activeChat) return;
-
-        if (!activeChat.messages) activeChat.messages = [];
-
-        if (hasFiles) {
-            selectedFiles.forEach(file => {
-                const isImg = file.type.startsWith('image/');
-                const newFileMsg = { id: Date.now() + Math.random(), sender: myUserName, time: timeStr, isMine: true, type: isImg ? 'image' : 'file', text: file.name, reaction: null };
-                if (isImg) { newFileMsg.url = URL.createObjectURL(file); } else { newFileMsg.fileName = file.name; newFileMsg.fileSize = Math.round(file.size / 1024) + ' KB'; }
-                activeChat.messages.push(newFileMsg);
-            });
-        }
-
-        if (text) {
-            activeChat.messages.push({ id: Date.now() + Math.random(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
-        }
-
-        messageInput.value = ''; selectedFiles = []; renderPreviews(); 
-        renderMessages(activeChat.messages, true); renderContactList();
-    }
-
-    function scrollToBottom() { if(messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight; }
-    
     if(messageInput) {
         messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     }
