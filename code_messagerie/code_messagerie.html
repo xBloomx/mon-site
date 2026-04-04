@@ -10,7 +10,6 @@
     </script>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
 
     <style>
@@ -47,7 +46,6 @@
 
         #view-dashboard { padding: 30px; height: 100%; overflow: hidden; display: flex; gap: 20px; }
 
-        /* Verrouillage strict des proportions des icônes SVG */
         .svg-icon { 
             width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; 
             stroke-linecap: round; stroke-linejoin: round; fill: none; 
@@ -55,7 +53,7 @@
         }
 
         /* =========================================
-           2. BARRE LATÉRALE (Liste)
+           2. BARRE LATÉRALE
            ========================================= */
         .chat-sidebar {
             width: 380px; background-color: var(--card-bg); border-radius: 15px;
@@ -70,9 +68,6 @@
         .btn-new-chat:hover { transform: scale(1.1); background: #ffd66b; }
         .btn-new-chat svg { width: 20px; height: 20px; }
 
-        /* =========================================
-           BARRE DE RECHERCHE (DESIGN ORIGINAL)
-           ========================================= */
         .sidebar-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); z-index: 10; }
         .sidebar-footer .search-box { flex: 1; position: relative; display: flex; align-items: center; }
         .sidebar-footer .btn-new-chat { flex-shrink: 0; }
@@ -86,16 +81,11 @@
 
         .contact-list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px 0; }
         
-        /* SYSTÈME DE SWIPE (GLISSER) ET LIGNES DE SÉPARATION */
         .contact-wrapper {
-            position: relative;
-            background-color: var(--btn-red);
-            overflow: hidden;
-            border-bottom: 1px solid #3a3b46;
+            position: relative; background-color: var(--btn-red);
+            overflow: hidden; border-bottom: 1px solid #3a3b46;
         }
-        .contact-wrapper:last-child {
-            border-bottom: none;
-        }
+        .contact-wrapper:last-child { border-bottom: none; }
         
         .delete-btn-bg {
             position: absolute; top: 0; right: 0; bottom: 0; width: 80px;
@@ -210,7 +200,6 @@
         }
         .react-tool-btn:hover { background: #444; color: white; }
 
-        /* MODALE DU CLAVIER (STYLE INSTAGRAM) */
         .bottom-sheet-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
             display: none; z-index: 6000; align-items: flex-end; justify-content: center;
@@ -242,7 +231,7 @@
         }
 
         /* =========================================
-           4. ZONE DE SAISIE ET MENUS (Bouton Flèche)
+           4. ZONE DE SAISIE ET MENUS
            ========================================= */
         .chat-input-container { border-top: 1px solid var(--border-color); background-color: var(--card-bg); display: flex; flex-direction: column; position: relative; }
         
@@ -395,9 +384,7 @@
 <div id="reactionPicker" class="reaction-picker">
     <div id="quickReactionsList" class="reaction-list"></div>
     <div class="reaction-divider"></div>
-    <button class="react-tool-btn" onclick="openFullPicker()" title="Plus d'emojis">
-        <svg class="svg-icon"><use href="#icon-plus"></use></svg>
-    </button>
+    <button class="react-tool-btn" onclick="openFullPicker()" title="Plus d'emojis"><svg class="svg-icon"><use href="#icon-plus"></use></svg></button>
 </div>
 
 <div class="bottom-sheet-modal" id="fullPickerModal">
@@ -409,7 +396,6 @@
                 <button onclick="closeModal('fullPickerModal')" style="background:none; border:none; color:#888; font-size:24px; cursor:pointer; padding:0; line-height:1;">×</button>
             </div>
         </div>
-        
         <div id="topQuickReactions" class="top-quick-reactions"></div>
         <emoji-picker id="myEmojiPicker"></emoji-picker>
     </div>
@@ -421,18 +407,14 @@
             <h3><svg class="svg-icon" style="width:20px;height:20px; color:var(--btn-yellow)"><use href="#icon-edit"></use></svg> Nouvelle discussion</h3>
             <button onclick="closeModal('newChatModal')" style="background:none; border:none; color:#888; font-size:24px; cursor:pointer; padding:0;">×</button>
         </div>
-
         <div class="new-chat-body">
             <div id="groupNameGroup">
                 <label class="new-chat-label">Nom du groupe</label>
                 <input type="text" class="new-chat-input" id="newGroupName" placeholder="Ex: Chantier Montréal...">
             </div>
-
             <label class="new-chat-label" style="margin-bottom: 2px;">Sélectionner les participants</label>
-            <div id="newChatUserList">
-                </div>
+            <div id="newChatUserList"></div>
         </div>
-
         <div class="new-chat-footer">
             <button class="btn-modal-gray" onclick="closeModal('newChatModal')">Annuler</button>
             <button class="btn-modal-green" onclick="createNewChat()">Créer la discussion</button>
@@ -486,11 +468,8 @@
         <main class="chat-main">
             <header class="chat-header">
                 <div class="chat-header-info">
-                    <button class="btn-back" onclick="closeChat()">
-                        <svg class="svg-icon" style="width:24px;height:24px;"><use href="#icon-back"></use></svg>
-                    </button>
-                    <div id="chatHeaderAvatar" class="avatar" style="width:40px; height:40px; font-size:15px; background: transparent;">
-                    </div>
+                    <button class="btn-back" onclick="closeChat()"><svg class="svg-icon" style="width:24px;height:24px;"><use href="#icon-back"></use></svg></button>
+                    <div id="chatHeaderAvatar" class="avatar" style="width:40px; height:40px; font-size:15px; background: transparent;"></div>
                     <div>
                         <h2 id="chatHeaderName">Sélectionnez une discussion</h2>
                         <p id="chatHeaderStatus"></p>
@@ -504,15 +483,9 @@
 
             <div class="chat-input-container">
                 <div class="attach-menu-popup" id="attachMenu">
-                    <button class="attach-option" onclick="triggerInput('inputCamera')">
-                        <div class="attach-icon"><svg class="svg-icon"><use href="#icon-camera"></use></svg></div> Appareil photo
-                    </button>
-                    <button class="attach-option" onclick="triggerInput('inputGallery')">
-                        <div class="attach-icon"><svg class="svg-icon"><use href="#icon-image"></use></svg></div> Galerie photos
-                    </button>
-                    <button class="attach-option" onclick="triggerInput('inputFile')">
-                        <div class="attach-icon"><svg class="svg-icon"><use href="#icon-file"></use></svg></div> Document
-                    </button>
+                    <button class="attach-option" onclick="triggerInput('inputCamera')"><div class="attach-icon"><svg class="svg-icon"><use href="#icon-camera"></use></svg></div> Appareil photo</button>
+                    <button class="attach-option" onclick="triggerInput('inputGallery')"><div class="attach-icon"><svg class="svg-icon"><use href="#icon-image"></use></svg></div> Galerie photos</button>
+                    <button class="attach-option" onclick="triggerInput('inputFile')"><div class="attach-icon"><svg class="svg-icon"><use href="#icon-file"></use></svg></div> Document</button>
                 </div>
 
                 <input type="file" id="inputCamera" accept="image/*" capture="environment" hidden>
@@ -522,13 +495,9 @@
                 <div class="attachment-preview" id="attachmentPreview"></div>
 
                 <div class="chat-input-area">
-                    <button class="btn-attach" title="Joindre un élément" id="attachBtn">
-                        <svg class="svg-icon" style="width:24px; height:24px;"><use href="#icon-paperclip"></use></svg>
-                    </button>
+                    <button class="btn-attach" title="Joindre un élément" id="attachBtn"><svg class="svg-icon" style="width:24px; height:24px;"><use href="#icon-paperclip"></use></svg></button>
                     <input type="text" class="message-input" placeholder="Écrire un message..." id="messageInput" autocomplete="off">
-                    <button class="btn-send" onclick="sendMessage()" title="Envoyer">
-                        <svg class="svg-icon"><use href="#icon-send"></use></svg>
-                    </button>
+                    <button class="btn-send" onclick="sendMessage()" title="Envoyer"><svg class="svg-icon"><use href="#icon-send"></use></svg></button>
                 </div>
             </div>
         </main>
@@ -542,11 +511,9 @@
     const contactListContainer = document.getElementById('contactListContainer');
     const messagesContainer = document.getElementById('chatMessages');
     const messageInput = document.getElementById('messageInput');
-    
     const attachBtn = document.getElementById('attachBtn');
     const attachMenu = document.getElementById('attachMenu');
     const attachmentPreview = document.getElementById('attachmentPreview');
-
     const reactionPicker = document.getElementById('reactionPicker');
 
     // --- VARIABLES GLOBALES ---
@@ -554,29 +521,19 @@
     let currentChatId = null;
     let currentReactMsgId = null; 
     let currentChatIdToDelete = null;
-    
     let isCustomizing = false;
     let selectedCustomizeIndex = 0;
+    let allEmployees = []; // Sera rempli par Supabase !
 
     let quickReactions = JSON.parse(localStorage.getItem('dussault_quick_reacts')) || ['❤️', '👍', '😂', '😮', '😢', '🙏'];
 
-    const allEmployees = [
-        { id: 'emp1', name: 'Marc Tremblay', initials: 'MT' },
-        { id: 'emp2', name: 'Jean Tremblay', initials: 'JT' }
-    ];
-
+    // Notre liste dynamique de conversations
     const conversationsData = {
         'global': {
             name: 'Équipe (Général)',
-            status: '🟢 Connecté à Supabase',
+            status: '🟢 Connecté',
             isGroup: true,
             messages: [] 
-        },
-        'private_jt': {
-            name: 'Jean Tremblay (Test Local)',
-            status: 'Hors ligne',
-            isGroup: false,
-            messages: [{ id: 1, sender: 'Jean Tremblay', text: 'Ceci est un test non connecté.', time: '11:02', isMine: false, type: 'text', reaction: null }]
         }
     };
 
@@ -588,30 +545,39 @@
     let myUserId = 'local-user';
     let myUserName = 'Moi';
 
-    // 1. INITIALISATION ET AUTHENTIFICATION
+    // 1. INITIALISATION
     async function initAuth() {
         try {
             const { data: { user } } = await supabaseClient.auth.getUser();
-            
-            if (!user) {
-                window.top.location.href = '../login.html';
-                return;
-            }
+            if (!user) { window.top.location.href = '../login.html'; return; }
 
             myUserId = user.id;
             const { data: profil } = await supabaseClient.from('profils').select('prenom_nom').eq('id', user.id).maybeSingle();
-            if (profil && profil.prenom_nom) {
-                myUserName = profil.prenom_nom;
-            } else {
-                myUserName = user.email.split('@')[0];
-            }
-        } catch (error) {
-            console.error("Erreur d'initialisation :", error);
+            if (profil && profil.prenom_nom) { myUserName = profil.prenom_nom; } else { myUserName = user.email.split('@')[0]; }
+            
+            // On va chercher les VRAIS employés pour la liste "Nouveau Chat"
+            await chargerProfilsEmployes();
+            
+        } catch (error) { console.error("Erreur d'initialisation :", error);
         } finally {
             const loader = document.getElementById('security-loader');
             if (loader) loader.style.display = 'none';
             initApp();
             window.parent.postMessage({ type: 'module_ready', module: 'view-messagerie' }, '*');
+        }
+    }
+
+    async function chargerProfilsEmployes() {
+        const { data, error } = await supabaseClient.from('profils').select('id, prenom_nom');
+        if (data && !error) {
+            allEmployees = data
+                .filter(p => p.id !== myUserId) // On s'exclut soi-même de la liste
+                .map(p => {
+                    let nomComplet = p.prenom_nom || 'Utilisateur';
+                    let parts = nomComplet.split(' ');
+                    let initials = parts[0][0] + (parts.length > 1 ? parts[1][0] : '');
+                    return { id: p.id, name: nomComplet, initials: initials.toUpperCase() };
+                });
         }
     }
 
@@ -625,75 +591,70 @@
         if (emojiPicker) {
             emojiPicker.addEventListener('emoji-click', event => {
                 const emoji = event.detail.unicode;
-                if (isCustomizing) {
-                    quickReactions[selectedCustomizeIndex] = emoji;
-                    selectedCustomizeIndex = (selectedCustomizeIndex + 1) % quickReactions.length;
-                    renderTopQuickReactions();
-                } else {
-                    selectReaction(emoji);
-                    closeModal('fullPickerModal');
-                }
+                if (isCustomizing) { quickReactions[selectedCustomizeIndex] = emoji; selectedCustomizeIndex = (selectedCustomizeIndex + 1) % quickReactions.length; renderTopQuickReactions();
+                } else { selectReaction(emoji); closeModal('fullPickerModal'); }
             });
         }
     }
 
-    // --- FONCTION UTILITAIRE POUR DÉCODER LES IMAGES/FICHIERS ---
+    // --- DECODAGE IMAGES/FICHIERS ---
     function decoderMessage(contenuBrut) {
         if (!contenuBrut) return { type: 'text', text: '', url: '', fileName: '', fileSize: '' };
-        
-        // On utilise une astuce : si ça commence par IMG|||, c'est une image
-        if (contenuBrut.startsWith('IMG|||')) {
-            const parts = contenuBrut.split('|||');
-            return { type: 'image', text: '', url: parts[1], fileName: '', fileSize: '' };
-        } 
-        // Si ça commence par FILE|||, c'est un document
-        else if (contenuBrut.startsWith('FILE|||')) {
-            const parts = contenuBrut.split('|||');
-            return { type: 'file', text: '', url: parts[1], fileName: parts[2], fileSize: parts[3] };
-        } 
-        // Sinon, c'est du texte normal
-        else {
-            return { type: 'text', text: contenuBrut, url: '', fileName: '', fileSize: '' };
-        }
+        if (contenuBrut.startsWith('IMG|||')) { const parts = contenuBrut.split('|||'); return { type: 'image', text: '', url: parts[1], fileName: '', fileSize: '' }; } 
+        else if (contenuBrut.startsWith('FILE|||')) { const parts = contenuBrut.split('|||'); return { type: 'file', text: '', url: parts[1], fileName: parts[2], fileSize: parts[3] }; } 
+        else { return { type: 'text', text: contenuBrut, url: '', fileName: '', fileSize: '' }; }
     }
 
-    // 3. LECTURE DE L'HISTORIQUE SUPABASE
+    // 3. LECTURE DE L'HISTORIQUE TRIÉ PAR CHAT_ID
     async function chargerMessagesSupabase() {
         const { data, error } = await supabaseClient
             .from('message')
-            .select('id, created_at, contenu, expediteur_id, profils(prenom_nom)')
+            .select('id, created_at, contenu, expediteur_id, chat_id, profils(prenom_nom)')
             .order('created_at', { ascending: true });
 
         if (error) { console.error("Erreur Supabase:", error); return; }
 
-        conversationsData['global'].messages = [];
+        // Vider les anciens messages pour éviter les doublons lors du rechargement
+        Object.values(conversationsData).forEach(c => c.messages = []);
 
         data.forEach(msgDB => {
             const date = new Date(msgDB.created_at);
             const timeStr = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
             const isMine = msgDB.expediteur_id === myUserId;
             const senderName = msgDB.profils ? msgDB.profils.prenom_nom : 'Inconnu';
-            
             const decodage = decoderMessage(msgDB.contenu);
+            
+            // Si pas de chat_id, on le met dans le chat global par défaut
+            const cId = msgDB.chat_id || 'global';
 
-            conversationsData['global'].messages.push({
+            // Si le chat n'existe pas encore dans notre liste locale, on le crée dynamiquement
+            if (!conversationsData[cId]) {
+                let nomChat = "Conversation";
+                if (cId !== 'global') {
+                    // C'est un chat privé, on met le nom de l'autre personne
+                    nomChat = isMine ? "Chat Privé" : senderName;
+                }
+                conversationsData[cId] = { name: nomChat, status: '🟢 Connecté', isGroup: cId === 'global', messages: [] };
+            }
+
+            conversationsData[cId].messages.push({
                 id: msgDB.id, sender: senderName, time: timeStr, isMine: isMine, reaction: null,
                 type: decodage.type, text: decodage.text, url: decodage.url, fileName: decodage.fileName, fileSize: decodage.fileSize
             });
         });
 
-        if (currentChatId === 'global') { renderMessages(conversationsData['global'].messages, true); }
+        if (currentChatId && conversationsData[currentChatId]) { renderMessages(conversationsData[currentChatId].messages, true); }
         renderContactList();
         ecouterNouveauxMessages();
     }
 
-    // 4. LE TEMPS RÉEL
+    // 4. LE TEMPS RÉEL (REALTIME) MIS À JOUR
     function ecouterNouveauxMessages() {
         supabaseClient
             .channel('messagerie-globale')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message' }, async (payload) => {
                 const newMsg = payload.new;
-                if (newMsg.expediteur_id === myUserId) return; // On ignore nos propres messages déjà affichés
+                if (newMsg.expediteur_id === myUserId) return; // Ignore nos propres messages
 
                 const { data: profil } = await supabaseClient.from('profils').select('prenom_nom').eq('id', newMsg.expediteur_id).maybeSingle();
                 const senderName = profil ? profil.prenom_nom : 'Inconnu';
@@ -701,19 +662,26 @@
                 const date = new Date(newMsg.created_at);
                 const timeStr = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
                 const decodage = decoderMessage(newMsg.contenu);
+                
+                const cId = newMsg.chat_id || 'global';
+                
+                // On crée le chat s'il n'existe pas localement (ex: quelqu'un nous écrit pour la 1ere fois)
+                if (!conversationsData[cId]) {
+                    conversationsData[cId] = { name: senderName, status: '🟢 Connecté', isGroup: false, messages: [] };
+                }
 
-                conversationsData['global'].messages.push({
+                conversationsData[cId].messages.push({
                     id: newMsg.id, sender: senderName, time: timeStr, isMine: false, reaction: null,
                     type: decodage.type, text: decodage.text, url: decodage.url, fileName: decodage.fileName, fileSize: decodage.fileSize
                 });
 
-                if (currentChatId === 'global') { renderMessages(conversationsData['global'].messages, true); }
+                if (currentChatId === cId) { renderMessages(conversationsData[cId].messages, true); }
                 renderContactList();
             })
             .subscribe();
     }
 
-    // 5. ENVOI DES MESSAGES ET FICHIERS
+    // 5. ENVOI DES MESSAGES ET FICHIERS (Maintenant avec le chat_id)
     async function sendMessage() {
         if(!messageInput) return;
         const text = messageInput.value.trim();
@@ -725,105 +693,52 @@
         const now = new Date();
         const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
 
-        // GESTION DU CHAT SUPABASE
-        if (currentChatId === 'global') {
-            // -- Envoi des fichiers d'abord --
-            if (hasFiles) {
-                const fichiersAEnvoyer = [...selectedFiles];
-                selectedFiles = []; // On vide la sélection
-                renderPreviews();   // On cache la barre de prévisualisation
+        // -- Envoi des fichiers d'abord --
+        if (hasFiles) {
+            const fichiersAEnvoyer = [...selectedFiles];
+            selectedFiles = []; renderPreviews();
 
-                for (let i = 0; i < fichiersAEnvoyer.length; i++) {
-                    const file = fichiersAEnvoyer[i];
-                    // Générer un nom unique pour éviter de remplacer une vieille photo
-                    const fileExt = file.name.split('.').pop();
-                    const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-                    const filePath = `${myUserId}/${uniqueName}`;
+            for (let i = 0; i < fichiersAEnvoyer.length; i++) {
+                const file = fichiersAEnvoyer[i];
+                const fileExt = file.name.split('.').pop();
+                const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const filePath = `${myUserId}/${uniqueName}`;
 
-                    // 1. Envoyer au Bucket
-                    const { error: uploadError } = await supabaseClient.storage.from('pieces_jointes').upload(filePath, file);
-                    if (uploadError) { console.error(uploadError); showAlert("Erreur d'envoi de la pièce jointe."); continue; }
+                // Upload au Storage
+                const { error: uploadError } = await supabaseClient.storage.from('pieces_jointes').upload(filePath, file);
+                if (uploadError) { console.error(uploadError); showAlert("Erreur d'envoi de la pièce jointe."); continue; }
 
-                    // 2. Récupérer l'URL publique
-                    const { data: { publicUrl } } = supabaseClient.storage.from('pieces_jointes').getPublicUrl(filePath);
+                const { data: { publicUrl } } = supabaseClient.storage.from('pieces_jointes').getPublicUrl(filePath);
 
-                    // 3. Encoder l'URL pour la DB
-                    const isImg = file.type.startsWith('image/');
-                    let contenuFormatte = "";
-                    let fileSizeTxt = Math.round(file.size / 1024) + ' KB';
-                    
-                    if (isImg) { contenuFormatte = `IMG|||${publicUrl}`; } 
-                    else { contenuFormatte = `FILE|||${publicUrl}|||${file.name}|||${fileSizeTxt}`; }
+                const isImg = file.type.startsWith('image/');
+                let contenuFormatte = "";
+                let fileSizeTxt = Math.round(file.size / 1024) + ' KB';
+                if (isImg) { contenuFormatte = `IMG|||${publicUrl}`; } else { contenuFormatte = `FILE|||${publicUrl}|||${file.name}|||${fileSizeTxt}`; }
 
-                    // 4. Affichage local immédiat pour fluidité
-                    activeChat.messages.push({ 
-                        id: Date.now(), sender: myUserName, time: timeStr, isMine: true, reaction: null,
-                        type: isImg ? 'image' : 'file', text: '', url: publicUrl, fileName: file.name, fileSize: fileSizeTxt 
-                    });
-                    renderMessages(activeChat.messages, true);
-
-                    // 5. Sauvegarde DB
-                    await supabaseClient.from('message').insert([{ contenu: contenuFormatte, expediteur_id: myUserId }]);
-                }
-            }
-
-            // -- Envoi du texte --
-            if (text) {
-                activeChat.messages.push({ id: Date.now(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
-                messageInput.value = '';
-                renderMessages(activeChat.messages, true);
-                await supabaseClient.from('message').insert([{ contenu: text, expediteur_id: myUserId }]);
-            }
-            renderContactList();
-        } 
-        // GESTION DES CHATS LOCAUX (Fictifs)
-        else {
-            if (hasFiles) {
-                selectedFiles.forEach(file => {
-                    const isImg = file.type.startsWith('image/');
-                    const newFileMsg = { id: Date.now() + Math.random(), sender: myUserName, time: timeStr, isMine: true, type: isImg ? 'image' : 'file', text: file.name, reaction: null };
-                    if (isImg) { newFileMsg.url = URL.createObjectURL(file); } else { newFileMsg.fileName = file.name; newFileMsg.fileSize = Math.round(file.size / 1024) + ' KB'; }
-                    activeChat.messages.push(newFileMsg);
+                // Affichage local
+                activeChat.messages.push({ 
+                    id: Date.now(), sender: myUserName, time: timeStr, isMine: true, reaction: null,
+                    type: isImg ? 'image' : 'file', text: '', url: publicUrl, fileName: file.name, fileSize: fileSizeTxt 
                 });
+                renderMessages(activeChat.messages, true);
+
+                // Sauvegarde DB avec le CHAT_ID
+                await supabaseClient.from('message').insert([{ contenu: contenuFormatte, expediteur_id: myUserId, chat_id: currentChatId }]);
             }
-            if (text) { activeChat.messages.push({ id: Date.now(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null }); }
-            messageInput.value = ''; selectedFiles = []; renderPreviews(); 
-            renderMessages(activeChat.messages, true); renderContactList();
         }
-    }
 
-    // --- LE RESTE DES FONCTIONS UI ---
-    function showAlert(msg) {
-        document.getElementById('alertMessage').innerHTML = msg;
-        document.getElementById('alertModal').style.display = 'flex';
-        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
-    }
-
-    function askDeleteChat(chatId) {
-        if (chatId === 'global') return; 
-        currentChatIdToDelete = chatId;
-        document.getElementById('confirmDeleteModal').style.display = 'flex';
-        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
-    }
-
-    function executeDeleteChat() {
-        if (currentChatIdToDelete && currentChatIdToDelete !== 'global') {
-            delete conversationsData[currentChatIdToDelete];
-            closeModal('confirmDeleteModal');
-            if (currentChatId === currentChatIdToDelete) {
-                currentChatId = null;
-                document.getElementById('chatHeaderName').textContent = "Sélectionnez une discussion";
-                document.getElementById('chatHeaderStatus').textContent = "";
-                document.getElementById('chatHeaderAvatar').innerHTML = "";
-                document.getElementById('chatHeaderAvatar').className = "avatar";
-                document.getElementById('chatMessages').innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Aucune conversation sélectionnée.</div>';
-                closeChat(); 
-            }
-            renderContactList();
-            currentChatIdToDelete = null;
+        // -- Envoi du texte --
+        if (text) {
+            activeChat.messages.push({ id: Date.now(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
+            messageInput.value = '';
+            renderMessages(activeChat.messages, true);
+            // Sauvegarde DB avec le CHAT_ID
+            await supabaseClient.from('message').insert([{ contenu: text, expediteur_id: myUserId, chat_id: currentChatId }]);
         }
+        renderContactList();
     }
 
+    // --- CREATION DE NOUVEAUX CHATS (Moteur modifié) ---
     function openNewChatModal() {
         const list = document.getElementById('newChatUserList');
         list.innerHTML = '';
@@ -845,53 +760,52 @@
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
 
-    function toggleRowSelection(cb, rowId) {
-        const row = document.getElementById(rowId);
-        if (cb.checked) { row.classList.add('selected'); } else { row.classList.remove('selected'); }
-        checkNewChatSelection();
-    }
-
-    function checkNewChatSelection() {
-        const selected = document.querySelectorAll('.new-chat-cb:checked');
-        const groupGroup = document.getElementById('groupNameGroup');
-        if (selected.length > 1) { groupGroup.classList.add('show'); } else { groupGroup.classList.remove('show'); }
-    }
-
     function createNewChat() {
         const selected = document.querySelectorAll('.new-chat-cb:checked');
         if (selected.length === 0) return showAlert("Veuillez sélectionner au moins une personne.");
-        const newChatId = 'chat_' + Date.now();
+        
+        let newChatId = "";
         let newChat = null;
+
         if (selected.length === 1) {
-            newChat = { name: selected[0].dataset.name, status: 'Hors ligne (Local)', isGroup: false, messages: [] };
+            // C'est un chat privé. On fusionne les IDs en ordre alphabétique pour faire une salle secrète.
+            const otherUserId = selected[0].value;
+            newChatId = [myUserId, otherUserId].sort().join('_');
+            newChat = { name: selected[0].dataset.name, status: '🟢 Connecté', isGroup: false, messages: [] };
         } else {
-            let groupName = document.getElementById('newGroupName').value.trim() || Array.from(selected).map(cb => cb.dataset.name.split(' ')[0]).join(', ');
-            newChat = { name: groupName, status: '🟢 Local', isGroup: true, messages: [] };
+            // C'est un groupe de plusieurs personnes
+            newChatId = 'groupe_' + Date.now();
+            let groupName = document.getElementById('newGroupName').value.trim() || "Nouveau Groupe";
+            newChat = { name: groupName, status: '🟢 Connecté', isGroup: true, messages: [] };
         }
-        conversationsData[newChatId] = newChat;
+        
+        // Si le chat n'existe pas déjà, on l'ajoute
+        if (!conversationsData[newChatId]) {
+            conversationsData[newChatId] = newChat;
+        }
+
         closeModal('newChatModal');
         renderContactList();
         openChat(newChatId);
     }
 
+    // --- LE RESTE DES FONCTIONS UI INCHANGÉES ---
+    function showAlert(msg) { document.getElementById('alertMessage').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function askDeleteChat(chatId) { if (chatId === 'global') return; currentChatIdToDelete = chatId; document.getElementById('confirmDeleteModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function executeDeleteChat() { if (currentChatIdToDelete && currentChatIdToDelete !== 'global') { delete conversationsData[currentChatIdToDelete]; closeModal('confirmDeleteModal'); if (currentChatId === currentChatIdToDelete) { currentChatId = null; document.getElementById('chatHeaderName').textContent = "Sélectionnez une discussion"; document.getElementById('chatHeaderStatus').textContent = ""; document.getElementById('chatHeaderAvatar').innerHTML = ""; document.getElementById('chatHeaderAvatar').className = "avatar"; document.getElementById('chatMessages').innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Aucune conversation sélectionnée.</div>'; closeChat(); } renderContactList(); currentChatIdToDelete = null; } }
+    function toggleRowSelection(cb, rowId) { const row = document.getElementById(rowId); if (cb.checked) { row.classList.add('selected'); } else { row.classList.remove('selected'); } checkNewChatSelection(); }
+    function checkNewChatSelection() { const selected = document.querySelectorAll('.new-chat-cb:checked'); const groupGroup = document.getElementById('groupNameGroup'); if (selected.length > 1) { groupGroup.classList.add('show'); } else { groupGroup.classList.remove('show'); } }
+    
     function renderContactList() {
         const list = document.getElementById('contactListContainer');
-        if(!list) return;
-        list.innerHTML = '';
-
+        if(!list) return; list.innerHTML = '';
         Object.entries(conversationsData).reverse().forEach(([id, chat]) => {
             const isActive = id === currentChatId ? 'active' : '';
             const avatarLet = chat.isGroup ? `<svg class="svg-icon"><use href="#icon-users"></use></svg>` : (chat.name ? chat.name.charAt(0).toUpperCase() : '?');
             const avatarClass = chat.isGroup ? 'avatar-group' : '';
-            let lastMsg = 'Nouvelle discussion';
-            let lastTime = '';
-            if (chat.messages && chat.messages.length > 0) {
-                const lastM = chat.messages[chat.messages.length - 1];
-                lastMsg = lastM.type === 'text' ? lastM.text : (lastM.type === 'image' ? '📷 Image' : '📎 Fichier');
-                lastTime = lastM.time;
-            }
+            let lastMsg = 'Nouvelle discussion'; let lastTime = '';
+            if (chat.messages && chat.messages.length > 0) { const lastM = chat.messages[chat.messages.length - 1]; lastMsg = lastM.type === 'text' ? lastM.text : (lastM.type === 'image' ? '📷 Image' : '📎 Fichier'); lastTime = lastM.time; }
             const deleteBg = id !== 'global' ? `<div class="delete-btn-bg" onclick="askDeleteChat('${id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg></div>` : '';
-
             list.insertAdjacentHTML('beforeend', `
                 <div class="contact-wrapper" id="wrapper-${id}">
                     ${deleteBg}
@@ -907,217 +821,57 @@
         });
     }
 
-    function filterContacts() {
-        const searchTerm = document.getElementById('searchContactInput').value.toLowerCase();
-        document.querySelectorAll('#contactListContainer .contact-wrapper').forEach(wrapper => {
-            wrapper.style.display = wrapper.textContent.toLowerCase().includes(searchTerm) ? 'block' : 'none';
-        });
-    }
-
+    function filterContacts() { const searchTerm = document.getElementById('searchContactInput').value.toLowerCase(); document.querySelectorAll('#contactListContainer .contact-wrapper').forEach(wrapper => { wrapper.style.display = wrapper.textContent.toLowerCase().includes(searchTerm) ? 'block' : 'none'; }); }
+    
     function openChat(chatId, e) {
-        if (!conversationsData[chatId]) return;
-        currentChatId = chatId;
-        const chat = conversationsData[chatId];
-        
-        const nameEl = document.getElementById('chatHeaderName');
-        const statusEl = document.getElementById('chatHeaderStatus');
-        const avatarBox = document.getElementById('chatHeaderAvatar');
-
+        if (!conversationsData[chatId]) return; currentChatId = chatId; const chat = conversationsData[chatId];
+        const nameEl = document.getElementById('chatHeaderName'); const statusEl = document.getElementById('chatHeaderStatus'); const avatarBox = document.getElementById('chatHeaderAvatar');
         if(nameEl) nameEl.textContent = chat.name || "Inconnu";
-        if(statusEl) {
-            statusEl.textContent = chat.status || "";
-            statusEl.style.color = (chat.status && chat.status.includes('Connecté')) ? 'var(--btn-green)' : '#888';
-        }
-        if(avatarBox) {
-            avatarBox.className = chat.isGroup ? 'avatar avatar-group' : 'avatar';
-            avatarBox.innerHTML = chat.isGroup ? `<svg class="svg-icon"><use href="#icon-users"></use></svg>` : (chat.name ? chat.name.charAt(0).toUpperCase() : '?');
-        }
-
-        renderContactList(); 
-        renderMessages(chat.messages || [], true);
-
+        if(statusEl) { statusEl.textContent = chat.status || ""; statusEl.style.color = (chat.status && chat.status.includes('Connecté')) ? 'var(--btn-green)' : '#888'; }
+        if(avatarBox) { avatarBox.className = chat.isGroup ? 'avatar avatar-group' : 'avatar'; avatarBox.innerHTML = chat.isGroup ? `<svg class="svg-icon"><use href="#icon-users"></use></svg>` : (chat.name ? chat.name.charAt(0).toUpperCase() : '?'); }
+        renderContactList(); renderMessages(chat.messages || [], true);
         if (dashboard && window.innerWidth <= 900) { dashboard.classList.add('show-chat'); }
         selectedFiles = []; renderPreviews();
     }
 
     function closeChat() { if(dashboard) dashboard.classList.remove('show-chat'); }
-
+    
     function renderMessages(messages, scroll = false) {
-        if(!messagesContainer) return;
-        const scrollPos = messagesContainer.scrollTop;
-        messagesContainer.innerHTML = '';
-        
-        if(messages.length === 0) {
-            messagesContainer.innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Envoyez un premier message pour démarrer la discussion.</div>';
-            return;
-        }
-
+        if(!messagesContainer) return; const scrollPos = messagesContainer.scrollTop; messagesContainer.innerHTML = '';
+        if(messages.length === 0) { messagesContainer.innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Envoyez un premier message pour démarrer la discussion.</div>'; return; }
         messages.forEach(msg => {
-            const wrapper = document.createElement('div');
-            wrapper.className = `message-wrapper ${msg.isMine ? 'sent' : 'received'}`;
+            const wrapper = document.createElement('div'); wrapper.className = `message-wrapper ${msg.isMine ? 'sent' : 'received'}`;
             let senderHtml = !msg.isMine ? `<span class="message-sender">${msg.sender}</span>` : '';
             let reactionHtml = msg.reaction ? `<div class="msg-reaction-badge" onclick="removeReaction('${msg.id}')">${msg.reaction}</div>` : '';
-
             let innerBubble = '';
-            // Modification ici pour que les liens soient cliquables (target="_blank")
-            if (msg.type === 'text') {
-                innerBubble = `<div class="message-bubble">${msg.text}<span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
-            } else if (msg.type === 'image') {
-                innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}" onclick="window.open('${msg.url}')"><span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
-            } else if (msg.type === 'file') {
-                innerBubble = `<a href="${msg.url}" target="_blank" class="message-bubble bubble-file"><div class="file-icon"><svg class="svg-icon" style="width:28px;height:28px;"><use href="#icon-file"></use></svg></div><div class="file-meta"><span class="file-name">${msg.fileName}</span><span class="file-size">${msg.fileSize}</span></div><div class="file-download-icon"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-download"></use></svg></div><span class="message-time" style="position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: #333;">${msg.time}</span>${reactionHtml}</a>`;
-            }
-
-            wrapper.innerHTML = senderHtml + `
-                <div class="message-content-row">
-                    ${innerBubble}
-                    <button class="msg-react-btn" onclick="showReactionPicker(event, '${msg.id}')">
-                        <svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-smile"></use></svg>
-                    </button>
-                </div>`;
+            if (msg.type === 'text') { innerBubble = `<div class="message-bubble">${msg.text}<span class="message-time">${msg.time}</span>${reactionHtml}</div>`; } 
+            else if (msg.type === 'image') { innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}" onclick="window.open('${msg.url}')"><span class="message-time">${msg.time}</span>${reactionHtml}</div>`; } 
+            else if (msg.type === 'file') { innerBubble = `<a href="${msg.url}" target="_blank" class="message-bubble bubble-file"><div class="file-icon"><svg class="svg-icon" style="width:28px;height:28px;"><use href="#icon-file"></use></svg></div><div class="file-meta"><span class="file-name">${msg.fileName}</span><span class="file-size">${msg.fileSize}</span></div><div class="file-download-icon"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-download"></use></svg></div><span class="message-time" style="position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: #333;">${msg.time}</span>${reactionHtml}</a>`; }
+            wrapper.innerHTML = senderHtml + `<div class="message-content-row">${innerBubble}<button class="msg-react-btn" onclick="showReactionPicker(event, '${msg.id}')"><svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-smile"></use></svg></button></div>`;
             messagesContainer.appendChild(wrapper);
         });
-
         if (scroll) { scrollToBottom(); } else { messagesContainer.scrollTop = scrollPos; }
     }
 
     function scrollToBottom() { if(messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight; }
-
-    function renderQuickReactions() {
-        const list = document.getElementById('quickReactionsList');
-        if(!list) return;
-        list.innerHTML = '';
-        quickReactions.forEach(emoji => {
-            const span = document.createElement('span');
-            span.textContent = emoji;
-            span.onclick = () => selectReaction(emoji);
-            list.appendChild(span);
-        });
-    }
-
-    function showReactionPicker(e, msgId) {
-        e.stopPropagation(); currentReactMsgId = msgId;
-        if(reactionPicker) {
-            reactionPicker.style.display = 'flex';
-            const rect = e.currentTarget.getBoundingClientRect();
-            let topPos = rect.top - 55; let leftPos = rect.left - 130; 
-            if (topPos < 10) topPos = rect.bottom + 10;
-            if (leftPos < 10) leftPos = 10;
-            if (leftPos + reactionPicker.offsetWidth > window.innerWidth) leftPos = window.innerWidth - reactionPicker.offsetWidth - 10;
-            reactionPicker.style.top = topPos + 'px'; reactionPicker.style.left = leftPos + 'px';
-        }
-    }
-
-    function selectReaction(emoji) {
-        if(!currentReactMsgId || !currentChatId) return;
-        const chat = conversationsData[currentChatId];
-        if(!chat) return;
-        const msg = chat.messages.find(m => m.id === currentReactMsgId || m.id == currentReactMsgId);
-        if(msg) { msg.reaction = emoji; renderMessages(chat.messages, false); }
-        if(reactionPicker) reactionPicker.style.display = 'none';
-    }
-
-    function removeReaction(msgId) {
-        if(!currentChatId) return;
-        const chat = conversationsData[currentChatId];
-        if(!chat) return;
-        const msg = chat.messages.find(m => m.id === msgId || m.id == msgId);
-        if(msg) { msg.reaction = null; renderMessages(chat.messages, false); }
-    }
-
-    function openFullPicker() {
-        isCustomizing = false;
-        const fullPicker = document.getElementById('fullPickerModal');
-        if(fullPicker) fullPicker.style.display = 'flex';
-        if(reactionPicker) reactionPicker.style.display = 'none';
-        renderTopQuickReactions();
-        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
-    }
-
-    function toggleCustomizeMode() {
-        isCustomizing = !isCustomizing;
-        const btn = document.getElementById('btnToggleCustomize');
-        if(!btn) return;
-        if (isCustomizing) {
-            btn.textContent = "Terminé"; btn.style.color = "var(--btn-green)"; selectedCustomizeIndex = 0; 
-        } else {
-            btn.textContent = "Personnaliser"; btn.style.color = "var(--btn-blue)"; selectedCustomizeIndex = null;
-            localStorage.setItem('dussault_quick_reacts', JSON.stringify(quickReactions)); renderQuickReactions(); 
-        }
-        renderTopQuickReactions();
-    }
-
-    function renderTopQuickReactions() {
-        const container = document.getElementById('topQuickReactions');
-        if(!container) return;
-        container.innerHTML = '';
-        quickReactions.forEach((emoji, index) => {
-            const div = document.createElement('div');
-            div.className = 'top-react-slot' + (isCustomizing && selectedCustomizeIndex === index ? ' active-slot' : '');
-            div.textContent = emoji;
-            if (isCustomizing) { div.onclick = () => { selectedCustomizeIndex = index; renderTopQuickReactions(); }; } 
-            else { div.onclick = () => { selectReaction(emoji); closeModal('fullPickerModal'); }; }
-            container.appendChild(div);
-        });
-    }
-
-    function closeModal(id) { 
-        const el = document.getElementById(id);
-        if(el) el.style.display = 'none'; 
-        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
-    }
-    
-    document.addEventListener('click', (e) => { 
-        if (reactionPicker && !reactionPicker.contains(e.target)) { reactionPicker.style.display = 'none'; } 
-    });
-
-    if(attachBtn && attachMenu) {
-        attachBtn.addEventListener('click', (e) => { e.stopPropagation(); attachMenu.classList.toggle('show'); attachBtn.classList.toggle('active'); });
-        document.addEventListener('click', (e) => { if (!attachMenu.contains(e.target) && e.target !== attachBtn && !attachBtn.contains(e.target)) { attachMenu.classList.remove('show'); if(selectedFiles.length === 0) attachBtn.classList.remove('active'); } });
-    }
-
+    function renderQuickReactions() { const list = document.getElementById('quickReactionsList'); if(!list) return; list.innerHTML = ''; quickReactions.forEach(emoji => { const span = document.createElement('span'); span.textContent = emoji; span.onclick = () => selectReaction(emoji); list.appendChild(span); }); }
+    function showReactionPicker(e, msgId) { e.stopPropagation(); currentReactMsgId = msgId; if(reactionPicker) { reactionPicker.style.display = 'flex'; const rect = e.currentTarget.getBoundingClientRect(); let topPos = rect.top - 55; let leftPos = rect.left - 130; if (topPos < 10) topPos = rect.bottom + 10; if (leftPos < 10) leftPos = 10; if (leftPos + reactionPicker.offsetWidth > window.innerWidth) leftPos = window.innerWidth - reactionPicker.offsetWidth - 10; reactionPicker.style.top = topPos + 'px'; reactionPicker.style.left = leftPos + 'px'; } }
+    function selectReaction(emoji) { if(!currentReactMsgId || !currentChatId) return; const chat = conversationsData[currentChatId]; if(!chat) return; const msg = chat.messages.find(m => m.id === currentReactMsgId || m.id == currentReactMsgId); if(msg) { msg.reaction = emoji; renderMessages(chat.messages, false); } if(reactionPicker) reactionPicker.style.display = 'none'; }
+    function removeReaction(msgId) { if(!currentChatId) return; const chat = conversationsData[currentChatId]; if(!chat) return; const msg = chat.messages.find(m => m.id === msgId || m.id == msgId); if(msg) { msg.reaction = null; renderMessages(chat.messages, false); } }
+    function openFullPicker() { isCustomizing = false; const fullPicker = document.getElementById('fullPickerModal'); if(fullPicker) fullPicker.style.display = 'flex'; if(reactionPicker) reactionPicker.style.display = 'none'; renderTopQuickReactions(); window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function toggleCustomizeMode() { isCustomizing = !isCustomizing; const btn = document.getElementById('btnToggleCustomize'); if(!btn) return; if (isCustomizing) { btn.textContent = "Terminé"; btn.style.color = "var(--btn-green)"; selectedCustomizeIndex = 0; } else { btn.textContent = "Personnaliser"; btn.style.color = "var(--btn-blue)"; selectedCustomizeIndex = null; localStorage.setItem('dussault_quick_reacts', JSON.stringify(quickReactions)); renderQuickReactions(); } renderTopQuickReactions(); }
+    function renderTopQuickReactions() { const container = document.getElementById('topQuickReactions'); if(!container) return; container.innerHTML = ''; quickReactions.forEach((emoji, index) => { const div = document.createElement('div'); div.className = 'top-react-slot' + (isCustomizing && selectedCustomizeIndex === index ? ' active-slot' : ''); div.textContent = emoji; if (isCustomizing) { div.onclick = () => { selectedCustomizeIndex = index; renderTopQuickReactions(); }; } else { div.onclick = () => { selectReaction(emoji); closeModal('fullPickerModal'); }; } container.appendChild(div); }); }
+    function closeModal(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
+    document.addEventListener('click', (e) => { if (reactionPicker && !reactionPicker.contains(e.target)) { reactionPicker.style.display = 'none'; } });
+    if(attachBtn && attachMenu) { attachBtn.addEventListener('click', (e) => { e.stopPropagation(); attachMenu.classList.toggle('show'); attachBtn.classList.toggle('active'); }); document.addEventListener('click', (e) => { if (!attachMenu.contains(e.target) && e.target !== attachBtn && !attachBtn.contains(e.target)) { attachMenu.classList.remove('show'); if(selectedFiles.length === 0) attachBtn.classList.remove('active'); } }); }
     function triggerInput(inputId) { const inp = document.getElementById(inputId); if(inp) inp.click(); if(attachMenu) attachMenu.classList.remove('show'); }
     
-    const inputCamera = document.getElementById('inputCamera');
-    const inputGallery = document.getElementById('inputGallery');
-    const inputFile = document.getElementById('inputFile');
-
-    if(inputCamera) inputCamera.addEventListener('change', handleFileSelect);
-    if(inputGallery) inputGallery.addEventListener('change', handleFileSelect);
-    if(inputFile) inputFile.addEventListener('change', handleFileSelect);
-
-    function handleFileSelect(e) {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
-        selectedFiles = selectedFiles.concat(files);
-        renderPreviews(); e.target.value = ''; 
-    }
-
-    function renderPreviews() {
-        if(!attachmentPreview) return;
-        attachmentPreview.innerHTML = '';
-        if (selectedFiles.length > 0) { attachmentPreview.classList.add('active'); if(attachBtn) attachBtn.classList.add('active'); } 
-        else { attachmentPreview.classList.remove('active'); if(attachBtn) attachBtn.classList.remove('active'); return; }
-
-        selectedFiles.forEach((file, index) => {
-            const previewItem = document.createElement('div');
-            if (file.type.startsWith('image/')) {
-                previewItem.className = 'preview-item'; const img = document.createElement('img'); img.src = URL.createObjectURL(file); previewItem.appendChild(img);
-            } else {
-                previewItem.className = 'preview-item-file'; const truncatedName = file.name.length > 15 ? file.name.substring(0,12)+'...' : file.name;
-                previewItem.innerHTML = `<div class="file-icon"><svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-file"></use></svg></div> <span>${truncatedName}</span>`;
-            }
-            const removeBtn = document.createElement('button'); removeBtn.className = 'remove-attachment'; removeBtn.innerText = '×'; removeBtn.onclick = () => removeFile(index);
-            previewItem.appendChild(removeBtn); attachmentPreview.appendChild(previewItem);
-        });
-    }
-
+    const inputCamera = document.getElementById('inputCamera'); const inputGallery = document.getElementById('inputGallery'); const inputFile = document.getElementById('inputFile');
+    if(inputCamera) inputCamera.addEventListener('change', handleFileSelect); if(inputGallery) inputGallery.addEventListener('change', handleFileSelect); if(inputFile) inputFile.addEventListener('change', handleFileSelect);
+    function handleFileSelect(e) { const files = Array.from(e.target.files); if (files.length === 0) return; selectedFiles = selectedFiles.concat(files); renderPreviews(); e.target.value = ''; }
+    function renderPreviews() { if(!attachmentPreview) return; attachmentPreview.innerHTML = ''; if (selectedFiles.length > 0) { attachmentPreview.classList.add('active'); if(attachBtn) attachBtn.classList.add('active'); } else { attachmentPreview.classList.remove('active'); if(attachBtn) attachBtn.classList.remove('active'); return; } selectedFiles.forEach((file, index) => { const previewItem = document.createElement('div'); if (file.type.startsWith('image/')) { previewItem.className = 'preview-item'; const img = document.createElement('img'); img.src = URL.createObjectURL(file); previewItem.appendChild(img); } else { previewItem.className = 'preview-item-file'; const truncatedName = file.name.length > 15 ? file.name.substring(0,12)+'...' : file.name; previewItem.innerHTML = `<div class="file-icon"><svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-file"></use></svg></div> <span>${truncatedName}</span>`; } const removeBtn = document.createElement('button'); removeBtn.className = 'remove-attachment'; removeBtn.innerText = '×'; removeBtn.onclick = () => removeFile(index); previewItem.appendChild(removeBtn); attachmentPreview.appendChild(previewItem); }); }
     function removeFile(index) { selectedFiles.splice(index, 1); renderPreviews(); }
-
-    if(messageInput) {
-        messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-    }
-
+    if(messageInput) { messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); }); }
     window.onload = initAuth;
 </script>
 </body>
