@@ -565,13 +565,12 @@
         { id: 'emp2', name: 'Jean Tremblay', initials: 'JT' }
     ];
 
-    // On garde tes données fictives pour les chats privés, mais le "global" sera écrasé par Supabase
     const conversationsData = {
         'global': {
             name: 'Équipe (Général)',
             status: '🟢 Connecté à Supabase',
             isGroup: true,
-            messages: [] // Sera rempli par la base de données
+            messages: [] 
         },
         'private_jt': {
             name: 'Jean Tremblay (Test Local)',
@@ -616,12 +615,10 @@
         }
     }
 
-    // 2. DÉMARRAGE DE L'APPLICATION
+    // 2. DÉMARRAGE
     function initApp() {
         renderQuickReactions();
         renderContactList();
-        
-        // Charger l'historique depuis Supabase pour le groupe Général
         chargerMessagesSupabase();
 
         const emojiPicker = document.getElementById('myEmojiPicker');
@@ -640,18 +637,34 @@
         }
     }
 
+    // --- FONCTION UTILITAIRE POUR DÉCODER LES IMAGES/FICHIERS ---
+    function decoderMessage(contenuBrut) {
+        if (!contenuBrut) return { type: 'text', text: '', url: '', fileName: '', fileSize: '' };
+        
+        // On utilise une astuce : si ça commence par IMG|||, c'est une image
+        if (contenuBrut.startsWith('IMG|||')) {
+            const parts = contenuBrut.split('|||');
+            return { type: 'image', text: '', url: parts[1], fileName: '', fileSize: '' };
+        } 
+        // Si ça commence par FILE|||, c'est un document
+        else if (contenuBrut.startsWith('FILE|||')) {
+            const parts = contenuBrut.split('|||');
+            return { type: 'file', text: '', url: parts[1], fileName: parts[2], fileSize: parts[3] };
+        } 
+        // Sinon, c'est du texte normal
+        else {
+            return { type: 'text', text: contenuBrut, url: '', fileName: '', fileSize: '' };
+        }
+    }
+
     // 3. LECTURE DE L'HISTORIQUE SUPABASE
     async function chargerMessagesSupabase() {
-        // On va chercher tous les messages, plus le nom du profil attaché grâce à ta clé étrangère (le petit crochet)
         const { data, error } = await supabaseClient
             .from('message')
             .select('id, created_at, contenu, expediteur_id, profils(prenom_nom)')
             .order('created_at', { ascending: true });
 
-        if (error) {
-            console.error("Erreur Supabase:", error);
-            return;
-        }
+        if (error) { console.error("Erreur Supabase:", error); return; }
 
         conversationsData['global'].messages = [];
 
@@ -659,65 +672,48 @@
             const date = new Date(msgDB.created_at);
             const timeStr = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
             const isMine = msgDB.expediteur_id === myUserId;
-            // On extrait le nom depuis la table profils liée
             const senderName = msgDB.profils ? msgDB.profils.prenom_nom : 'Inconnu';
+            
+            const decodage = decoderMessage(msgDB.contenu);
 
             conversationsData['global'].messages.push({
-                id: msgDB.id,
-                sender: senderName,
-                text: msgDB.contenu,
-                time: timeStr,
-                isMine: isMine,
-                type: 'text',
-                reaction: null
+                id: msgDB.id, sender: senderName, time: timeStr, isMine: isMine, reaction: null,
+                type: decodage.type, text: decodage.text, url: decodage.url, fileName: decodage.fileName, fileSize: decodage.fileSize
             });
         });
 
-        if (currentChatId === 'global') {
-            renderMessages(conversationsData['global'].messages, true);
-        }
+        if (currentChatId === 'global') { renderMessages(conversationsData['global'].messages, true); }
         renderContactList();
-        
-        // On active l'écouteur Temps Réel
         ecouterNouveauxMessages();
     }
 
-    // 4. LE TEMPS RÉEL (REALTIME)
+    // 4. LE TEMPS RÉEL
     function ecouterNouveauxMessages() {
         supabaseClient
             .channel('messagerie-globale')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message' }, async (payload) => {
                 const newMsg = payload.new;
-                
-                // Si c'est notre propre message, on l'a déjà affiché en cliquant sur envoyer
-                if (newMsg.expediteur_id === myUserId) return;
+                if (newMsg.expediteur_id === myUserId) return; // On ignore nos propres messages déjà affichés
 
-                // On va chercher le nom de la personne qui vient d'écrire
                 const { data: profil } = await supabaseClient.from('profils').select('prenom_nom').eq('id', newMsg.expediteur_id).maybeSingle();
                 const senderName = profil ? profil.prenom_nom : 'Inconnu';
 
                 const date = new Date(newMsg.created_at);
                 const timeStr = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
+                const decodage = decoderMessage(newMsg.contenu);
 
                 conversationsData['global'].messages.push({
-                    id: newMsg.id,
-                    sender: senderName,
-                    text: newMsg.contenu,
-                    time: timeStr,
-                    isMine: false,
-                    type: 'text',
-                    reaction: null
+                    id: newMsg.id, sender: senderName, time: timeStr, isMine: false, reaction: null,
+                    type: decodage.type, text: decodage.text, url: decodage.url, fileName: decodage.fileName, fileSize: decodage.fileSize
                 });
 
-                if (currentChatId === 'global') {
-                    renderMessages(conversationsData['global'].messages, true);
-                }
+                if (currentChatId === 'global') { renderMessages(conversationsData['global'].messages, true); }
                 renderContactList();
             })
             .subscribe();
     }
 
-    // 5. ENVOI DES MESSAGES
+    // 5. ENVOI DES MESSAGES ET FICHIERS
     async function sendMessage() {
         if(!messageInput) return;
         const text = messageInput.value.trim();
@@ -729,32 +725,56 @@
         const now = new Date();
         const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
 
-        // GESTION DU CHAT CONNECTÉ À SUPABASE
+        // GESTION DU CHAT SUPABASE
         if (currentChatId === 'global') {
+            // -- Envoi des fichiers d'abord --
             if (hasFiles) {
-                showAlert("L'envoi de fichiers nécessite une configuration Supabase Storage (prochaine étape !).");
-                selectedFiles = []; renderPreviews();
-                return;
-            }
+                const fichiersAEnvoyer = [...selectedFiles];
+                selectedFiles = []; // On vide la sélection
+                renderPreviews();   // On cache la barre de prévisualisation
 
-            if (text) {
-                // 1. Affichage immédiat pour l'utilisateur (pour que ça paraisse instantané)
-                const tempId = Date.now();
-                activeChat.messages.push({ id: tempId, sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
-                messageInput.value = '';
-                renderMessages(activeChat.messages, true);
-                renderContactList();
+                for (let i = 0; i < fichiersAEnvoyer.length; i++) {
+                    const file = fichiersAEnvoyer[i];
+                    // Générer un nom unique pour éviter de remplacer une vieille photo
+                    const fileExt = file.name.split('.').pop();
+                    const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+                    const filePath = `${myUserId}/${uniqueName}`;
 
-                // 2. Envoi silencieux à Supabase en arrière-plan
-                const { error } = await supabaseClient
-                    .from('message')
-                    .insert([{ contenu: text, expediteur_id: myUserId }]);
+                    // 1. Envoyer au Bucket
+                    const { error: uploadError } = await supabaseClient.storage.from('pieces_jointes').upload(filePath, file);
+                    if (uploadError) { console.error(uploadError); showAlert("Erreur d'envoi de la pièce jointe."); continue; }
 
-                if (error) {
-                    console.error("Erreur d'envoi:", error);
-                    showAlert("Erreur lors de l'envoi du message à la base de données.");
+                    // 2. Récupérer l'URL publique
+                    const { data: { publicUrl } } = supabaseClient.storage.from('pieces_jointes').getPublicUrl(filePath);
+
+                    // 3. Encoder l'URL pour la DB
+                    const isImg = file.type.startsWith('image/');
+                    let contenuFormatte = "";
+                    let fileSizeTxt = Math.round(file.size / 1024) + ' KB';
+                    
+                    if (isImg) { contenuFormatte = `IMG|||${publicUrl}`; } 
+                    else { contenuFormatte = `FILE|||${publicUrl}|||${file.name}|||${fileSizeTxt}`; }
+
+                    // 4. Affichage local immédiat pour fluidité
+                    activeChat.messages.push({ 
+                        id: Date.now(), sender: myUserName, time: timeStr, isMine: true, reaction: null,
+                        type: isImg ? 'image' : 'file', text: '', url: publicUrl, fileName: file.name, fileSize: fileSizeTxt 
+                    });
+                    renderMessages(activeChat.messages, true);
+
+                    // 5. Sauvegarde DB
+                    await supabaseClient.from('message').insert([{ contenu: contenuFormatte, expediteur_id: myUserId }]);
                 }
             }
+
+            // -- Envoi du texte --
+            if (text) {
+                activeChat.messages.push({ id: Date.now(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
+                messageInput.value = '';
+                renderMessages(activeChat.messages, true);
+                await supabaseClient.from('message').insert([{ contenu: text, expediteur_id: myUserId }]);
+            }
+            renderContactList();
         } 
         // GESTION DES CHATS LOCAUX (Fictifs)
         else {
@@ -766,15 +786,13 @@
                     activeChat.messages.push(newFileMsg);
                 });
             }
-            if (text) {
-                activeChat.messages.push({ id: Date.now(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null });
-            }
+            if (text) { activeChat.messages.push({ id: Date.now(), sender: myUserName, text: text, time: timeStr, isMine: true, type: 'text', reaction: null }); }
             messageInput.value = ''; selectedFiles = []; renderPreviews(); 
             renderMessages(activeChat.messages, true); renderContactList();
         }
     }
 
-    // --- LE RESTE DES FONCTIONS UI (Inchangées, mais nécessaires) ---
+    // --- LE RESTE DES FONCTIONS UI ---
     function showAlert(msg) {
         document.getElementById('alertMessage').innerHTML = msg;
         document.getElementById('alertModal').style.display = 'flex';
@@ -829,16 +847,14 @@
 
     function toggleRowSelection(cb, rowId) {
         const row = document.getElementById(rowId);
-        if (cb.checked) { row.classList.add('selected'); } 
-        else { row.classList.remove('selected'); }
+        if (cb.checked) { row.classList.add('selected'); } else { row.classList.remove('selected'); }
         checkNewChatSelection();
     }
 
     function checkNewChatSelection() {
         const selected = document.querySelectorAll('.new-chat-cb:checked');
         const groupGroup = document.getElementById('groupNameGroup');
-        if (selected.length > 1) { groupGroup.classList.add('show'); } 
-        else { groupGroup.classList.remove('show'); }
+        if (selected.length > 1) { groupGroup.classList.add('show'); } else { groupGroup.classList.remove('show'); }
     }
 
     function createNewChat() {
@@ -943,12 +959,13 @@
             let reactionHtml = msg.reaction ? `<div class="msg-reaction-badge" onclick="removeReaction('${msg.id}')">${msg.reaction}</div>` : '';
 
             let innerBubble = '';
+            // Modification ici pour que les liens soient cliquables (target="_blank")
             if (msg.type === 'text') {
                 innerBubble = `<div class="message-bubble">${msg.text}<span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
             } else if (msg.type === 'image') {
-                innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}"><span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
+                innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}" onclick="window.open('${msg.url}')"><span class="message-time">${msg.time}</span>${reactionHtml}</div>`;
             } else if (msg.type === 'file') {
-                innerBubble = `<div class="message-bubble bubble-file"><div class="file-icon"><svg class="svg-icon" style="width:28px;height:28px;"><use href="#icon-file"></use></svg></div><div class="file-meta"><span class="file-name">${msg.fileName}</span><span class="file-size">${msg.fileSize}</span></div><div class="file-download-icon"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-download"></use></svg></div><span class="message-time" style="position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: #333;">${msg.time}</span>${reactionHtml}</div>`;
+                innerBubble = `<a href="${msg.url}" target="_blank" class="message-bubble bubble-file"><div class="file-icon"><svg class="svg-icon" style="width:28px;height:28px;"><use href="#icon-file"></use></svg></div><div class="file-meta"><span class="file-name">${msg.fileName}</span><span class="file-size">${msg.fileSize}</span></div><div class="file-download-icon"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-download"></use></svg></div><span class="message-time" style="position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: #333;">${msg.time}</span>${reactionHtml}</a>`;
             }
 
             wrapper.innerHTML = senderHtml + `
