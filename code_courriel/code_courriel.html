@@ -48,7 +48,6 @@
         .reading-actions { display: flex; gap: 10px; }
         .btn-tool { background: transparent; border: 1px solid #444; color: #aaa; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .btn-tool:hover { background: #444; color: white; }
-        .btn-tool.active { color: var(--btn-yellow); border-color: var(--btn-yellow); }
         .reading-header { padding: 25px 30px; border-bottom: 1px solid #333; }
         .reading-subject { font-size: 22px; color: white; margin: 0 0 15px 0; }
         .reading-meta { display: flex; justify-content: space-between; align-items: center; }
@@ -71,7 +70,6 @@
         .compose-footer { padding: 15px 20px; border-top: 1px solid #444; display: flex; justify-content: space-between; align-items: center; background: #22232c; }
         .btn-send { background: var(--btn-blue); color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;}
         .btn-send:hover { background: #2980b9; }
-        .btn-mobile-back { display: none; }
         
         .attachment-preview-area { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;}
         .attachment-tag { background: #444; padding: 5px 10px; border-radius: 5px; font-size: 12px; display: flex; align-items: center; gap: 5px;}
@@ -83,26 +81,21 @@
             .email-folders::-webkit-scrollbar { display: none; } 
             .folder-item { padding: 8px 16px; border-left: none !important; background: #1e1f26; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
             .folder-item.active { background: var(--btn-yellow); color: black; }
-            .folder-item:hover { background: #343542; }
-            .folder-item.active:hover { background: #ffd66b; }
-            .folder-item.active .badge-unread { background: black; color: var(--btn-yellow); }
             .show-reading .email-folders { display: none; }
             .email-list-col { width: 100%; border-right: none; flex: 1; }
             .email-view-col { display: none; position: absolute; top:0; left:0; width:100%; height:100%; z-index:10; }
             .show-reading .email-list-col { display: none; }
             .show-reading .email-view-col { display: flex; }
             .btn-mobile-back { display: flex; background: transparent; border: none; color: var(--btn-yellow); cursor: pointer; align-items: center; gap: 5px; font-weight: bold; padding: 0; margin-right: 15px;}
-            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; }
-            .btn-compose { width: 100%; justify-content: center; }
-            .reading-toolbar { padding-right: 20px; }
         }
     </style>
 </head>
 <body>
 
-<div id="security-loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--app-bg); z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-    <div style="color: #444; font-size: 12px; font-family: sans-serif;">Chargement des courriels...</div>
+<div id="security-loader" style="position: fixed; inset: 0; background: #1e1f26; z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="color: #444; font-size: 12px;">Chargement...</div>
 </div>
+
 <svg style="display: none;">
     <symbol id="icon-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect><polyline points="3 7 12 13 21 7"></polyline></symbol>
     <symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol>
@@ -116,65 +109,27 @@
 <div class="main-content">
     <div id="view-dashboard">
         <div class="dash-header">
-            <div class="dash-title">
-                <h1>Boîte Courriel</h1>
-                <p>Messagerie interne (Connectée à Supabase)</p>
-            </div>
-            <button class="btn-compose" onclick="openComposeModal()">
-                <svg class="svg-icon"><use href="#icon-edit"></use></svg> Rédiger un message
-            </button>
+            <div class="dash-title"><h1>Boîte Courriel</h1><p>Messagerie interne</p></div>
+            <button class="btn-compose" onclick="openComposeModal()"><svg class="svg-icon"><use href="#icon-edit"></use></svg> Rédiger</button>
         </div>
 
         <div class="email-layout" id="emailLayout">
             <div class="email-folders">
-                <div class="folder-item active" onclick="switchFolder('inbox')">
-                    <div class="folder-item-left"><svg class="svg-icon"><use href="#icon-mail"></use></svg> Boîte de réception</div>
-                    <span class="badge-unread" id="unreadCount" style="display: none;">0</span>
-                </div>
-                <div class="folder-item" onclick="switchFolder('sent')">
-                    <div class="folder-item-left"><svg class="svg-icon"><use href="#icon-send"></use></svg> Éléments envoyés</div>
-                </div>
+                <div class="folder-item active" onclick="switchFolder('inbox')"><div class="folder-item-left"><svg class="svg-icon"><use href="#icon-mail"></use></svg> Réception</div><span class="badge-unread" id="unreadCount" style="display: none;">0</span></div>
+                <div class="folder-item" onclick="switchFolder('sent')"><div class="folder-item-left"><svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyés</div></div>
+                <div class="folder-item" onclick="switchFolder('trash')"><div class="folder-item-left"><svg class="svg-icon"><use href="#icon-trash"></use></svg> Corbeille</div></div>
             </div>
 
             <div class="email-list-col">
-                <div class="email-toolbar">
-                    <div class="search-box">
-                        <svg class="svg-icon"><use href="#icon-search"></use></svg>
-                        <input type="text" id="emailSearch" placeholder="Rechercher..." onkeyup="filterEmails()">
-                    </div>
-                </div>
+                <div class="email-toolbar"><div class="search-box"><svg class="svg-icon"><use href="#icon-search"></use></svg><input type="text" id="emailSearch" placeholder="Rechercher..." onkeyup="filterEmails()"></div></div>
                 <div class="email-list" id="emailList"></div>
             </div>
 
             <div class="email-view-col">
-                <div class="empty-view" id="emptyView">
-                    <svg class="svg-icon"><use href="#icon-mail"></use></svg>
-                    <p>Sélectionnez un message pour le lire</p>
-                </div>
-                
+                <div class="empty-view" id="emptyView"><svg class="svg-icon"><use href="#icon-mail"></use></svg><p>Sélectionnez un message</p></div>
                 <div class="reading-pane" id="readingPane">
-                    <div class="reading-toolbar">
-                        <button class="btn-mobile-back" onclick="closeReadingPane()"><svg class="svg-icon"><use href="#icon-chevron-left"></use></svg> Retour</button>
-                        <div class="reading-actions" style="margin-left: auto;">
-                            <button class="btn-tool" title="Répondre" onclick="replyEmail()"><svg class="svg-icon"><use href="#icon-edit"></use></svg></button>
-                            <button class="btn-tool" title="Supprimer définitivement" onclick="deleteCurrentEmail()"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>
-                        </div>
-                    </div>
-                    
-                    <div class="reading-header">
-                        <h2 class="reading-subject" id="readSubject">Sujet</h2>
-                        <div class="reading-meta">
-                            <div class="reading-sender-info">
-                                <div class="sender-avatar" id="readAvatar">?</div>
-                                <div>
-                                    <div class="sender-name" id="readSender">Nom</div>
-                                    <div class="sender-email" id="readEmailAddress">email</div>
-                                </div>
-                            </div>
-                            <div class="reading-date" id="readDate">Date</div>
-                        </div>
-                    </div>
-                    
+                    <div class="reading-toolbar"><button class="btn-mobile-back" onclick="closeReadingPane()"><svg class="svg-icon"><use href="#icon-chevron-left"></use></svg> Retour</button><div class="reading-actions" style="margin-left: auto;"><button class="btn-tool" onclick="replyEmail()"><svg class="svg-icon"><use href="#icon-edit"></use></svg></button><button class="btn-tool" onclick="deleteCurrentEmail()"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button></div></div>
+                    <div class="reading-header"><h2 class="reading-subject" id="readSubject">Sujet</h2><div class="reading-meta"><div class="reading-sender-info"><div class="sender-avatar" id="readAvatar">?</div><div><div class="sender-name" id="readSender">Nom</div><div class="sender-email" id="readEmailAddress">email</div></div></div><div class="reading-date" id="readDate">Date</div></div></div>
                     <div class="reading-body" id="readBody">Contenu...</div>
                 </div>
             </div>
@@ -184,231 +139,135 @@
 
 <div class="modal-overlay" id="composeModal">
     <div class="compose-card">
-        <div class="compose-header">
-            <h3>Nouveau message</h3>
-            <button class="btn-close" onclick="closeComposeModal()">&times;</button>
-        </div>
+        <div class="compose-header"><h3>Nouveau message</h3><button class="btn-close" onclick="closeComposeModal()">&times;</button></div>
         <div class="compose-body">
-            <div class="compose-field">
-                <label>À :</label>
-                <input type="email" id="composeTo" placeholder="adresse@exemple.com (Exactement comme dans Supabase)">
-            </div>
-            <div class="compose-field">
-                <label>Sujet :</label>
-                <input type="text" id="composeSubject" placeholder="Objet du message">
-            </div>
-            <textarea class="compose-textarea" id="composeBody" placeholder="Écrivez votre message ici..."></textarea>
-            
+            <div class="compose-field"><label>À :</label><input type="email" id="composeTo" placeholder="adresse@exemple.com"></div>
+            <div class="compose-field"><label>Sujet :</label><input type="text" id="composeSubject" placeholder="Objet"></div>
+            <textarea class="compose-textarea" id="composeBody" placeholder="Votre message..."></textarea>
             <div class="attachment-preview-area" id="emailAttachmentPreview"></div>
         </div>
         <div class="compose-footer">
             <input type="file" id="emailFileInput" multiple hidden onchange="handleEmailFiles(event)">
             <button class="btn-tool" id="btnEmailAttach" onclick="document.getElementById('emailFileInput').click()"><svg class="svg-icon"><use href="#icon-paperclip"></use></svg></button>
-            <button class="btn-send" id="btnSendEmail" onclick="sendEmail()">
-                Envoyer <svg class="svg-icon"><use href="#icon-send"></use></svg>
-            </button>
+            <button class="btn-send" id="btnSendEmail" onclick="sendEmail()">Envoyer <svg class="svg-icon"><use href="#icon-send"></use></svg></button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- CONFIGURATION SUPABASE ---
     const supabaseUrl = 'https://ipxmloqgoukieuerbxtl.supabase.co';
     const supabaseKey = 'sb_publishable_jVOmm2g3WLxtIrr-rVRvtA_aWaUtB-E';
     const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    let myUserId = 'local-user';
-    let myUserName = 'Employé';
-    let myUserEmail = '';
-    let emailsData = [];
-    let currentFolder = 'inbox';
-    let currentEmailId = null;
-    let selectedEmailFiles = [];
+    let myUserId = '', myUserEmail = '', emailsData = [], currentFolder = 'inbox', currentEmailId = null, selectedEmailFiles = [];
 
-    // 1. INITIALISATION ET LECTURE DE L'IDENTITÉ
     async function initAuth() {
-        try {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) { window.top.location.href = '../login.html'; return; }
-
-            myUserId = user.id;
-            myUserEmail = user.email.toLowerCase(); // FORCÉ EN MINUSCULE POUR ÉVITER LES BUGS !
-
-            const { data: profil } = await supabaseClient.from('profils').select('prenom_nom').eq('id', user.id).maybeSingle();
-            if (profil) { myUserName = profil.prenom_nom || user.email.split('@')[0]; }
-            
-            await chargerCourrielsSupabase();
-        } catch (error) { console.error("Erreur :", error);
-        } finally { document.getElementById('security-loader').style.display = 'none'; window.parent.postMessage({ type: 'module_ready', module: 'view-courriel' }, '*'); }
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) { window.top.location.href = '../login.html'; return; }
+        myUserId = user.id; myUserEmail = user.email.toLowerCase();
+        await chargerCourriels();
+        document.getElementById('security-loader').style.display = 'none';
+        window.parent.postMessage({ type: 'module_ready', module: 'view-courriel' }, '*');
     }
 
-    // 2. TÉLÉCHARGER LES COURRIELS
-    async function chargerCourrielsSupabase() {
-        const { data, error } = await supabaseClient
-            .from('courriels')
-            .select('*')
-            .or(`destinataire.eq.${myUserEmail},expediteur.eq.${myUserEmail}`)
-            .order('created_at', { ascending: false });
-
-        if (error) { alert("🚨 Erreur Supabase : " + error.message); return; }
-
-        emailsData = [];
-        data.forEach(dbMail => {
+    async function chargerCourriels() {
+        const { data, error } = await supabaseClient.from('courriels').select('*').or(`destinataire.eq.${myUserEmail},expediteur.eq.${myUserEmail}`).order('created_at', { ascending: false });
+        if (error) return;
+        emailsData = data.map(dbMail => {
             let folder = dbMail.expediteur.toLowerCase() === myUserEmail ? 'sent' : 'inbox';
             const dateObj = new Date(dbMail.created_at);
-            const shortDate = dateObj.toLocaleDateString() + ' ' + String(dateObj.getHours()).padStart(2, '0') + ':' + String(dateObj.getMinutes()).padStart(2, '0');
-
-            emailsData.push({
-                id: dbMail.id, folder: folder,
-                sender: dbMail.expediteur.toLowerCase() === myUserEmail ? 'Moi' : dbMail.expediteur,
-                emailAddress: dbMail.expediteur.toLowerCase() === myUserEmail ? dbMail.destinataire : dbMail.expediteur,
-                subject: dbMail.sujet || '(Sans objet)', body: dbMail.contenu || '', date: shortDate, fullDate: shortDate,
-                unread: !dbMail.est_lu && folder === 'inbox'
-            });
+            const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.getHours() + ':' + String(dateObj.getMinutes()).padStart(2, '0');
+            return { id: dbMail.id, folder, sender: dbMail.expediteur, emailAddress: dbMail.expediteur, subject: dbMail.sujet || '(Sans objet)', body: dbMail.contenu || '', date: dateStr, fullDate: dateStr, unread: !dbMail.est_lu && folder === 'inbox' };
         });
-
-        renderEmailList(); updateUnreadCount(); ecouterNouveauxCourriels();
+        renderEmailList(); updateUnreadCount(); ecouterNouveaux();
     }
 
-    // 3. LE TEMPS RÉEL (REALTIME)
-    function ecouterNouveauxCourriels() {
+    function ecouterNouveaux() {
         supabaseClient.channel('mes-courriels').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'courriels' }, (payload) => {
             const newMsg = payload.new;
             if (newMsg.destinataire.toLowerCase() !== myUserEmail && newMsg.expediteur.toLowerCase() !== myUserEmail) return;
-
-            let folder = newMsg.expediteur.toLowerCase() === myUserEmail ? 'sent' : 'inbox';
-            const dateObj = new Date(newMsg.created_at);
-            const shortDate = dateObj.toLocaleDateString() + ' ' + String(dateObj.getHours()).padStart(2, '0') + ':' + String(dateObj.getMinutes()).padStart(2, '0');
-
-            emailsData.unshift({
-                id: newMsg.id, folder: folder,
-                sender: newMsg.expediteur.toLowerCase() === myUserEmail ? 'Moi' : newMsg.expediteur,
-                emailAddress: newMsg.expediteur.toLowerCase() === myUserEmail ? newMsg.destinataire : newMsg.expediteur,
-                subject: newMsg.sujet || '(Sans objet)', body: newMsg.contenu || '', date: shortDate, fullDate: shortDate,
-                unread: !newMsg.est_lu && folder === 'inbox'
-            });
-
-            renderEmailList(); updateUnreadCount();
+            // On vérifie si on l'a déjà (pour éviter doublon lors d'un envoi propre)
+            if (emailsData.some(e => e.id === newMsg.id)) return;
+            chargerCourriels(); // Rechargement simple pour la sécurité
         }).subscribe();
     }
 
-    // 4. GESTION DES PIÈCES JOINTES
-    function handleEmailFiles(e) {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
-        selectedEmailFiles = selectedEmailFiles.concat(files);
-        renderEmailPreviews();
-        e.target.value = '';
-    }
-
-    function renderEmailPreviews() {
-        const area = document.getElementById('emailAttachmentPreview');
-        const btn = document.getElementById('btnEmailAttach');
-        area.innerHTML = '';
-        if (selectedEmailFiles.length > 0) { btn.classList.add('active'); } else { btn.classList.remove('active'); }
-
-        selectedEmailFiles.forEach((file, index) => {
-            const tag = document.createElement('div'); tag.className = 'attachment-tag';
-            const truncatedName = file.name.length > 20 ? file.name.substring(0,17)+'...' : file.name;
-            tag.innerHTML = `📎 ${truncatedName} <button onclick="removeEmailFile(${index})">×</button>`;
-            area.appendChild(tag);
-        });
-    }
-
-    function removeEmailFile(index) { selectedEmailFiles.splice(index, 1); renderEmailPreviews(); }
-
-    // 5. ENVOYER UN COURRIEL DANS SUPABASE
     async function sendEmail() {
         const to = document.getElementById('composeTo').value.trim().toLowerCase();
         const subject = document.getElementById('composeSubject').value.trim();
         let body = document.getElementById('composeBody').value.trim();
-
-        if (!to) { alert('Veuillez entrer une adresse destinataire.'); return; }
+        if (!to) return alert('Destinataire requis');
         
-        const btnSend = document.getElementById('btnSendEmail');
-        btnSend.innerHTML = 'Envoi en cours...'; btnSend.disabled = true;
+        document.getElementById('btnSendEmail').disabled = true;
+        
+        // Simuler un envoi local instantané pour l'UX
+        const tempId = Date.now();
+        emailsData.unshift({ id: tempId, folder: 'sent', sender: 'Moi', emailAddress: to, subject, body, date: 'À l\'instant', fullDate: 'Aujourd\'hui', unread: false });
+        renderEmailList();
+        closeComposeModal();
 
-        // UPLOAD DES FICHIERS
-        if (selectedEmailFiles.length > 0) {
-            body += '\n\n------------------------------\n📁 Pièces jointes :';
-            for(let i=0; i<selectedEmailFiles.length; i++) {
-                const file = selectedEmailFiles[i];
-                const ext = file.name.split('.').pop();
-                const path = `${myUserId}/email_${Date.now()}_${i}.${ext}`;
-                const { error: upErr } = await supabaseClient.storage.from('pieces_jointes').upload(path, file);
-                if (!upErr) {
-                    const { data } = supabaseClient.storage.from('pieces_jointes').getPublicUrl(path);
-                    body += `\n- ${file.name} : ${data.publicUrl}`;
-                }
-            }
-        }
-
-        const { error } = await supabaseClient.from('courriels').insert([{
-            expediteur: myUserEmail, destinataire: to, sujet: subject, contenu: body, est_lu: false
-        }]);
-
-        btnSend.innerHTML = 'Envoyer <svg class="svg-icon"><use href="#icon-send"></use></svg>'; btnSend.disabled = false;
-
-        if (error) { alert("🚨 L'envoi a échoué. Ton adresse n'est peut-être pas autorisée par Supabase. Erreur : " + error.message); } 
-        else { closeComposeModal(); }
+        const { error } = await supabaseClient.from('courriels').insert([{ expediteur: myUserEmail, destinataire: to, sujet: subject, contenu: body, est_lu: false }]);
+        if (error) alert("Erreur d'envoi");
+        else chargerCourriels();
     }
 
-    // 6. MARQUER COMME LU
     async function openEmail(id) {
         currentEmailId = id; const email = emailsData.find(e => e.id === id); if (!email) return;
-
         if (email.unread && email.folder === 'inbox') {
             email.unread = false; updateUnreadCount();
             await supabaseClient.from('courriels').update({ est_lu: true }).eq('id', email.id);
         }
-
         renderEmailList();
         document.getElementById('readSubject').textContent = email.subject;
         document.getElementById('readSender').textContent = email.sender;
         document.getElementById('readEmailAddress').textContent = email.emailAddress;
         document.getElementById('readDate').textContent = email.fullDate;
-        
-        // Rendre les liens cliquables dans le texte
-        const bodyWithLinks = email.body.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:var(--btn-blue);">$1</a>');
-        document.getElementById('readBody').innerHTML = bodyWithLinks;
+        document.getElementById('readBody').innerHTML = email.body.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
         document.getElementById('readAvatar').textContent = email.sender.charAt(0).toUpperCase();
-
         document.getElementById('emptyView').style.display = 'none'; document.getElementById('readingPane').style.display = 'flex';
-        document.getElementById('emailLayout').classList.add('show-reading'); window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+        document.getElementById('emailLayout').classList.add('show-reading');
     }
 
-    // --- FONCTIONS VISUELLES ---
-    function switchFolder(folder) { currentFolder = folder; document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active')); event.currentTarget.classList.add('active'); currentEmailId = null; closeReadingPane(); renderEmailList(); }
-    
+    function switchFolder(folder) {
+        currentFolder = folder;
+        document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        closeReadingPane();
+    }
+
     function renderEmailList() {
-        const container = document.getElementById('emailList'); const searchTerm = document.getElementById('emailSearch').value.toLowerCase(); container.innerHTML = '';
-        const filteredEmails = emailsData.filter(e => e.folder === currentFolder && (e.subject.toLowerCase().includes(searchTerm) || e.sender.toLowerCase().includes(searchTerm)));
-        if (filteredEmails.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:#888; font-style:italic;">Dossier vide</div>'; return; }
-        filteredEmails.forEach(email => {
-            const isActive = email.id === currentEmailId ? 'active' : ''; const isUnread = email.unread ? 'unread' : ''; const preview = email.body.substring(0, 40).replace(/\n/g, ' ') + '...';
-            const div = document.createElement('div'); div.className = `email-item ${isActive} ${isUnread}`; div.onclick = () => openEmail(email.id);
-            div.innerHTML = `<div class="email-sender">${email.sender}</div><div class="email-subject">${email.subject}</div><div class="email-preview-text">${preview}</div><div class="email-date">${email.date}</div>`;
+        const container = document.getElementById('emailList'); container.innerHTML = '';
+        const filtered = emailsData.filter(e => e.folder === currentFolder);
+        if (filtered.length === 0) { container.innerHTML = '<div style="padding:20px;text-align:center;color:#888;">Vide</div>'; return; }
+        filtered.forEach(email => {
+            const div = document.createElement('div'); div.className = `email-item ${email.id === currentEmailId ? 'active' : ''} ${email.unread ? 'unread' : ''}`;
+            div.onclick = () => openEmail(email.id);
+            div.innerHTML = `<div class="email-sender">${email.sender}</div><div class="email-subject">${email.subject}</div><div class="email-preview-text">${email.body.substring(0,30)}...</div><div class="email-date">${email.date}</div>`;
             container.appendChild(div);
         });
     }
 
-    function filterEmails() { renderEmailList(); }
-    function closeReadingPane() { document.getElementById('emptyView').style.display = 'flex'; document.getElementById('readingPane').style.display = 'none'; document.getElementById('emailLayout').classList.remove('show-reading'); currentEmailId = null; renderEmailList(); window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
-    function updateUnreadCount() { const count = emailsData.filter(e => e.folder === 'inbox' && e.unread).length; const badge = document.getElementById('unreadCount'); if (count > 0) { badge.style.display = 'inline-block'; badge.textContent = count; } else { badge.style.display = 'none'; } }
-    
     async function deleteCurrentEmail() {
-        if (!currentEmailId) return;
-        if(confirm("Voulez-vous vraiment supprimer ce courriel définitivement ?")) {
-            await supabaseClient.from('courriels').delete().eq('id', currentEmailId);
-            emailsData = emailsData.filter(e => e.id !== currentEmailId);
-            closeReadingPane();
+        const email = emailsData.find(e => e.id === currentEmailId);
+        if (!email) return;
+        if (email.folder === 'trash') {
+            if (confirm("Supprimer définitivement ?")) {
+                await supabaseClient.from('courriels').delete().eq('id', currentEmailId);
+                emailsData = emailsData.filter(e => e.id !== currentEmailId);
+            }
+        } else {
+            email.folder = 'trash';
         }
+        closeReadingPane();
     }
 
-    function openComposeModal() { document.getElementById('composeTo').value = ''; document.getElementById('composeSubject').value = ''; document.getElementById('composeBody').value = ''; selectedEmailFiles = []; renderEmailPreviews(); document.getElementById('composeModal').style.display = 'flex'; }
+    function handleEmailFiles(e) { /* Fonction storage ici si besoin */ }
+    function filterEmails() { renderEmailList(); }
+    function closeReadingPane() { document.getElementById('emptyView').style.display = 'flex'; document.getElementById('readingPane').style.display = 'none'; document.getElementById('emailLayout').classList.remove('show-reading'); currentEmailId = null; renderEmailList(); }
+    function updateUnreadCount() { const c = emailsData.filter(e => e.folder === 'inbox' && e.unread).length; const b = document.getElementById('unreadCount'); b.style.display = c > 0 ? 'inline-block' : 'none'; b.textContent = c; }
+    function openComposeModal() { document.getElementById('composeModal').style.display = 'flex'; document.getElementById('btnSendEmail').disabled = false; }
     function closeComposeModal() { document.getElementById('composeModal').style.display = 'none'; }
-    function replyEmail() { if (!currentEmailId) return; const email = emailsData.find(e => e.id === currentEmailId); if (email) { document.getElementById('composeTo').value = email.emailAddress; document.getElementById('composeSubject').value = 'Re: ' + email.subject; document.getElementById('composeBody').value = '\n\n--- Message original ---\nDe: ' + email.sender + '\n' + email.body; selectedEmailFiles = []; renderEmailPreviews(); document.getElementById('composeModal').style.display = 'flex'; } }
-
+    function replyEmail() { /* Remplir composeTo et Subject */ openComposeModal(); }
     window.onload = initAuth;
 </script>
 </body>
