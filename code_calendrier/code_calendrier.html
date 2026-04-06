@@ -3,175 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Calendrier Gestion F.Dussault</title>
-    
-    <script>
-        if (window.self === window.top) { window.location.href = '../login.html'; }
-    </script>
-    
+    <title>Calendrier F.Dussault</title>
+    <script>if (window.self === window.top) { window.location.href = '../login.html'; }</script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* =========================================
-           1. VARIABLES & THEME
-           ========================================= */
         :root { 
-            --app-bg: #1e1f26;
-            --sidebar-bg: #fcca46; 
-            --text-light: #e0e0e0;
-            --card-bg: #2b2c36;
-            --btn-yellow: #fcca46; 
-            --btn-red: #ff4d4d;
-            --btn-green: #28a745;
-            --btn-blue: #3498db;
-            --btn-purple: #9c27b0;
-            
-            --cal-grid-border: #444;
-            --cal-header-bg: #333;
+            --app-bg: #1e1f26; --sidebar-bg: #fcca46; --text-light: #e0e0e0; --card-bg: #2b2c36;
+            --btn-yellow: #fcca46; --btn-red: #ff4d4d; --btn-green: #28a745; --btn-blue: #3498db; --btn-purple: #9c27b0;
+            --cal-grid-border: #444; --cal-header-bg: #333;
         }
-        
         * { box-sizing: border-box; }
-
-        body { 
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: var(--app-bg); 
-            color: var(--text-light);
-            margin: 0; padding: 0;
-            height: 100vh;
-            display: flex;
-            overflow: hidden;
-        }
-
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
         .svg-icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; display: inline-block; vertical-align: middle; flex-shrink: 0; }
-
-        .main-content {
-            flex: 1; display: flex; flex-direction: column; position: relative;
-            background-color: var(--app-bg); overflow: hidden;
-        }
-
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
+        
         #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-
         .dash-header { display: flex; justify-content: space-between; align-items: center; }
         .dash-title h1 { margin: 0; font-size: 28px; color: white; }
         .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
-
-        .action-btn {
-            background-color: var(--btn-yellow); color: black; border: none;
-            padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; transition: 0.2s; white-space: nowrap;
-        }
+        
+        .action-btn { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; transition: 0.2s; white-space: nowrap; }
         .action-btn:hover { background-color: #ffd66b; transform: translateY(-2px); }
 
-        .tabs-container { display: flex; gap: 10px; margin-bottom: 5px; }
+        .tabs-container { display: flex; gap: 10px; margin-bottom: 5px; flex-wrap: wrap; }
         .btn-tab { background: #1a1b23; color: #aaa; border: 1px solid #444; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; display:flex; align-items:center; gap:8px;}
         .btn-tab.active { background: var(--btn-blue); color: white; border-color: var(--btn-blue); }
+        .btn-tab-dashed { border: 1px dashed #888; background: transparent; color: #888; }
+        .btn-tab-dashed:hover { border-color: white; color: white; }
 
-        .cal-controls {
-            display: flex; justify-content: space-between; align-items: center;
-            background-color: var(--card-bg); padding: 15px; border-radius: 12px;
-        }
-        .cal-nav-btn {
-            background: #444; color: white; border: none; width: 40px; height: 40px;
-            border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;
-        }
+        .cal-controls { display: flex; justify-content: space-between; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; }
+        .cal-nav-btn { background: #444; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .cal-nav-btn:hover { background: var(--btn-yellow); color: black; }
         .cal-month-title { font-size: 24px; font-weight: bold; color: white; text-transform: capitalize; }
 
-        /* =========================================
-           GRILLE FIGÉE ET DÉFILEMENT DE LA PAGE
-           ========================================= */
-        .calendar-wrapper {
-            flex: none; 
-            background: var(--card-bg); border-radius: 12px; border: 1px solid var(--cal-grid-border);
-            overflow-x: auto; 
-            display: flex; flex-direction: column;
-        }
+        .calendar-wrapper { flex: none; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--cal-grid-border); overflow-x: auto; display: flex; flex-direction: column; }
         .day-headers { display: grid; grid-template-columns: repeat(7, 1fr); min-width: 700px; }
-        .day-header {
-            background: var(--cal-header-bg); color: #aaa; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; border-bottom: 1px solid var(--cal-grid-border); border-right: 1px solid var(--cal-grid-border);
-            padding: 10px 0;
-            position: sticky; top: 0; z-index: 20;
-        }
-        
-        .cal-days-container {
-            display: grid; 
-            grid-template-columns: repeat(7, 1fr); 
-            grid-auto-rows: 100px; 
-            align-content: start; 
-            min-width: 700px; 
-        }
-        
-        .cal-day {
-            border-right: 1px solid var(--cal-grid-border); 
-            border-bottom: 1px solid var(--cal-grid-border);
-            padding: 5px; 
-            position: relative; 
-            background: var(--card-bg); 
-            cursor: pointer; 
-            transition: background 0.2s;
-            height: 100px; 
-            max-height: 100px; 
-            overflow-y: auto; 
-        }
-        
+        .day-header { background: var(--cal-header-bg); color: #aaa; display: flex; align-items: center; justify-content: center; font-weight: bold; border-bottom: 1px solid var(--cal-grid-border); border-right: 1px solid var(--cal-grid-border); padding: 10px 0; position: sticky; top: 0; z-index: 20; }
+        .cal-days-container { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 100px; align-content: start; min-width: 700px; }
+        .cal-day { border-right: 1px solid var(--cal-grid-border); border-bottom: 1px solid var(--cal-grid-border); padding: 5px; position: relative; background: var(--card-bg); cursor: pointer; transition: background 0.2s; height: 100px; max-height: 100px; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none;}
         .cal-day::-webkit-scrollbar { display: none; }
-        .cal-day { -ms-overflow-style: none; scrollbar-width: none; }
-
         .cal-day:hover { background: #343542; }
         .cal-day.today { background: rgba(252, 202, 70, 0.05); }
         .cal-day.today .day-num { background: var(--btn-yellow); color: black; }
         .cal-day.other-month { opacity: 0.4; background: #222; pointer-events: none; }
-        .day-num {
-            font-weight: bold; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;
-            border-radius: 50%; margin-bottom: 5px; font-size: 14px; pointer-events: none; color: #ddd;
-        }
-        .other-month .day-num { color: #888; }
-
-        /* EVENTS BAR */
-        .event-bar {
-            font-size: 11px; padding: 2px 6px; margin-bottom: 3px; border-radius: 4px;
-            color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            cursor: pointer; position: relative; display: flex; justify-content: space-between;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-        }
+        .day-num { font-weight: bold; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-bottom: 5px; font-size: 14px; pointer-events: none; color: #ddd; }
+        
+        .event-bar { font-size: 11px; padding: 2px 6px; margin-bottom: 3px; border-radius: 4px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; position: relative; display: flex; justify-content: space-between; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         .event-bar:hover { opacity: 0.9; transform: scale(1.01); }
         .event-mine { border-left: 3px solid var(--btn-yellow); } 
 
-        /* BADGE SERVICE URGENCE */
-        .urgence-badge {
-            position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 10; cursor: pointer; transition: transform 0.2s;
-        }
+        .urgence-badge { position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 10; cursor: pointer; transition: transform 0.2s; }
         .urgence-badge:hover { transform: scale(1.15); }
         .urgence-badge.filled { background: #ff4757; color: white; border: 1px solid rgba(255,255,255,0.3); }
         .urgence-badge.empty { background: rgba(255,255,255,0.1); color: #777; border: 1px dashed #555; font-size: 16px; }
-        .urgence-badge.empty:hover { background: rgba(255,255,255,0.2); color: white; border-color: #888; }
-        .urgence-badge.empty svg { width: 14px; height: 14px; }
-
-        /* LEGEND */
+        
         .legend-container { display: flex; gap: 15px; font-size: 12px; color: #aaa; flex-wrap: wrap;}
         .legend-item { display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 20px;}
         .legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); }
 
-        /* MODALS */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); display: none; z-index: 3000;
-            justify-content: center; align-items: center;
-        }
-        .modal-card {
-            background: var(--card-bg); width: 90%; max-width: 450px; padding: 25px;
-            border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; z-index: 3000; justify-content: center; align-items: center; }
+        .modal-card { background: var(--card-bg); width: 90%; max-width: 450px; padding: 25px; border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
         .modal-title { font-size: 20px; color: white; margin-bottom: 20px; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 10px;}
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 14px; font-weight: bold; }
-        
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%; padding: 10px; background: #1e1f26; border: 1px solid #555;
-            color: white; border-radius: 5px; font-family: sans-serif; outline: none; transition: 0.2s;
-        }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; background: #1e1f26; border: 1px solid #555; color: white; border-radius: 5px; font-family: sans-serif; outline: none; transition: 0.2s; }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--btn-yellow); }
         .form-group textarea { resize: vertical; min-height: 80px; }
 
@@ -181,62 +76,32 @@
 
         .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
         .btn-cancel { background: #444; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s;}
-        
         .btn-submit { background: var(--btn-green); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight:bold; transition: 0.2s; display:flex; align-items:center; gap:6px;}
         .btn-delete { background: var(--btn-red); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight:bold; transition: 0.2s; display:flex; align-items:center; gap:6px;}
         
-        .btn-submit:hover { background: #218838; } .btn-delete:hover { background: #c82333; }
-
         .view-row { margin-bottom: 12px; font-size: 14px; }
         .view-label { color: #aaa; font-size: 12px; font-weight:bold; margin-bottom: 4px; }
         .view-value { color: white; font-weight: bold; font-size: 16px; margin-top: 2px;}
-        
-        .note-box { background: #1e1f26; padding: 12px; border-radius: 8px; border: 1px solid #444; font-weight: normal; font-size: 14px; color: #e0e0e0; white-space: pre-wrap; line-height: 1.4; }
+        .note-box { background: #1e1f26; padding: 12px; border-radius: 8px; border: 1px solid #444; font-weight: normal; font-size: 14px; white-space: pre-wrap; line-height: 1.4; }
 
-        .day-detail-item {
-            padding: 12px; background: #1e1f26; border-radius: 8px; margin-bottom: 8px; 
-            cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 4px; border: 1px solid #555;
-        }
+        .day-detail-item { padding: 12px; background: #1e1f26; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 4px; border: 1px solid #555; }
         .day-detail-item:hover { background: #343542; border-color: var(--btn-blue); }
 
         @media (max-width: 768px) {
-            #view-dashboard { padding: 15px; gap: 15px; }
-            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; }
-            .dash-header .action-btn { width: 100%; justify-content: center; }
-            .tabs-container { flex-direction: column; width: 100%; }
-            .btn-tab { width: 100%; justify-content: center; }
-            
-            .cal-controls { padding: 15px; }
-            .cal-month-title { font-size: 18px; }
-            .cal-nav-btn { width: 40px; height: 40px; font-size: 18px; }
-            
-            .calendar-wrapper { overflow-x: auto; border-radius: 8px; }
-            .day-headers, .cal-days-container { min-width: 700px; }
-            
-            .cal-days-container { 
-                grid-auto-rows: 100px; 
-                align-content: start; 
-            } 
-            .day-header { font-size: 11px; padding: 8px 0; }
-            
-            .cal-day { padding: 5px; height: 100px; max-height: 100px; } 
+            #view-dashboard { padding: 15px; gap: 15px; } .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; } .dash-header .action-btn { width: 100%; justify-content: center; }
+            .cal-controls { padding: 15px; } .cal-month-title { font-size: 18px; } .calendar-wrapper { border-radius: 8px; }
+            .day-header { font-size: 11px; padding: 8px 0; } .cal-day { padding: 5px; height: 100px; max-height: 100px; } 
             .day-num { width: 22px; height: 22px; font-size: 11px; margin-bottom: 6px; }
             .event-bar { font-size: 10px; padding: 3px 5px; margin-bottom: 4px; border-radius: 3px; }
             .urgence-badge { top: 4px; right: 4px; width: 20px; height: 20px; font-size: 10px; border-width: 1px; }
-
-            .legend-container { justify-content: center; gap: 10px; font-size: 11px; padding-bottom: 15px;}
-            .legend-item { padding: 4px 8px; }
-
-            .form-group input, .form-group select, .form-group textarea { font-size: 16px; padding: 12px; }
             .modal-card { width: 95%; padding: 20px; border-radius: 12px; }
-            .day-detail-item { padding: 15px; margin-bottom: 10px; gap: 6px; }
         }
     </style>
 </head>
 <body>
 
 <div id="security-loader" style="position: fixed; inset: 0; background: #1e1f26; z-index: 9999; display: flex; justify-content: center; align-items: center;">
-    <div style="color: #444; font-size: 12px; font-family: sans-serif;">Chargement du module...</div>
+    <div style="color: #444; font-size: 12px; font-family: sans-serif;">Connexion sécurisée...</div>
 </div>
 
 <svg style="display: none;">
@@ -245,33 +110,31 @@
     <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
     <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></symbol>
     <symbol id="icon-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></symbol>
     <symbol id="icon-chevron-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></symbol>
     <symbol id="icon-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></symbol>
-    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></symbol>
-    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2-2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></symbol>
+    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></symbol>
 </svg>
 
 <div class="main-content">
     <div id="view-dashboard">
-        
         <div class="dash-header">
             <div class="dash-title">
-                <h1>Calendrier</h1>
-                <p>Planification & Service d'Urgence</p>
+                <h1>Calendriers</h1>
+                <p>Personnel, Global et Équipes</p>
             </div>
-            <button class="action-btn" id="btn-new-event" onclick="openAddModal()" style="display:none;">
-                <svg class="svg-icon"><use href="#icon-plus"></use></svg> Ajouter un évènement
-            </button>
+            <div style="display:flex; gap:10px;">
+                <button class="action-btn" id="btnDeleteCal" style="display:none; background:var(--btn-red); color:white;" onclick="deleteCurrentCalendar()">
+                    <svg class="svg-icon"><use href="#icon-trash"></use></svg> Effacer ce calendrier
+                </button>
+                <button class="action-btn" onclick="openAddModal()">
+                    <svg class="svg-icon"><use href="#icon-plus"></use></svg> Événement
+                </button>
+            </div>
         </div>
 
-        <div class="tabs-container">
-            <button id="tab-mine" class="btn-tab active" onclick="switchCalTab('mine')">
-                <svg class="svg-icon"><use href="#icon-user"></use></svg> Mon Horaire
-            </button>
-            <button id="tab-all" class="btn-tab" onclick="switchCalTab('all')">
-                <svg class="svg-icon"><use href="#icon-users"></use></svg> Calendrier Global de l'équipe
-            </button>
-        </div>
+        <div class="tabs-container" id="calTabsContainer">
+            </div>
 
         <div class="legend-container" id="legendContainer"></div>
 
@@ -288,16 +151,31 @@
             </div>
             <div class="cal-days-container" id="calendarDays"></div>
         </div>
-        
+    </div>
+</div>
+
+<div class="modal-overlay" id="newCalModal">
+    <div class="modal-card">
+        <div class="modal-title">Créer un calendrier partagé</div>
+        <div class="form-group">
+            <label>Nom du calendrier</label>
+            <input type="text" id="newCalName" placeholder="Ex: Équipe Chantier B">
+        </div>
+        <div class="form-group">
+            <label>Partager avec :</label>
+            <div class="guest-list-container" id="calGuestListContainer"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('newCalModal')">Annuler</button>
+            <button class="btn-submit" onclick="saveNewCalendar()"><svg class="svg-icon"><use href="#icon-save"></use></svg> Créer</button>
+        </div>
     </div>
 </div>
 
 <div class="modal-overlay" id="dayModal">
     <div class="modal-card">
         <div class="modal-title" id="dayModalTitle">Événements du ...</div>
-        
         <div id="dayModalContent" style="display:flex; flex-direction:column; max-height: 50vh; overflow-y:auto; margin-bottom: 15px;"></div>
-
         <div class="modal-actions" style="justify-content: space-between;">
             <button class="btn-cancel" onclick="closeModal('dayModal')">Fermer</button>
             <button class="action-btn" style="background-color: var(--btn-yellow); color: black;" onclick="triggerAddFromDay()">
@@ -311,6 +189,11 @@
     <div class="modal-card">
         <div class="modal-title" id="modalTitle">Nouvel Événement</div>
         
+        <div class="form-group" id="grpCalendar">
+            <label>Calendrier de destination</label>
+            <select id="evtCalendarId"></select>
+        </div>
+
         <div class="form-group" id="grpCategory">
             <label>Catégorie</label>
             <select id="evtCategory"></select>
@@ -333,22 +216,18 @@
         </div>
 
         <div class="form-group" id="grpGuests">
-            <label>Inviter / Assigner à (Optionnel)</label>
-            <div class="guest-list-container" id="guestListContainer">
-                <div style="color:#aaa; font-style:italic; font-size:12px;">Chargement de l'équipe...</div>
-            </div>
+            <label>Assigner / Partager l'événement avec :</label>
+            <div class="guest-list-container" id="guestListContainer"></div>
         </div>
 
         <div class="form-group">
-            <label>Notes & Adresse <span style="font-weight:normal; color:#888; font-size:12px;">(Optionnel)</span></label>
-            <textarea id="evtNote" placeholder="Détails du travail, adresse, informations..."></textarea>
+            <label>Notes & Adresse</label>
+            <textarea id="evtNote" placeholder="Détails du travail, informations..."></textarea>
         </div>
 
         <div class="modal-actions">
             <button class="btn-cancel" onclick="closeModal('addModal')">Annuler</button>
-            <button class="btn-submit" onclick="saveEvent()">
-                <svg class="svg-icon"><use href="#icon-save"></use></svg> Sauvegarder
-            </button>
+            <button class="btn-submit" onclick="saveEvent()"><svg class="svg-icon"><use href="#icon-save"></use></svg> Sauvegarder</button>
         </div>
     </div>
 </div>
@@ -371,31 +250,45 @@
             <div class="view-label">DATES</div>
             <div class="view-value" id="viewDates">...</div>
         </div>
-        
         <div class="view-row" id="viewGuestsContainer" style="display:none; margin-top:15px;">
-            <div class="view-label">PARTICIPANTS / ASSIGNÉS</div>
+            <div class="view-label">ASSIGNÉ(S) À</div>
             <div class="view-value" id="viewGuests" style="font-size:14px; color:#66b2ff;">...</div>
         </div>
-
         <div class="view-row" id="viewNoteContainer" style="display:none; margin-top:15px;">
             <div class="view-label">NOTES / DÉTAILS / ADRESSE</div>
             <div class="view-value note-box" id="viewNote">...</div>
         </div>
 
         <div class="modal-actions" style="justify-content: space-between; margin-top:25px;">
-            <button class="btn-delete" id="btnDeleteEvent" onclick="deleteCurrentEvent()">
+            <button class="btn-delete" id="btnDeleteEvent" onclick="deleteCurrentEvent()" style="display:none;">
                 <svg class="svg-icon"><use href="#icon-trash"></use></svg> Supprimer
             </button>
-            <button class="btn-cancel" onclick="closeModal('viewModal')">Fermer</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-cancel" onclick="closeModal('viewModal')">Fermer</button>
+                <button class="action-btn" id="btnEditEvent" onclick="editCurrentEvent()" style="display:none;">
+                    <svg class="svg-icon"><use href="#icon-edit"></use></svg> Modifier
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" id="alertModal" style="z-index: 4000;">
+<div class="modal-overlay" id="alertModal" style="z-index: 5000;">
     <div class="modal-card" style="width: 320px; text-align: center;">
         <div class="modal-title" style="color: var(--btn-yellow); margin-bottom: 10px; border:none;">Information</div>
         <p id="alertMessage" style="color: #e0e0e0; margin-bottom: 25px; font-size: 15px;">...</p>
         <button class="action-btn" style="width: 100%; justify-content: center;" onclick="closeModal('alertModal')">Compris</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal" style="z-index: 6000;">
+    <div class="modal-card" style="width: 320px; text-align: center;">
+        <div class="modal-title" style="color: var(--btn-red); margin-bottom: 10px; border:none;">Attention</div>
+        <p id="confirmMessage" style="color: #e0e0e0; margin-bottom: 25px; font-size: 15px;">...</p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-cancel" style="flex:1;" onclick="closeModal('confirmModal')">Non</button>
+            <button class="btn-delete" style="flex:1; justify-content:center;" onclick="executeConfirm()">Oui</button>
+        </div>
     </div>
 </div>
 
@@ -404,10 +297,8 @@
     const supabaseKey = 'sb_publishable_jVOmm2g3WLxtIrr-rVRvtA_aWaUtB-E';
     const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    let myRole = 'A3';
-    let myUserId = 'local-user';
-    let myUserName = 'Moi';
-    let currentCalTab = 'mine'; 
+    let myRole = 'A3'; let myUserId = ''; let myUserName = '';
+    let currentCalId = 'perso'; 
     let teamMembers = [];
     let selectedDayForAdd = ''; 
 
@@ -421,113 +312,150 @@
         if (role === 'A0') return true; 
         const savedRoles = JSON.parse(localStorage.getItem('dussault_roles_v1')) || defaultRolesConfig;
         const roleData = savedRoles[role] || defaultRolesConfig[role];
-        if (!roleData || !roleData.perms) return false;
-        return roleData.perms.includes(permId);
+        return roleData && roleData.perms ? roleData.perms.includes(permId) : false;
     }
 
     async function initAuth() {
         const { data: { user } } = await supabaseClient.auth.getUser();
-        
-        if (!user) {
-            window.top.location.href = '../login.html';
-            return;
-        }
+        if (!user) { window.top.location.href = '../login.html'; return; }
 
         myUserId = user.id;
         const { data: profil } = await supabaseClient.from('profils').select('role, prenom_nom').eq('id', user.id).maybeSingle();
-        if (profil) {
-            myRole = profil.role;
-            myUserName = profil.prenom_nom || "Moi";
-        }
-        
-        if (hasPermission(myRole, 'manage_calendar')) {
-            document.getElementById('btn-new-event').style.display = 'flex';
-        }
+        if (profil) { myRole = profil.role; myUserName = profil.prenom_nom || "Moi"; }
 
-        fetchTeamMembers();
-        initData();
+        await fetchTeamMembers();
+        await loadData();
 
         document.getElementById('security-loader').style.display = 'none';
         window.parent.postMessage({ type: 'module_ready', module: 'view-calendrier' }, '*');
     }
 
     async function fetchTeamMembers() {
-        const { data, error } = await supabaseClient.from('profils').select('id, prenom_nom, role').order('role');
-        if (data) {
-            teamMembers = data;
-            const container = document.getElementById('guestListContainer');
-            container.innerHTML = '';
-            teamMembers.forEach(m => {
-                if (m.prenom_nom && m.prenom_nom !== myUserName) {
-                    container.innerHTML += `
-                        <label class="guest-item">
-                            <input type="checkbox" value="${m.id}" data-name="${m.prenom_nom}">
-                            ${m.prenom_nom}
-                        </label>
-                    `;
-                }
-            });
-            if(container.innerHTML === '') container.innerHTML = '<div style="color:#888; font-style:italic;">Aucun collègue trouvé.</div>';
-        }
+        const { data } = await supabaseClient.from('profils').select('id, prenom_nom').order('role');
+        if (data) teamMembers = data;
     }
 
     const FIXED_CATEGORIES = [
-        { id: 'ferie',     name: 'Congé Férié',         color: '#ffc107', isPrivate: false }, 
-        { id: 'ccq',       name: 'Congés CCQ',          color: '#ff4d4d', isPrivate: false }, 
-        { id: 'job',       name: 'Job / Chantier',      color: '#007bff', isPrivate: false }, 
-        { id: 'perso',     name: 'Congés personnel',    color: 'var(--btn-purple)', isPrivate: false }, 
-        { id: 'note',      name: 'Note',                color: '#6c757d', isPrivate: false },
-        { id: 'urgence',   name: "Garde Urgence",       color: '#ff4757', isPrivate: false },
-        { id: 'formation', name: "Expiration Formation", color: 'var(--btn-green)', isPrivate: false } 
+        { id: 'ferie',     name: 'Congé Férié',         color: '#ffc107' }, 
+        { id: 'ccq',       name: 'Congés CCQ',          color: '#ff4d4d' }, 
+        { id: 'job',       name: 'Job / Chantier',      color: '#007bff' }, 
+        { id: 'perso',     name: 'Congés personnel',    color: 'var(--btn-purple)' }, 
+        { id: 'note',      name: 'Note',                color: '#6c757d' },
+        { id: 'urgence',   name: "Garde Urgence",       color: '#ff4757' },
+        { id: 'formation', name: "Expiration Formation", color: 'var(--btn-green)' } 
     ];
-
     const ALLOWED_ADD_CATS = ['job', 'perso', 'note'];
-    const KEY_EVENTS = 'dussault_events_final_v1';
     
+    let allData = [];
+    let calDefs = [];
     let events = [];
     let calDate = new Date();
     let currentViewId = null;
+    let editingEventId = null;
     let isUrgenceMode = false; 
     let isSystemEvent = false;
 
-    function switchCalTab(tab) {
-        currentCalTab = tab;
-        document.getElementById('tab-mine').classList.remove('active');
-        document.getElementById('tab-all').classList.remove('active');
-        document.getElementById('tab-' + tab).classList.add('active');
-        renderCalendar();
-    }
-
-    function initData() {
-        const storedEvts = localStorage.getItem(KEY_EVENTS);
-        if (storedEvts) events = JSON.parse(storedEvts);
+    async function loadData() {
+        const { data, error } = await supabaseClient.from('evenements').select('*');
+        if (data) {
+            allData = data;
+            calDefs = data.filter(d => d.type_entite === 'calendar_def');
+            events = data.filter(d => d.type_entite === 'event');
+        }
+        renderTabs();
         renderLegend();
         renderCalendar();
     }
 
-    function saveEvents() { localStorage.setItem(KEY_EVENTS, JSON.stringify(events)); renderCalendar(); }
-    function formatDateFR(isoDate) { if(!isoDate) return ''; const parts = isoDate.split('-'); return `${parts[2]}/${parts[1]}/${parts[0]}`; }
+    function switchCalTab(calId) {
+        currentCalId = calId;
+        renderTabs();
+        renderCalendar();
+        document.getElementById('btnDeleteCal').style.display = (currentCalId.startsWith('cal-')) ? 'flex' : 'none';
+    }
+
+    function renderTabs() {
+        const c = document.getElementById('calTabsContainer');
+        let html = `
+            <button class="btn-tab ${currentCalId==='perso'?'active':''}" onclick="switchCalTab('perso')">
+                <svg class="svg-icon"><use href="#icon-user"></use></svg> Mon Horaire
+            </button>
+            <button class="btn-tab ${currentCalId==='global'?'active':''}" onclick="switchCalTab('global')">
+                <svg class="svg-icon"><use href="#icon-users"></use></svg> Calendrier Global
+            </button>
+        `;
+        calDefs.forEach(cal => {
+            const sharedIds = cal.shared_with ? cal.shared_with.map(s => s.id) : [];
+            if (cal.author_id === myUserId || sharedIds.includes(myUserId)) {
+                html += `<button class="btn-tab ${currentCalId===cal.id?'active':''}" onclick="switchCalTab('${cal.id}')">
+                    <svg class="svg-icon"><use href="#icon-calendar"></use></svg> ${cal.calendar_name}
+                </button>`;
+            }
+        });
+        html += `<button class="btn-tab btn-tab-dashed" onclick="openNewCalendarModal()"><svg class="svg-icon"><use href="#icon-plus"></use></svg> Créer calendrier</button>`;
+        c.innerHTML = html;
+    }
+
+    function openNewCalendarModal() {
+        document.getElementById('newCalName').value = '';
+        const gList = document.getElementById('calGuestListContainer');
+        gList.innerHTML = '';
+        teamMembers.forEach(tm => {
+            if(tm.id === myUserId) return;
+            gList.innerHTML += `<label class="guest-item"><input type="checkbox" class="cal-cb" value="${tm.id}" data-name="${tm.prenom_nom}"> ${tm.prenom_nom}</label>`;
+        });
+        document.getElementById('newCalModal').style.display = 'flex';
+    }
+
+    async function saveNewCalendar() {
+        const name = document.getElementById('newCalName').value.trim();
+        if(!name) return openAlert("Nom du calendrier requis.");
+        let sharedWith = [];
+        document.querySelectorAll('.cal-cb:checked').forEach(cb => { sharedWith.push({ id: cb.value, name: cb.getAttribute('data-name') }); });
+        
+        const payload = {
+            id: 'cal-' + Date.now(), type_entite: 'calendar_def', calendar_name: name,
+            author_id: myUserId, author_name: myUserName, shared_with: sharedWith
+        };
+        await supabaseClient.from('evenements').upsert(payload);
+        closeModal('newCalModal');
+        await loadData();
+    }
+
+    let confirmCallback = null;
+    function showConfirm(msg, callback) { document.getElementById('confirmMessage').textContent = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; }
+    function executeConfirm() { if (confirmCallback) confirmCallback(); closeModal('confirmModal'); }
+
+    function deleteCurrentCalendar() {
+        const cal = calDefs.find(c => c.id === currentCalId);
+        if(!cal || cal.author_id !== myUserId) return openAlert("Vous ne pouvez pas supprimer ce calendrier.");
+        showConfirm(`Supprimer le calendrier partagé "${cal.calendar_name}" et tous ses événements ?`, async () => {
+            await supabaseClient.from('evenements').delete().eq('calendar_id', currentCalId);
+            await supabaseClient.from('evenements').delete().eq('id', currentCalId);
+            currentCalId = 'perso';
+            await loadData();
+        });
+    }
+
+    function formatDateFR(isoDate) { if(!isoDate) return ''; const parts = isoDate.split('-'); if(parts.length===3) return `${parts[2]}/${parts[1]}/${parts[0]}`; return isoDate; }
 
     function getSystemEvents(year) {
         const f = Math.floor, G = year % 19, C = f(year/100), H = (C - f(C/4) - f((8*C+13)/25) + 19*G + 15) % 30, I = H - f(H/28)*(1 - f(29/(H+1))*f((21-G)/11)), J = (year + f(year/4) + I + 2 - C + f(C/4)) % 7, L = I - J, m = 3 + f((L + 40)/44), d = L + 28 - 31 * f(m/4);
-        const easter = new Date(year, m-1, d);
-        const getVal = (date) => date.toISOString().split('T')[0];
+        const easter = new Date(year, m-1, d); const getVal = (date) => { const nd = new Date(date); return nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0'); };
         const addDay = (date, days) => { let r = new Date(date); r.setDate(r.getDate()+days); return r; };
         
         let list = [];
-        list.push({ id: 'sys-'+Date.now()+1, d: `${year}-01-01`, t: "Jour de l'An", type:'ferie' });
-        list.push({ id: 'sys-'+Date.now()+2, d: `${year}-06-24`, t: "St-Jean-Baptiste", type:'ferie' });
-        list.push({ id: 'sys-'+Date.now()+3, d: `${year}-07-01`, t: "Fête du Canada", type:'ferie' });
-        list.push({ id: 'sys-'+Date.now()+4, d: `${year}-12-25`, t: "Noël", type:'ferie' });
-        list.push({ id: 'sys-'+Date.now()+5, d: getVal(addDay(easter, -2)), t: "Vendredi Saint", type:'ferie' });
-        list.push({ id: 'sys-'+Date.now()+6, d: getVal(addDay(easter, 1)), t: "Lundi de Pâques", type:'ferie' });
+        list.push({ id: 'sys-1', d: `${year}-01-01`, t: "Jour de l'An", type:'ferie' });
+        list.push({ id: 'sys-2', d: `${year}-06-24`, t: "St-Jean-Baptiste", type:'ferie' });
+        list.push({ id: 'sys-3', d: `${year}-07-01`, t: "Fête du Canada", type:'ferie' });
+        list.push({ id: 'sys-4', d: `${year}-12-25`, t: "Noël", type:'ferie' });
+        list.push({ id: 'sys-5', d: getVal(addDay(easter, -2)), t: "Vendredi Saint", type:'ferie' });
+        list.push({ id: 'sys-6', d: getVal(addDay(easter, 1)), t: "Lundi de Pâques", type:'ferie' });
         
-        let sStart = new Date(year, 6, 19); 
-        while(sStart.getDay() !== 0) sStart.setDate(sStart.getDate()+1);
+        let sStart = new Date(year, 6, 19); while(sStart.getDay() !== 0) sStart.setDate(sStart.getDate()+1);
         let sEnd = new Date(sStart); sEnd.setDate(sStart.getDate()+13);
-        list.push({ id: 'sys-'+Date.now()+7, start: sStart, end: sEnd, t: "Vacances CCQ", type:'ccq' });
-        list.push({ id: 'sys-'+Date.now()+8, start: new Date(year, 11, 21), end: new Date(year+1, 0, 4), t: "Vacances Hiver", type:'ccq' });
-
+        list.push({ id: 'sys-7', start: getVal(sStart), end: getVal(sEnd), t: "Vacances CCQ", type:'ccq' });
+        list.push({ id: 'sys-8', start: `${year}-12-21`, end: `${year+1}-01-04`, t: "Vacances Hiver", type:'ccq' });
         return list;
     }
 
@@ -536,78 +464,37 @@
     function changeMonth(delta) { calDate.setMonth(calDate.getMonth() + delta); renderCalendar(); }
 
     function renderCalendar() {
-        const year = calDate.getFullYear();
-        const month = calDate.getMonth();
+        const year = calDate.getFullYear(); const month = calDate.getMonth();
         document.getElementById('calTitle').textContent = new Date(year, month).toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
-        const container = document.getElementById('calendarDays');
-        container.innerHTML = '';
-
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const prevMonthDays = new Date(year, month, 0).getDate();
-        
+        const container = document.getElementById('calendarDays'); container.innerHTML = '';
+        const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate(); const prevMonthDays = new Date(year, month, 0).getDate();
         currentSysEvents = getSystemEvents(year);
 
-        const storedFormations = localStorage.getItem('dussault_formations_v1');
-        if (storedFormations) {
-            try {
-                const forms = JSON.parse(storedFormations);
-                forms.forEach(f => {
-                    if (f.dateExp) {
-                        currentSysEvents.push({
-                            id: 'form-' + f.id,
-                            d: f.dateExp,
-                            t: "Expir. : " + f.name,
-                            type: 'formation'
-                        });
-                    }
-                });
-            } catch (e) {
-                console.error("Erreur lecture formations:", e);
-            }
-        }
-
-        for(let i = firstDay - 1; i >= 0; i--) {
-            container.innerHTML += `<div class="cal-day other-month"><div class="day-num">${prevMonthDays - i}</div></div>`;
-        }
+        for(let i = firstDay - 1; i >= 0; i--) container.innerHTML += `<div class="cal-day other-month"><div class="day-num">${prevMonthDays - i}</div></div>`;
 
         for(let d=1; d<=daysInMonth; d++) {
-            const currentDt = new Date(year, month, d);
-            const dateStr = currentDt.toISOString().split('T')[0]; 
-            const div = document.createElement('div');
-            div.className = 'cal-day';
+            const curDt = new Date(year, month, d);
+            const dateStr = curDt.getFullYear()+'-'+String(curDt.getMonth()+1).padStart(2,'0')+'-'+String(curDt.getDate()).padStart(2,'0');
+            const div = document.createElement('div'); div.className = 'cal-day';
             if(dateStr === new Date().toISOString().split('T')[0]) div.classList.add('today');
-            
-            div.onclick = (e) => {
-                if(e.target === div || e.target.classList.contains('day-num') || e.target.classList.contains('cal-day')) {
-                    openDayDetails(dateStr);
-                }
-            };
+            div.onclick = (e) => { if(e.target === div || e.target.classList.contains('day-num')) openDayDetails(dateStr); };
 
             let html = `<div class="day-num">${d}</div>`;
 
-            const urgEvent = events.find(evt => evt.catId === 'urgence' && dateStr >= evt.start && dateStr <= evt.end);
-            let showUrg = urgEvent ? true : false;
-
-            if (showUrg) {
-                const letter = urgEvent.authorName ? urgEvent.authorName.charAt(0).toUpperCase() : 'U';
+            // URGENCE (Visible partout)
+            const urgEvent = events.find(e => e.cat_id === 'urgence' && dateStr >= e.start_date && dateStr <= e.end_date);
+            if (urgEvent) {
+                const letter = urgEvent.author_name ? urgEvent.author_name.charAt(0).toUpperCase() : 'U';
                 html += `<div class="urgence-badge filled" onclick="openViewEvent('${urgEvent.id}', event, false)" title="Garde: ${urgEvent.title}">${letter}</div>`;
             } else {
-                if (hasPermission(myRole, 'manage_calendar')) {
-                    html += `<div class="urgence-badge empty" onclick="openAddModal('${dateStr}', true, event)" title="Ajouter Garde d'urgence"><svg class="svg-icon"><use href="#icon-plus"></use></svg></div>`;
-                }
+                if (hasPermission(myRole, 'manage_calendar')) { html += `<div class="urgence-badge empty" onclick="openAddModal('${dateStr}', true, event)" title="Ajouter Garde d'urgence"><svg class="svg-icon"><use href="#icon-plus"></use></svg></div>`; }
             }
 
-            // Événements système (Congés, formations)
+            // SYSTÈME
             currentSysEvents.forEach(sys => {
                 let show = false;
                 if(sys.d && sys.d === dateStr) show = true;
-                if(sys.start && currentDt >= sys.start && currentDt <= sys.end) show = true;
-                
-                if (sys.type === 'formation' && currentCalTab === 'all') {
-                    show = false;
-                }
-
+                if(sys.start && dateStr >= sys.start && dateStr <= sys.end) show = true;
                 if(show) {
                     const cat = FIXED_CATEGORIES.find(c => c.id === sys.type) || {color: '#888'};
                     const textColor = (cat.color === '#ffffff' || cat.color === '#ffc107') ? 'black' : 'white';
@@ -615,303 +502,222 @@
                 }
             });
 
-            // Événements standards
-            events.filter(e => dateStr >= e.start && dateStr <= e.end).forEach(evt => {
-                if(evt.catId === 'urgence') return; 
+            // ÉVÉNEMENTS NORMAUX
+            events.filter(e => dateStr >= e.start_date && dateStr <= e.end_date).forEach(evt => {
+                if(evt.cat_id === 'urgence') return; 
                 
                 let canSee = false;
-                let isMine = false;
-                
-                if (currentCalTab === 'all') {
-                    canSee = true; 
+                const sIds = evt.shared_with ? evt.shared_with.map(s => s.id) : [];
+
+                if (currentCalId === 'perso') {
+                    if (evt.calendar_id === 'perso' && evt.author_id === myUserId) canSee = true;
+                    if (sIds.includes(myUserId)) canSee = true; // Assigné à moi
+                } else if (currentCalId === 'global') {
+                    if (evt.calendar_id === 'global') canSee = true;
                 } else {
-                    if (evt.authorId === myUserId || (evt.guests && evt.guests.includes(myUserId))) {
-                        canSee = true;
-                    }
+                    if (evt.calendar_id === currentCalId) canSee = true;
                 }
 
-                if (evt.authorId === myUserId) isMine = true;
-
                 if (canSee) {
-                    const cat = FIXED_CATEGORIES.find(c => c.id === evt.catId) || {color: '#333'};
+                    const cat = FIXED_CATEGORIES.find(c => c.id === evt.cat_id) || {color: '#333'};
+                    const isMine = (evt.author_id === myUserId);
                     const borderStyle = isMine ? 'event-mine' : '';
                     html += `<div class="event-bar ${borderStyle}" style="background:${cat.color};" onclick="openViewEvent('${evt.id}', event, false)" title="${evt.title}">${evt.title}</div>`;
                 }
             });
 
-            div.innerHTML = html;
-            container.appendChild(div);
+            div.innerHTML = html; container.appendChild(div);
         }
 
-        const totalCells = firstDay + daysInMonth;
-        const remainingCells = 42 - totalCells;
-        for(let i = 1; i <= remainingCells; i++) {
-            container.innerHTML += `<div class="cal-day other-month"><div class="day-num">${i}</div></div>`;
-        }
+        const totalCells = firstDay + daysInMonth; const remainingCells = 42 - totalCells;
+        for(let i = 1; i <= remainingCells; i++) container.innerHTML += `<div class="cal-day other-month"><div class="day-num">${i}</div></div>`;
     }
 
     function renderLegend() {
-        const leg = document.getElementById('legendContainer');
-        leg.innerHTML = '';
+        const leg = document.getElementById('legendContainer'); leg.innerHTML = '';
         FIXED_CATEGORIES.forEach(cat => {
             if (cat.id === 'urgence') return;
-            const div = document.createElement('div');
-            div.className = 'legend-item';
-            div.innerHTML = `<div class="legend-dot" style="background:${cat.color}"></div> ${cat.name}`;
-            leg.appendChild(div);
+            leg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${cat.color}"></div> ${cat.name}</div>`;
         });
     }
 
     function openDayDetails(dateStr) {
         selectedDayForAdd = dateStr; 
-        const formattedDate = formatDateFR(dateStr);
-        document.getElementById('dayModalTitle').textContent = `Le ${formattedDate}`;
-        
-        const content = document.getElementById('dayModalContent');
-        content.innerHTML = '';
-
+        document.getElementById('dayModalTitle').textContent = `Le ${formatDateFR(dateStr)}`;
+        const content = document.getElementById('dayModalContent'); content.innerHTML = '';
         let dayEvents = [];
 
-        const urgEvent = events.find(evt => evt.catId === 'urgence' && dateStr >= evt.start && dateStr <= evt.end);
+        const urgEvent = events.find(e => e.cat_id === 'urgence' && dateStr >= e.start_date && dateStr <= e.end_date);
         if (urgEvent) dayEvents.push({...urgEvent, isUrg: true});
 
         currentSysEvents.forEach(sys => {
             let show = false;
             if(sys.d && sys.d === dateStr) show = true;
-            if(sys.start && new Date(dateStr) >= sys.start && new Date(dateStr) <= sys.end) show = true;
-            
-            if (sys.type === 'formation' && currentCalTab === 'all') {
-                show = false;
-            }
-
+            if(sys.start && dateStr >= sys.start && dateStr <= sys.end) show = true;
             if(show) dayEvents.push({...sys, isSys: true});
         });
 
-        events.filter(e => dateStr >= e.start && dateStr <= e.end).forEach(evt => {
-            if(evt.catId === 'urgence') return;
-            let canSee = false;
-            if (currentCalTab === 'all') canSee = true; 
-            else if (evt.authorId === myUserId || (evt.guests && evt.guests.includes(myUserId))) canSee = true;
+        events.filter(e => dateStr >= e.start_date && dateStr <= e.end_date).forEach(evt => {
+            if(evt.cat_id === 'urgence') return;
+            let canSee = false; const sIds = evt.shared_with ? evt.shared_with.map(s => s.id) : [];
+            if (currentCalId === 'perso') {
+                if (evt.calendar_id === 'perso' && evt.author_id === myUserId) canSee = true;
+                if (sIds.includes(myUserId)) canSee = true;
+            } else if (currentCalId === 'global') { if (evt.calendar_id === 'global') canSee = true; } 
+            else { if (evt.calendar_id === currentCalId) canSee = true; }
             if (canSee) dayEvents.push(evt);
         });
 
-        if (dayEvents.length === 0) {
-            content.innerHTML = '<div style="color:#aaa; font-style:italic; padding:15px 0; text-align:center; font-size:16px;">Rien de prévu pour cette journée.</div>';
-        } else {
+        if (dayEvents.length === 0) { content.innerHTML = '<div style="color:#aaa; font-style:italic; padding:15px 0; text-align:center;">Rien de prévu pour cette journée.</div>'; } 
+        else {
             dayEvents.forEach(evt => {
-                const cId = evt.type || evt.catId;
-                const cat = FIXED_CATEGORIES.find(c => c.id === cId) || {color: '#888'};
-                
-                const div = document.createElement('div');
-                div.className = 'day-detail-item';
-                div.style.borderLeft = `4px solid ${cat.color}`;
-                
-                let title = evt.t || evt.title;
-                let subtitle = cat.name;
-                if (evt.isUrg && evt.authorName) subtitle += ` - Assuré par ${evt.authorName}`;
-
-                div.innerHTML = `
-                    <div style="font-weight:bold; color:white; font-size:15px;">${title}</div>
-                    <div style="font-size:12px; color:#aaa;">${subtitle}</div>
-                `;
-                
-                div.onclick = (e) => {
-                    closeModal('dayModal');
-                    if (evt.isSys) openViewEvent(evt.id, e, true);
-                    else openViewEvent(evt.id, e, false);
-                };
+                const cId = evt.type || evt.cat_id; const cat = FIXED_CATEGORIES.find(c => c.id === cId) || {color: '#888'};
+                const div = document.createElement('div'); div.className = 'day-detail-item'; div.style.borderLeft = `4px solid ${cat.color}`;
+                let subtitle = cat.name; if (evt.isUrg && evt.author_name) subtitle += ` - Assuré par ${evt.author_name}`;
+                div.innerHTML = `<div style="font-weight:bold; color:white; font-size:15px;">${evt.t || evt.title}</div><div style="font-size:12px; color:#aaa;">${subtitle}</div>`;
+                div.onclick = (e) => { closeModal('dayModal'); openViewEvent(evt.id, e, evt.isSys); };
                 content.appendChild(div);
             });
         }
-
         document.getElementById('dayModal').style.display = 'flex';
-        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
 
-    function triggerAddFromDay() {
-        if (!hasPermission(myRole, 'manage_calendar')) {
-            openAlert("Vous n'avez pas la permission d'ajouter des événements.");
-            return;
-        }
-        closeModal('dayModal');
-        openAddModal(selectedDayForAdd, false);
-    }
+    function triggerAddFromDay() { closeModal('dayModal'); openAddModal(selectedDayForAdd, false); }
 
-    function openAddModal(dateStart='', isUrgence=false, e=null) {
+    function openAddModal(dateStart='', isUrgence=false, e=null, evtToEdit=null) {
         if(e) e.stopPropagation();
+        editingEventId = evtToEdit ? evtToEdit.id : null;
+        isUrgenceMode = isUrgence;
 
-        document.getElementById('addModal').style.display = 'flex';
-        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
-
-        document.getElementById('evtTitle').value = '';
-        document.getElementById('evtNote').value = ''; 
-        
-        if(dateStart) {
-            document.getElementById('evtStart').value = dateStart;
-            document.getElementById('evtEnd').value = dateStart;
-        }
+        document.getElementById('evtTitle').value = evtToEdit ? evtToEdit.title : '';
+        document.getElementById('evtNote').value = evtToEdit ? evtToEdit.note : ''; 
+        document.getElementById('evtStart').value = evtToEdit ? evtToEdit.start_date : dateStart;
+        document.getElementById('evtEnd').value = evtToEdit ? evtToEdit.end_date : dateStart;
 
         const modalTitle = document.getElementById('modalTitle');
         const grpCat = document.getElementById('grpCategory');
-        const sel = document.getElementById('evtCategory');
+        const selCat = document.getElementById('evtCategory');
+        const grpCal = document.getElementById('grpCalendar');
+        const selCal = document.getElementById('evtCalendarId');
         const grpGuests = document.getElementById('grpGuests');
-
-        isUrgenceMode = isUrgence; 
 
         if (isUrgence) {
             modalTitle.textContent = "Service d'urgence";
-            grpCat.style.display = 'none'; 
-            grpGuests.style.display = 'none';
+            grpCat.style.display = 'none'; grpGuests.style.display = 'none'; grpCal.style.display = 'none';
             document.getElementById('evtTitle').value = myUserName;
         } else {
-            modalTitle.textContent = "Nouvel Événement";
-            grpCat.style.display = 'block';
-            grpGuests.style.display = 'block';
-            sel.innerHTML = '';
+            modalTitle.textContent = evtToEdit ? "Modifier l'événement" : "Nouvel Événement";
+            grpCat.style.display = 'block'; grpGuests.style.display = 'block'; grpCal.style.display = 'block';
             
+            selCat.innerHTML = '';
             FIXED_CATEGORIES.forEach(cat => {
-                if(ALLOWED_ADD_CATS.includes(cat.id)) {
-                    const opt = document.createElement('option');
-                    opt.value = cat.id; opt.textContent = cat.name; sel.appendChild(opt);
+                if(ALLOWED_ADD_CATS.includes(cat.id)) { selCat.innerHTML += `<option value="${cat.id}">${cat.name}</option>`; }
+            });
+            if(evtToEdit) selCat.value = evtToEdit.cat_id;
+
+            selCal.innerHTML = `<option value="perso">Mon Horaire</option>`;
+            if (hasPermission(myRole, 'manage_calendar')) selCal.innerHTML += `<option value="global">Calendrier Global</option>`;
+            calDefs.forEach(c => {
+                const sIds = c.shared_with ? c.shared_with.map(s=>s.id) : [];
+                if (c.author_id === myUserId || sIds.includes(myUserId)) {
+                    selCal.innerHTML += `<option value="${c.id}">${c.calendar_name}</option>`;
                 }
             });
+            
+            if(evtToEdit) { selCal.value = evtToEdit.calendar_id; } 
+            else { selCal.value = (currentCalId === 'global' && !hasPermission(myRole, 'manage_calendar')) ? 'perso' : currentCalId; }
 
             const gList = document.getElementById('guestListContainer');
-            if (teamMembers.length > 0) {
-                gList.innerHTML = '';
-                teamMembers.forEach(tm => {
-                    if(tm.id === myUserId) return; 
-                    gList.innerHTML += `
-                        <label class="guest-item">
-                            <input type="checkbox" class="guest-cb" value="${tm.id}" data-name="${tm.prenom_nom}">
-                            ${tm.prenom_nom}
-                        </label>
-                    `;
-                });
-            } else {
-                gList.innerHTML = '<div style="color:#aaa; font-style:italic; font-size:12px;">Seul sur l\'application pour le moment.</div>';
-            }
+            gList.innerHTML = '';
+            teamMembers.forEach(tm => {
+                if(tm.id === myUserId) return; 
+                const checked = (evtToEdit && evtToEdit.shared_with && evtToEdit.shared_with.find(s=>s.id === tm.id)) ? 'checked' : '';
+                gList.innerHTML += `<label class="guest-item"><input type="checkbox" class="evt-guest-cb" value="${tm.id}" data-name="${tm.prenom_nom}" ${checked}> ${tm.prenom_nom}</label>`;
+            });
         }
+        document.getElementById('addModal').style.display = 'flex';
     }
 
-    function openAlert(message) {
-        document.getElementById('alertMessage').textContent = message;
-        document.getElementById('alertModal').style.display = 'flex';
-        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
-    }
+    function openAlert(message) { document.getElementById('alertMessage').textContent = message; document.getElementById('alertModal').style.display = 'flex'; }
 
-    function saveEvent() {
-        let catId;
+    async function saveEvent() {
         const title = document.getElementById('evtTitle').value.trim();
         const start = document.getElementById('evtStart').value;
         const end = document.getElementById('evtEnd').value;
         const note = document.getElementById('evtNote').value.trim(); 
+        if(!title || !start || !end) return openAlert("Remplir Titre et Dates !");
+        if(end < start) return openAlert("Date de fin invalide.");
 
-        if (isUrgenceMode) { catId = 'urgence'; } 
-        else { catId = document.getElementById('evtCategory').value; }
+        let sharedWith = [];
+        if(!isUrgenceMode) {
+            document.querySelectorAll('.evt-guest-cb:checked').forEach(cb => { sharedWith.push({ id: cb.value, name: cb.getAttribute('data-name') }); });
+        }
 
-        if(!title || !start || !end) return openAlert("Merci de remplir les champs obligatoires (Titre et Dates) !");
-        if(end < start) return openAlert("La date de fin ne peut pas être avant le début.");
+        const existingEvt = editingEventId ? events.find(e => e.id === editingEventId) : null;
 
-        let selectedGuests = [];
-        let guestNames = [];
-        document.querySelectorAll('.guest-cb:checked').forEach(cb => {
-            selectedGuests.push(cb.value);
-            guestNames.push(cb.getAttribute('data-name'));
-        });
+        const payload = { 
+            id: editingEventId || 'evt-'+Date.now(), type_entite: 'event',
+            calendar_id: isUrgenceMode ? 'global' : document.getElementById('evtCalendarId').value,
+            title: title, start_date: start, end_date: end, 
+            cat_id: isUrgenceMode ? 'urgence' : document.getElementById('evtCategory').value,
+            note: note,
+            author_id: existingEvt ? existingEvt.author_id : myUserId,       
+            author_name: existingEvt ? existingEvt.author_name : myUserName,   
+            shared_with: sharedWith
+        };
 
-        events.push({ 
-            id: 'evt-'+Date.now(), 
-            catId, 
-            title, 
-            start, 
-            end, 
-            note,
-            authorId: myUserId,       
-            authorName: myUserName,   
-            guests: selectedGuests,   
-            guestNames: guestNames    
-        });
-
-        saveEvents();
+        await supabaseClient.from('evenements').upsert(payload);
         closeModal('addModal');
+        await loadData();
     }
 
     function openViewEvent(id, e, isSys) {
-        if(e) e.stopPropagation();
-        isSystemEvent = isSys;
-        
-        let evt;
-        if (isSys) {
-            evt = currentSysEvents.find(ev => ev.id === id);
-            document.getElementById('btnDeleteEvent').style.display = 'none';
-            document.getElementById('viewAuthorBadge').textContent = "Système / Auto";
-            document.getElementById('viewAuthorBadge').style.background = "#555";
-        } else {
-            evt = events.find(ev => ev.id === id);
-            
-            if (hasPermission(myRole, 'manage_calendar') || evt.authorId === myUserId) {
-                document.getElementById('btnDeleteEvent').style.display = 'flex';
-            } else {
-                document.getElementById('btnDeleteEvent').style.display = 'none';
-            }
+        if(e) e.stopPropagation(); isSystemEvent = isSys;
+        let evt = isSys ? currentSysEvents.find(ev => ev.id === id) : events.find(ev => ev.id === id);
+        if(!evt) return; currentViewId = id;
 
-            document.getElementById('viewAuthorBadge').textContent = evt.authorName ? "Créé par " + evt.authorName : "";
-            document.getElementById('viewAuthorBadge').style.background = "var(--btn-blue)";
-        }
+        const canEdit = !isSys && (
+            evt.author_id === myUserId || 
+            (evt.calendar_id === 'global' && hasPermission(myRole, 'manage_calendar')) ||
+            evt.calendar_id.startsWith('cal-')
+        );
+
+        document.getElementById('btnEditEvent').style.display = canEdit ? 'flex' : 'none';
+        document.getElementById('btnDeleteEvent').style.display = canEdit ? 'flex' : 'none';
         
-        if(!evt) return;
-        currentViewId = id;
-        
-        const cId = evt.type || evt.catId;
-        const cat = FIXED_CATEGORIES.find(c => c.id === cId) || {};
-        
+        document.getElementById('viewAuthorBadge').textContent = isSys ? "Système" : (evt.author_name ? "Créé par " + evt.author_name : "");
+        document.getElementById('viewAuthorBadge').style.background = isSys ? "#555" : "var(--btn-blue)";
+
+        const cat = FIXED_CATEGORIES.find(c => c.id === (evt.type || evt.cat_id)) || {color: '#ccc', name: 'Inconnu'};
         document.getElementById('viewTitle').textContent = evt.t || evt.title;
-        document.getElementById('viewCat').innerHTML = `<div style="width:12px; height:12px; background:${cat.color||'#ccc'}; border-radius:50%;"></div> ${cat.name || 'Inconnu'}`;
+        document.getElementById('viewCat').innerHTML = `<div style="width:12px; height:12px; background:${cat.color}; border-radius:50%;"></div> ${cat.name}`;
         
-        if (evt.d) {
-            document.getElementById('viewDates').textContent = `Le ${formatDateFR(evt.d)}`;
-        } else {
-            const startD = evt.start instanceof Date ? evt.start.toISOString().split('T')[0] : evt.start;
-            const endD = evt.end instanceof Date ? evt.end.toISOString().split('T')[0] : evt.end;
-            document.getElementById('viewDates').textContent = `Du ${formatDateFR(startD)} au ${formatDateFR(endD)}`;
-        }
+        if (evt.d) { document.getElementById('viewDates').textContent = `Le ${formatDateFR(evt.d)}`; } 
+        else { document.getElementById('viewDates').textContent = `Du ${formatDateFR(evt.start_date || evt.start)} au ${formatDateFR(evt.end_date || evt.end)}`; }
 
-        const guestContainer = document.getElementById('viewGuestsContainer');
-        const viewGuests = document.getElementById('viewGuests');
-        if (evt.guestNames && evt.guestNames.length > 0) {
-            viewGuests.textContent = evt.guestNames.join(', ');
-            guestContainer.style.display = 'block';
-        } else {
-            guestContainer.style.display = 'none';
-        }
+        const gCont = document.getElementById('viewGuestsContainer'); const vG = document.getElementById('viewGuests');
+        if (evt.shared_with && evt.shared_with.length > 0) { vG.textContent = evt.shared_with.map(s => s.name).join(', '); gCont.style.display = 'block'; } 
+        else { gCont.style.display = 'none'; }
 
-        const noteContainer = document.getElementById('viewNoteContainer');
-        const viewNote = document.getElementById('viewNote');
-        if (evt.note && evt.note.trim() !== '') {
-            viewNote.textContent = evt.note;
-            noteContainer.style.display = 'block'; 
-        } else {
-            noteContainer.style.display = 'none'; 
-        }
+        const nCont = document.getElementById('viewNoteContainer'); const vN = document.getElementById('viewNote');
+        if (evt.note && evt.note.trim() !== '') { vN.textContent = evt.note; nCont.style.display = 'block'; } 
+        else { nCont.style.display = 'none'; }
 
         document.getElementById('viewModal').style.display = 'flex';
-        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
+
+    function editCurrentEvent() { const evt = events.find(e => e.id === currentViewId); closeModal('viewModal'); openAddModal('', evt.cat_id === 'urgence', null, evt); }
 
     function deleteCurrentEvent() {
         if(!currentViewId || isSystemEvent) return;
-        events = events.filter(ev => ev.id !== currentViewId);
-        saveEvents();
-        closeModal('viewModal');
+        showConfirm("Supprimer cet événement ?", async () => {
+            await supabaseClient.from('evenements').delete().eq('id', currentViewId);
+            closeModal('viewModal');
+            await loadData();
+        });
     }
 
-    function closeModal(id) { 
-        document.getElementById(id).style.display = 'none'; 
-        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
-    }
-
-    window.addEventListener('focus', initData);
+    function closeModal(id) { document.getElementById(id || 'alertModal').style.display = 'none'; }
 
     initAuth();
 </script>
