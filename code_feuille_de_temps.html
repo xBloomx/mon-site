@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Feuilles de Temps F.Dussault</title>
+    
+    <script>
+        if (window.self === window.top) { window.location.href = '../login.html'; }
+    </script>
+    
+    <script src="../assets/shared/console-filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase-config.js"></script>
+
+    <link rel="stylesheet" href="../assets/shared/shared.css">
+    <script src="../assets/shared/shared.js"></script>
+    <script src="../assets/shared/autosave.js"></script>
+    <script src="../assets/shared/archive.js"></script>
+    <script src="../assets/shared/pdf-export.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
+        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; color: white; }
+        .b-brouillon { background: #444; } .b-envoye { background: #3498db; } .b-attente { background: #fcca46; color: black; } .b-paye { background: #28a745; } .b-retard, .b-renvoye { background: #ff4d4d; }
+        #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        .dash-header { display: flex; justify-content: space-between; align-items: center; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        .tabs-container { display: flex; gap: 10px; margin-bottom: 5px; }
+        .btn-tab { background: #1a1b23; color: #aaa; border: 1px solid #444; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px;}
+        .btn-tab.active { background: var(--btn-blue); color: white; border-color: var(--btn-blue); }
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 12px 15px 12px 40px; border-radius: 8px; font-size: 16px; outline: none; }
+        .search-icon { position: absolute; left: 12px; color: #888; pointer-events: none; display: flex; align-items: center;}
+        .invoice-list { display: flex; flex-direction: column; gap: 10px; padding-bottom:30px; }
+        .invoice-item { background-color: var(--card-bg); padding: 12px 20px; border-radius: 10px; display: grid; grid-template-columns: 240px 1fr 130px 100px 44px; align-items: center; gap: 15px; transition: transform 0.2s, background-color 0.2s; cursor: pointer; border: 1px solid transparent; border-left: 4px solid transparent; margin-bottom: 8px; }
+        .invoice-item:hover { transform: translateX(5px); background-color: #343542; border-left-color: var(--btn-yellow); }
+        .inv-id { font-weight: bold; color: var(--btn-yellow); font-size: 14px; white-space: nowrap; }
+        .inv-client { font-weight: bold; font-size: 16px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
+        .inv-status { display: flex; align-items: center; }
+        .inv-date { color: #aaa; font-size: 14px; text-align: right; font-weight: 500; }
+        .inv-actions { display: flex; justify-content: flex-end; align-items: center; }
+        .btn-icon { background: #444; border: none; width: 36px; height: 36px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: white; flex-shrink: 0; }
+        .btn-delete { background: rgba(255, 77, 77, 0.1); color: var(--btn-red); border: 1px solid transparent;}
+        .btn-delete:hover { background: var(--btn-red); color: white; }
+        #view-editor { display: none; flex-direction: column; height: 100%; }
+        .top-bar { height: auto; min-height: 80px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 20px; background: rgba(30, 31, 38, 0.95); border-bottom: 1px solid #333; z-index: 101; flex-wrap: wrap; }
+        .action-btn { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s; }
+        .action-btn:hover { background-color: #ffd66b; transform: translateY(-1px); }
+        .btn-back { background-color: var(--btn-grey) !important; color: white !important; }
+        .btn-save { background-color: var(--btn-green) !important; color: white !important; padding: 10px 30px; font-size: 14px; }
+        .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
+        .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
+        .scroll-area { flex: 1; overflow: auto; padding: 15px 0; display: block; touch-action: auto; }
+        #zoom-wrapper { display: block; width: 8.5in; transform-origin: top left; transition: transform 0.1s ease-out; padding-bottom: 50px; }
+        .zoom-controls { position: fixed; bottom: 20px; right: 20px; background: rgba(30, 31, 38, 0.95); padding: 5px 15px; border-radius: 50px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2000; border: 1px solid #555; }
+        .zoom-controls button { background: var(--btn-yellow); border: none; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #1e1f26; }
+        .zoom-controls span { color: white; font-size: 12px; font-weight: bold; min-width: 45px; text-align: center; }
+        .page { width: 8.5in; height: 11in; background: white; color: black; padding: 0.5in; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin: 0 auto 20px auto; flex-shrink: 0; }
+        .page input { outline: none; font-family: inherit; }
+        .page input:focus { border-bottom: 2px solid #000 !important; background: transparent !important; }
+        .header-main { width: 100%; margin-bottom: 15px; text-align: left; }
+        .header-main img { max-width: 100%; height: auto; display: inline-block; }
+        .ts-title { text-align: center; font-size: 22px; font-weight: bold; text-decoration: underline; margin-bottom: 30px; text-transform: uppercase; color: black; }
+        .ts-emp-info { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; font-size: 13px; font-weight: bold; color: black; }
+        .ts-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+        .ts-field { background: var(--blue-bg); border: none; border-bottom: 1px solid #000; height: 26px; padding: 0 5px; font-weight: bold; flex: 1; color: black; font-size: 14px;}
+        .temps-table { width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid black; }
+        .temps-table th { border: 1px solid black; padding: 8px; font-size: 12px; text-align: center; background: #fff; color: black; font-weight: bold; }
+        .temps-table td { border: 1px solid black; padding: 0; height: 28px; background-color: var(--blue-bg); }
+        .cell-input { width: 100%; height: 100%; border: none !important; background: transparent; text-align: center; font-size: 13px; color: black; font-weight: bold; }
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; z-index: 4000; justify-content: center; align-items: center; }
+        .custom-modal-card { background: var(--card-bg); width: 350px; padding: 25px; border-radius: 12px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; }
+        .custom-modal-title { font-size: 20px; color: var(--btn-red); margin-bottom: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .custom-modal-msg { color: var(--text-light); margin-bottom: 25px; font-size: 15px; line-height: 1.4; }
+        .custom-modal-actions { display: flex; justify-content: center; gap: 10px; }
+        .btn-modal-cancel { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-modal-confirm { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight:bold;}
+        .btn-modal-ok { background: var(--btn-yellow); color: black; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        @media (max-width: 1024px) {
+            .top-bar { padding: 10px 85px 10px 10px; gap: 10px; height: 65px; overflow-x: auto; justify-content: flex-start; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+            .top-bar::-webkit-scrollbar { display: none; }
+            .top-bar .action-btn, .spacer-mobile { flex-shrink: 0; width: auto; margin-bottom: 0; }
+        }
+
+        @media (max-width: 768px) {
+            #view-dashboard { padding: 15px; }
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; }
+            .dash-title { padding-right: 80px; width: 100%; }
+            .dash-header .action-btn { width: 100%; justify-content: center; font-size: 14px; }
+            .tabs-container { flex-direction: column; width: 100%; }
+            .btn-tab { width: 100%; justify-content: center; }
+            .toolbar { flex-direction: column; width: 100%; gap: 10px;}
+            .search-box, .search-box input { width: 100%; }
+            .zoom-controls { display: none !important; }
+            .page { padding: 0.25in; }
+            
+            .invoice-item {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                grid-template-areas: "id id" "client client" "status date";
+                align-items: center;
+                gap: 4px 12px; 
+                padding: 16px;
+                border-radius: 12px;
+                border: 1px solid #3a3b46;
+                border-left: 1px solid #3a3b46;
+                margin-bottom: 12px;
+                position: relative;
+            }
+            .invoice-item:hover { transform: translateY(-2px); background-color: #30313c; border-color: #555; }
+            .inv-id { grid-area: id; font-size: 15px; font-weight: 800; width: auto; white-space: normal;}
+            .inv-client { grid-area: client; font-size: 18px; font-weight: 700; margin-top: 0px; margin-bottom: 8px; white-space: normal; padding-right: 45px; width: auto; }
+            .inv-status { grid-area: status; justify-self: start; width: auto; }
+            .inv-date { grid-area: date; text-align: right; justify-self: end; font-size: 12px; color: #888; width: auto; }
+            .inv-actions { position: absolute; top: 16px; right: 16px; margin: 0; }
+            .btn-icon { width: 36px; height: 36px; border-radius: 10px; }
+        }
+        
+        @media print {
+            @page { margin: 0; size: letter; }
+            html, body { margin: 0 !important; padding: 0 !important; height: 100% !important; width: 100% !important; background: white !important; overflow: visible !important;}
+            .top-bar, .zoom-controls, #view-dashboard, .custom-modal-overlay { display: none !important; }
+            .main-content, #view-editor, .scroll-area { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; padding: 0 !important; }
+            #zoom-wrapper { margin: 0 !important; padding: 0 !important; transform: none !important; width: 100% !important; display: block !important; }
+            .page { width: 100% !important; max-width: 100% !important; height: auto !important; min-height: 11in !important; margin: 0 !important; box-shadow: none !important; page-break-after: always !important; padding: 20px !important; display: block !important; }
+            .temps-table td, .ts-field, .cell-input { background-color: transparent !important; }
+            .temps-table th { background-color: white !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            input::placeholder { color: transparent !important; }
+            ::-webkit-input-placeholder { color: transparent !important; }
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="security-loader" style="position: fixed; inset: 0; background: #1e1f26; z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="color: #444; font-size: 12px; font-family: sans-serif;">Chargement du module...</div>
+</div>
+
+<svg style="display: none;">
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></symbol>
+    <symbol id="icon-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-archive" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></symbol>
+    <symbol id="icon-back" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></symbol>
+    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol>
+    <symbol id="icon-unlock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></symbol>
+    <symbol id="icon-print" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></symbol>
+    <symbol id="icon-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></symbol>
+    <symbol id="icon-file-minus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></symbol>
+    <symbol id="icon-eraser" viewBox="0 0 24 24"><path d="M20 20H7l-3-3a2.828 2.828 0 0 1 0-4l10-10a2.828 2.828 0 0 1 4 0l3 3a2.828 2.828 0 0 1 0 4l-7 7"></path><line x1="10" y1="10" x2="17" y2="17"></line></symbol>
+    <symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol>
+    <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></symbol>
+</svg>
+
+<div class="main-content">
+    <div id="view-dashboard">
+        <div class="dash-header">
+            <div class="dash-title">
+                <h1>Feuilles de Temps</h1>
+                <p>Création et suivi de vos heures (Connecté à Supabase)</p>
+            </div>
+            <button class="action-btn" style="background-color: var(--btn-yellow);" onclick="openNewTimesheet()">
+                <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Feuille
+            </button>
+        </div>
+
+        <div class="tabs-container" id="timesheet-tabs" style="display:none;">
+            <button id="tab-mine" class="btn-tab active" onclick="switchInvTab('mine')">
+                <svg class="svg-icon"><use href="#icon-user"></use></svg> Mes Feuilles
+            </button>
+            <button id="tab-all" class="btn-tab" onclick="switchInvTab('all')">
+                <svg class="svg-icon"><use href="#icon-inbox"></use></svg> Boîte de réception
+            </button>
+            <button id="tab-archives" class="btn-tab" onclick="switchInvTab('archives')">
+                <svg class="svg-icon"><use href="#icon-archive"></use></svg> Archives
+            </button>
+        </div>
+        
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
+                <input type="text" id="searchInput" placeholder="Rechercher (Nom, Date...)" onkeyup="filterTimesheets()">
+            </div>
+        </div>
+        <div id="ts-compteur" style="color:#888; font-size:12px; padding:5px 10px;"></div>
+        <div class="invoice-list" id="timesheetListContainer"></div>
+    </div>
+
+    <!-- Note de refus visible pour l'employé -->
+    <div id="note-refus-box" style="display:none; background:rgba(255,77,77,0.1); border:1px solid var(--btn-red); border-radius:8px; padding:12px 16px; margin:10px 20px 0; color:var(--btn-red);">
+        <strong>↩️ Renvoyé pour correction :</strong>
+        <div id="note-refus-text" style="color:#ffaaaa; margin-top:5px; font-size:14px;"></div>
+    </div>
+
+    <div id="view-editor">
+        <div class="top-bar">
+            <button class="action-btn btn-back" onclick="askGoBack()"><svg class="svg-icon"><use href="#icon-back"></use></svg> Retour</button>
+            <button class="action-btn" id="btn-approve" style="display:none; background:var(--btn-green); color:white;" onclick="approuverFeuille()"><svg class="svg-icon"><use href="#icon-check-circle"></use></svg> Approuver</button>
+            <button class="action-btn" id="btn-return-ts" style="display:none; background:var(--btn-red); color:white;" onclick="demanderRefus()"><svg class="svg-icon"><use href="#icon-back"></use></svg> Renvoyer</button>
+            <button class="action-btn btn-save" id="btn-save" onclick="saveCurrentTimesheet(false)"><svg class="svg-icon"><use href="#icon-save"></use></svg> Sauvegarder</button>
+            <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()"><svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyer au bureau</button>
+            <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockTimesheet()" style="display:none;"><svg class="svg-icon"><use href="#icon-unlock"></use></svg> Débloquer</button>
+            <div style="flex:1" class="spacer-mobile"></div>
+            <button class="action-btn" id="btn-print" onclick="exporterPDF()"><svg class="svg-icon"><use href="#icon-print"></use></svg> PDF / Imprimer</button>
+            <button class="action-btn" id="btn-add-page" onclick="addPage()"><svg class="svg-icon"><use href="#icon-file-plus"></use></svg> Page</button>
+            <button class="action-btn" id="btn-dup-page" onclick="duplicatePage()"><svg class="svg-icon"><use href="#icon-copy"></use></svg> Dupliquer</button>
+            <button class="action-btn" id="btn-del-page" onclick="deletePage()"><svg class="svg-icon"><use href="#icon-file-minus"></use></svg> Page</button>
+            <button class="action-btn" id="btn-clear" onclick="askClearInputs()"><svg class="svg-icon"><use href="#icon-eraser"></use></svg> Effacer</button>
+        </div>
+        <div class="scroll-area" id="scrollArea"><div id="zoom-wrapper"></div></div>
+        <div class="zoom-controls">
+            <button onclick="adjustZoom(-0.1)">−</button><span id="zoom-level">100%</span><button onclick="adjustZoom(0.1)">+</button><button onclick="resetZoom()" style="font-size: 14px;">↺</button>
+        </div>
+    </div>
+</div>
+
+<div class="custom-modal-overlay" id="confirmModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title" id="confirmTitle">Confirmation</div>
+        <div class="custom-modal-msg" id="confirmMsg">...</div>
+        <div class="custom-modal-actions">
+            <button class="btn-modal-cancel" onclick="closeConfirmModal()">Non</button>
+            <button class="btn-modal-confirm" id="confirmYesBtn">Oui</button>
+        </div>
+    </div>
+</div>
+
+<div class="custom-modal-overlay" id="alertModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title" style="color:var(--btn-yellow);">Information</div>
+        <div class="custom-modal-msg" id="alertMsg">...</div>
+        <div class="custom-modal-actions">
+            <button class="btn-modal-ok" onclick="closeAlertModal()">Compris</button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    let myRole = 'A3'; let myUserId = 'local-user'; let myUserName = 'Employé'; let currentInvTab = 'mine';
+    let timesheetsData = []; let currentSheetId = null;
+    let autosave = null;       // Instance de sauvegarde automatique
+    let tsPage = 0; const TS_PAGE_SIZE = 25; let tsHasMore = false;
+
+    const defaultRolesConfig = { 'A0': { perms: ['approve_timesheets'] }, 'A1': { perms: ['approve_timesheets'] }, 'A2': { perms: ['approve_timesheets'] }, 'A3': { perms: [] } };
+    let _cachedRoles = null;
+
+    async function loadRolesCache() {
+        if (_cachedRoles) return;
+        try {
+            const { data } = await supabaseClient
+                .from('parametres_globaux')
+                .select('valeur')
+                .eq('cle', 'roles_config')
+                .maybeSingle();
+            _cachedRoles = data?.valeur ? JSON.parse(data.valeur) : defaultRolesConfig;
+        } catch(e) { _cachedRoles = defaultRolesConfig; }
+    }
+
+    function hasPermission(role, permId) {
+        if (role === 'A0') return true;
+        const roles = _cachedRoles || defaultRolesConfig;
+        return roles[role] && roles[role].perms && roles[role].perms.includes(permId);
+    }
+
+    async function initAuth() {
+        await loadRolesCache();
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) { window.top.location.href = '../login.html'; return; }
+        myUserId = user.id;
+        const { data: profil } = await supabaseClient.from('profils').select('role, prenom_nom').eq('id', user.id).maybeSingle();
+        if (profil) {
+            myRole = profil.role; myUserName = profil.prenom_nom || user.email;
+            if (hasPermission(myRole, 'approve_timesheets')) { document.getElementById('timesheet-tabs').style.display = 'flex'; } else {
+                currentInvTab = 'mine';
+                // A3 doit pouvoir consulter ses propres archives
+                const tabs = document.getElementById('timesheet-tabs');
+                if (tabs) {
+                    tabs.style.display = 'flex';
+                    const tabAll = document.getElementById('tab-all');
+                    if (tabAll) tabAll.style.display = 'none';
+                }
+            }
+        }
+        await loadData();
+        document.getElementById('security-loader').style.display = 'none';
+        window.parent.postMessage({ type: 'module_ready', module: 'view-temps' }, '*');
+    }
+
+    async function loadData(reset = true) {
+        if (reset) { tsPage = 0; timesheetsData = []; }
+
+        const from = tsPage * TS_PAGE_SIZE;
+        const to = from + TS_PAGE_SIZE - 1;
+
+        let query = supabaseClient.from('feuilles_de_temps').select('*');
+        if (currentInvTab === 'archives') {
+            query = query.eq('is_archived', true);
+            if (!hasPermission(myRole, 'approve_timesheets') ||
+                (window.ArchiveFD && !window.ArchiveFD.canSeeAllArchives(myRole))) {
+                query = query.eq('author_id', myUserId);
+            }
+        } else {
+            query = query.eq('is_archived', false);
+            if (currentInvTab === 'mine') query = query.eq('author_id', myUserId);
+            else query = query.neq('status', 'brouillon');
+        }
+
+        const { data, error } = await query
+            .order('created_at', { ascending: false })
+            .range(from, to + 1);
+
+        if (data) {
+            tsHasMore = data.length > TS_PAGE_SIZE;
+            const pageData = data.slice(0, TS_PAGE_SIZE);
+            const mapped = pageData.map(db => ({
+                id: db.id, employe: db.employe_nom, periode: db.periode, status: db.status,
+                pagesData: db.pages_data || [], total_heures: db.total_heures || 0,
+                authorId: db.author_id, authorName: db.author_name, return_note: db.return_note,
+                isArchived: db.is_archived === true,
+                archivedAt: db.archived_at,
+                archivedByName: db.archived_by_name
+            }));
+            timesheetsData = reset ? mapped : [...timesheetsData, ...mapped];
+        }
+        filterTimesheets();
+    }
+
+    async function chargerPlusFDT() {
+        const btn = document.getElementById('btn-charger-plus-fdt');
+        if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
+        tsPage++;
+        await loadData(false);
+    }
+
+    function switchInvTab(tab) {
+        currentInvTab = tab;
+        document.getElementById('tab-mine').classList.remove('active');
+        document.getElementById('tab-all').classList.remove('active');
+        const tabArch = document.getElementById('tab-archives');
+        if (tabArch) tabArch.classList.remove('active');
+        const target = document.getElementById('tab-' + tab);
+        if (target) target.classList.add('active');
+        loadData(true);
+    }
+
+    let confirmCallback = null;
+    function showConfirm(msg, callback, title="Confirmation") { document.getElementById('confirmTitle').innerHTML = `<svg class="svg-icon" style="margin-right:8px;"><use href="#icon-alert-triangle"></use></svg>` + title; document.getElementById('confirmMsg').textContent = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; confirmCallback = null; if (document.getElementById('view-editor').style.display !== 'flex') window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
+    document.getElementById('confirmYesBtn').onclick = function() { if (confirmCallback) confirmCallback(); closeConfirmModal(); };
+    function showAlert(msg) { document.getElementById('alertMsg').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; if (document.getElementById('view-editor').style.display !== 'flex') window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
+
+    const viewDashboard = document.getElementById('view-dashboard'); const viewEditor = document.getElementById('view-editor'); const listContainer = document.getElementById('timesheetListContainer'); const wrapper = document.getElementById('zoom-wrapper');
+    function showDashboard() { stopAutosave(); viewDashboard.style.display = 'flex'; viewEditor.style.display = 'none'; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); loadData(); }
+    function askGoBack() { showDashboard(); }
+
+    function applyEditorSecurity(sheetObj) {
+        const isBureau = hasPermission(myRole, 'approve_timesheets');
+        const status = sheetObj ? (sheetObj.status || 'brouillon') : 'brouillon';
+        const isAuthor = sheetObj ? (sheetObj.authorId === myUserId || !sheetObj.authorId) : true;
+        const isArchived = sheetObj && sheetObj.isArchived === true;
+        let canEdit = false;
+        if (isAuthor && (status === 'brouillon' || status === 'renvoye' || status === 'attente')) canEdit = true;
+        if (isBureau && (status === 'brouillon' || status === 'renvoye' || status === 'attente') && isAuthor) canEdit = true;
+        // Override absolu : un document archivé est en lecture seule pour TOUT LE MONDE
+        if (isArchived) canEdit = false;
+
+        document.getElementById('btn-save').style.display = canEdit ? 'flex' : 'none';
+        document.getElementById('btn-send').style.display = canEdit ? 'flex' : 'none';
+        document.getElementById('btn-add-page').style.display = canEdit ? 'flex' : 'none';
+        document.getElementById('btn-dup-page').style.display = canEdit ? 'flex' : 'none';
+        document.getElementById('btn-del-page').style.display = canEdit ? 'flex' : 'none';
+        document.getElementById('btn-clear').style.display = canEdit ? 'flex' : 'none';
+        
+        const btnUnlock = document.getElementById('btn-unlock');
+        if (isBureau && status !== 'brouillon' && status !== 'renvoye' && status !== 'attente') btnUnlock.style.display = 'flex'; else btnUnlock.style.display = 'none';
+
+        // Boutons Approuver / Renvoyer pour le bureau
+        const btnApprove = document.getElementById('btn-approve');
+        const btnReturn = document.getElementById('btn-return-ts');
+        if (btnApprove && btnReturn) {
+            if (!isArchived && isBureau && (status === 'envoye' || status === 'attente')) {
+                btnApprove.style.display = 'flex';
+                btnReturn.style.display = 'flex';
+            } else {
+                btnApprove.style.display = 'none';
+                btnReturn.style.display = 'none';
+            }
+        }
+
+        // Afficher la note de refus si présente
+        const noteRefusBox = document.getElementById('note-refus-box');
+        if (noteRefusBox && sheetObj && sheetObj.return_note) {
+            noteRefusBox.style.display = 'block';
+            noteRefusBox.querySelector('#note-refus-text').textContent = sheetObj.return_note;
+        } else if (noteRefusBox) {
+            noteRefusBox.style.display = 'none';
+        }
+        
+        const allInputs = wrapper.querySelectorAll('input');
+        allInputs.forEach(inp => { if (!canEdit) { inp.setAttribute('readonly', true); inp.style.pointerEvents = 'none'; } else { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; } });
+    }
+
+    // ====================================================================
+    // SAUVEGARDE AUTOMATIQUE LOCALE
+    // ====================================================================
+    function startAutosave() {
+        // Si une instance est déjà active, on l'arrête proprement
+        if (autosave) { try { autosave.stop(); } catch(e){} }
+
+        autosave = window.AutosaveFD.create({
+            module: 'feuille_de_temps',
+            containerSelector: '#zoom-wrapper',
+            draftIdGetter: () => currentSheetId
+        });
+        autosave.start();
+
+        // Tente une restauration silencieuse si un brouillon existe pour cet ID
+        if (autosave.hasDraft()) {
+            autosave.restore();
+        }
+    }
+
+    function stopAutosave() {
+        if (autosave) {
+            try { autosave.stop(); } catch(e){}
+            autosave = null;
+        }
+    }
+
+    function clearAutosaveForCurrent() {
+        if (autosave) { try { autosave.clear(); } catch(e){} }
+    }
+
+    function unlockTimesheet() { const allInputs = wrapper.querySelectorAll('input'); allInputs.forEach(inp => { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; }); document.getElementById('btn-save').style.display = 'flex'; document.getElementById('btn-unlock').style.display = 'none'; document.getElementById('btn-add-page').style.display = 'flex'; document.getElementById('btn-dup-page').style.display = 'flex'; document.getElementById('btn-del-page').style.display = 'flex'; document.getElementById('btn-clear').style.display = 'flex'; showAlert("Feuille de temps débloquée. N'oubliez pas de sauvegarder."); }
+
+    function openNewTimesheet() {
+        // Effacer tout brouillon "_new" résiduel
+        try { localStorage.removeItem('fdussault_draft_feuille_de_temps_new'); } catch(e) {}
+        currentSheetId = null; viewDashboard.style.display = 'none'; viewEditor.style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+        wrapper.innerHTML = ''; addPage(); applyEditorSecurity(null); fitToScreen();
+        startAutosave();
+    }
+
+    function openExistingTimesheet(id) {
+        const sheet = timesheetsData.find(s => s.id === id); if (!sheet) return;
+        currentSheetId = id; viewDashboard.style.display = 'none'; viewEditor.style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+        wrapper.innerHTML = '';
+        if (sheet.pagesData && Array.isArray(sheet.pagesData)) { sheet.pagesData.forEach(pageData => { const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); const inputs = newPage.querySelectorAll('input'); pageData.forEach((val, idx) => { if(inputs[idx]) inputs[idx].value = val; }); }); } else { addPage(); }
+        applyEditorSecurity(sheet); // sheet passé pour afficher la note de refus
+        fitToScreen();
+
+        // Démarrer l'autosave seulement si la feuille est encore modifiable
+        // Et JAMAIS sur un document archivé (lecture seule)
+        const editableStatuses = ['brouillon', 'corrige', 'corrigé'];
+        if (!sheet.isArchived && (!sheet.status || editableStatuses.includes(sheet.status))) {
+            startAutosave();
+        }
+    }
+
+    async function saveCurrentTimesheet(isSending = false) {
+        const firstPage = wrapper.querySelector('.page'); if(!firstPage) return;
+
+        // Désactiver les boutons pendant la sauvegarde
+        const btnSave = document.getElementById('btn-save');
+        const btnSend = document.getElementById('btn-send');
+        const originalSave = btnSave ? btnSave.innerHTML : '';
+        const originalSend = btnSend ? btnSend.innerHTML : '';
+        const loadingHTML = '<svg class="svg-icon" style="animation:spin 1s linear infinite;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="40" stroke-dashoffset="10"></circle></svg> Sauvegarde...';
+        if (btnSave) { btnSave.disabled = true; btnSave.innerHTML = loadingHTML; }
+        if (btnSend) { btnSend.disabled = true; }
+
+        // --- COMPACTAGE DES LIGNES VIDES ---
+        // Pour chaque page, on déplace les lignes complètement vides à la fin.
+        // Une ligne est "vide" si TOUS ses 4 inputs (Date, # Bon, Adresse, Heures)
+        // sont vides après trim. Si même un seul champ est rempli, la ligne reste.
+        wrapper.querySelectorAll('.page').forEach(page => {
+            page.querySelectorAll('table.temps-table tbody').forEach(tbody => {
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                if (rows.length === 0) return;
+                // Extraire les 4 valeurs de chaque ligne et savoir si vide
+                const data = rows.map(tr => {
+                    const inputs = tr.querySelectorAll('input');
+                    const values = Array.from(inputs).map(i => i.value);
+                    const isEmpty = values.every(v => !v || !v.trim());
+                    return { values, isEmpty };
+                });
+                // Séparer pleines / vides en gardant l'ordre
+                const filled = data.filter(d => !d.isEmpty);
+                const empty  = data.filter(d => d.isEmpty);
+                const ordered = [...filled, ...empty];
+                // Réécrire les valeurs des inputs dans l'ordre compacté
+                rows.forEach((tr, rowIndex) => {
+                    const inputs = tr.querySelectorAll('input');
+                    const newValues = ordered[rowIndex].values;
+                    inputs.forEach((inp, idx) => {
+                        if (inp.value !== newValues[idx]) {
+                            inp.value = newValues[idx] || '';
+                        }
+                    });
+                });
+            });
+        });
+        // --- FIN COMPACTAGE ---
+
+        const nameInput = firstPage.querySelector('.input-nom'); const weekInput = firstPage.querySelector('.input-semaine-debut'); const weekEndInput = firstPage.querySelector('.input-semaine-fin');
+        let empName = nameInput ? nameInput.value.trim() : ""; if(!empName) { empName = myUserName; if(nameInput) nameInput.value = empName; }
+        const dateStr = (weekInput && weekEndInput && weekInput.value && weekEndInput.value) ? `Du ${weekInput.value} au ${weekEndInput.value}` : "Semaine en cours";
+        const allPagesData = []; wrapper.querySelectorAll('.page').forEach(page => { const pageInputs = Array.from(page.querySelectorAll('input')).map(i => i.value); allPagesData.push(pageInputs); });
+        
+        let tsId = currentSheetId || 'TS-' + Date.now();
+        let currentStatus = 'brouillon'; let existingSheet = timesheetsData.find(s => s.id === currentSheetId || s.id === tsId);
+        if (existingSheet && existingSheet.status) currentStatus = existingSheet.status; if (isSending) currentStatus = 'envoye';
+        
+        // Calcul du total des heures pour toutes les pages
+        let totalGlobal = 0;
+        wrapper.querySelectorAll('.heure-input').forEach(inp => { const val = parseFloat(inp.value); if(!isNaN(val)) totalGlobal += val; });
+
+        const payload = { id: tsId, employe_nom: empName, periode: dateStr, pages_data: allPagesData, total_heures: totalGlobal, author_id: existingSheet ? existingSheet.authorId : myUserId, author_name: existingSheet ? existingSheet.authorName : myUserName, status: currentStatus };
+
+        // withRetry : retry auto en cas d'erreur transitoire (lock Supabase entre iframes, etc.)
+        const retry = window.SharedFD ? window.SharedFD.withRetry : (op) => op();
+        const { error } = await retry(() => supabaseClient.from('feuilles_de_temps').upsert(payload));
+
+        // Réactiver les boutons dans tous les cas
+        if (btnSave) { btnSave.disabled = false; btnSave.innerHTML = originalSave; }
+        if (btnSend) { btnSend.disabled = false; btnSend.innerHTML = originalSend; }
+
+        if (error) {
+            // Message user-friendly selon le type d'erreur
+            const msg = (error.message || '').toLowerCase();
+            let userMsg;
+            if (msg.includes('lock broken') || error.name === 'AbortError') {
+                userMsg = "❌ Une autre opération est en cours. Attends 2 secondes et réessaie.";
+            } else if (msg.includes('failed to fetch') || msg.includes('network')) {
+                userMsg = "❌ Pas de connexion internet. Vérifie ta connexion et réessaie.";
+            } else if (msg.includes('row-level security') || error.code === '42501') {
+                userMsg = "❌ Tu n'as pas la permission de modifier cette feuille.";
+            } else {
+                userMsg = "❌ Erreur de sauvegarde : " + error.message;
+            }
+            showAlert(userMsg);
+            return;
+        }
+
+        currentSheetId = tsId;
+        // Effacer le brouillon local maintenant que la feuille est en base
+        clearAutosaveForCurrent();
+        // Effacer aussi l'ancien brouillon "_new" (cas où on vient de créer la feuille)
+        try { localStorage.removeItem('fdussault_draft_feuille_de_temps_new'); } catch(e) {}
+        await loadData();
+        if (isSending) {
+            showAlert("✅ Feuille de temps envoyée au bureau avec succès !");
+            showDashboard();
+        } else {
+            showAlert("✅ Feuille de temps sauvegardée !");
+            applyEditorSecurity(payload);
+        }
+    }
+
+    function exporterPDF() {
+        const firstPage = wrapper.querySelector('.page');
+        if (!firstPage) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Aucune feuille à exporter', 'error');
+            }
+            return;
+        }
+        // Pour les feuilles de temps : "client" = nom de l'employé, "date" = semaine début
+        const nameInput = firstPage.querySelector('.input-nom');
+        const weekInput = firstPage.querySelector('.input-semaine-debut');
+        const empName = nameInput && nameInput.value.trim() ? nameInput.value.trim() : myUserName;
+        let weekDate = weekInput && weekInput.value.trim() ? weekInput.value.trim() : '';
+        // Convertir JJ/MM/AAAA en AAAA-MM-JJ pour le nom de fichier (tri chrono)
+        const m = weekDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (m) weekDate = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+        if (!weekDate) {
+            const today = new Date();
+            weekDate = today.getFullYear() + '-'
+                + String(today.getMonth() + 1).padStart(2, '0') + '-'
+                + String(today.getDate()).padStart(2, '0');
+        }
+
+        if (!window.PDFExportFD) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Module PDF non chargé', 'error');
+            }
+            return;
+        }
+        window.PDFExportFD.openPreview({
+            container: wrapper,
+            docType: 'feuille',
+            docNumber: currentSheetId || null,
+            clientName: empName,
+            date: weekDate
+        });
+    }
+
+    function sendToOffice() { showConfirm("Une fois envoyée, vous ne pourrez plus la modifier. L'envoyer pour la paie ?", function() { saveCurrentTimesheet(true); }, "Envoyer au bureau"); }
+
+    async function approuverFeuille() {
+        if (!currentSheetId) return;
+        showConfirm("Approuver cette feuille de temps ?", async function() {
+            const { error } = await supabaseClient.from('feuilles_de_temps')
+                .update({ status: 'approuve', return_note: null })
+                .eq('id', currentSheetId);
+            if (error) { showAlert("❌ Erreur : " + error.message); return; }
+            await loadData();
+            showDashboard();
+            showAlert("✅ Feuille de temps approuvée !");
+        });
+    }
+
+    function demanderRefus() {
+        document.getElementById('refusNote').value = '';
+        document.getElementById('refusModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    function closeRefusModal() {
+        document.getElementById('refusModal').style.display = 'none';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
+    }
+
+    async function confirmerRefus() {
+        const note = document.getElementById('refusNote').value.trim();
+        if (!note) { document.getElementById('refusNote').style.borderColor = 'var(--btn-red)'; return; }
+        if (!currentSheetId) return;
+        const { error } = await supabaseClient.from('feuilles_de_temps')
+            .update({ status: 'renvoye', return_note: note })
+            .eq('id', currentSheetId);
+        if (error) { showAlert("❌ Erreur : " + error.message); return; }
+        closeRefusModal();
+        await loadData();
+        showDashboard();
+        showAlert("↩️ Feuille renvoyée à l'employé pour correction.");
+    }
+    function deleteTimesheet(id, event) {
+        event.stopPropagation();
+        const item = timesheetsData.find(s => s.id === id);
+        if (!item) return;
+        window.ArchiveFD.confirmAndArchive({
+            table: 'feuilles_de_temps',
+            id: id,
+            item: item,
+            role: myRole,
+            currentUserId: myUserId,
+            currentUserName: myUserName,
+            supabaseClient: supabaseClient,
+            onSuccess: () => loadData(true)
+        });
+    }
+
+    function restoreTimesheet(id, event) {
+        event.stopPropagation();
+        window.ArchiveFD.confirmAndRestore({
+            table: 'feuilles_de_temps',
+            id: id,
+            role: myRole,
+            supabaseClient: supabaseClient,
+            onSuccess: () => loadData(true)
+        });
+    }
+
+    function renderTimesheetList(filteredData = null) {
+        listContainer.innerHTML = ''; const isBureau = hasPermission(myRole, 'approve_timesheets');
+        let baseList = timesheetsData;
+        if (currentInvTab === 'archives') {
+            baseList = timesheetsData;
+        } else if (!isBureau || currentInvTab === 'mine') { baseList = timesheetsData.filter(s => s.authorId === myUserId || !s.authorId); } else { baseList = timesheetsData.filter(s => s.status !== 'brouillon'); }
+        let listToShow = filteredData ? filteredData : baseList;
+        // Mettre à jour le compteur
+        const compteur = document.getElementById('ts-compteur');
+        if (compteur) compteur.textContent = `${timesheetsData.length} feuille(s) chargée(s)${tsHasMore ? ' — il y en a plus' : ''}`;
+        if(listToShow.length === 0) { listContainer.innerHTML = '<div style="color:#888; text-align:center; padding:20px; font-style:italic;">Aucune feuille trouvée.</div>'; return; }
+        
+        listToShow.forEach(sheet => {
+            let badgeHTML = ''; let st = sheet.status || 'brouillon';
+            if(st === 'brouillon') badgeHTML = `<span class="badge-status b-brouillon"><svg class="svg-icon"><use href="#icon-file-text"></use></svg> Brouillon</span>`;
+            if(st === 'envoye') badgeHTML = `<span class="badge-status b-envoye"><svg class="svg-icon"><use href="#icon-send"></use></svg> ${!isBureau?'Envoyée':'En attente'}</span>`;
+            if(st === 'approuve') badgeHTML = `<span class="badge-status b-paye"><svg class="svg-icon"><use href="#icon-check-circle"></use></svg> Approuvée</span>`;
+
+            // Override visuel si archivée
+            if (sheet.isArchived) {
+                badgeHTML = `<span class="badge-status" style="background:#555; color:#fff;">📦 Archivée</span>`;
+            }
+
+            const item = document.createElement('div'); item.className = 'invoice-item'; item.onclick = function() { openExistingTimesheet(sheet.id); };
+
+            let actionsHTML = `<div class="btn-icon" style="background:transparent; pointer-events:none;"></div>`;
+            if (sheet.isArchived) {
+                if (window.ArchiveFD && window.ArchiveFD.canRestore(myRole)) {
+                    actionsHTML = `<button class="btn-icon" style="background:rgba(40,167,69,0.15); color:#28a745; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="restoreTimesheet('${sheet.id}', event)" title="Restaurer">↺</button>`;
+                }
+            } else {
+                const verdict = window.ArchiveFD ? window.ArchiveFD.canArchive(sheet, myRole, myUserId) : { allowed: false };
+                if (verdict.allowed) {
+                    actionsHTML = `<button class="btn-icon btn-delete" onclick="deleteTimesheet('${sheet.id}', event)" title="Supprimer (archiver)"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-trash"></use></svg></button>`;
+                }
+            }
+
+            item.innerHTML = `<div class="inv-id">${sheet.periode || "Période inconnue"}</div><div class="inv-client"><svg class="svg-icon" style="margin-right:6px; color:#aaa; width:16px; height:16px;"><use href="#icon-user"></use></svg>${sheet.employe || sheet.authorName || 'Employé'}</div><div style="font-weight:bold; font-size:18px; color:var(--btn-yellow); text-align:center;">${sheet.total_heures} h</div><div>${badgeHTML}</div><div class="inv-actions">${actionsHTML}</div>`;
+            listContainer.appendChild(item);
+        });
+    }
+
+    function ajouterBoutonPlusFDT() {
+        const container = document.getElementById('timesheetListContainer');
+        const old = document.getElementById('btn-charger-plus-fdt');
+        if (old) old.remove();
+        if (!tsHasMore || !container) return;
+        const btn = document.createElement('button');
+        btn.id = 'btn-charger-plus-fdt';
+        btn.textContent = `Charger ${TS_PAGE_SIZE} feuilles de plus...`;
+        btn.style.cssText = 'width:100%; padding:14px; margin-top:10px; background:#2b2c36; color:#aaa; border:1px dashed #444; border-radius:10px; cursor:pointer; font-size:14px; font-weight:bold;';
+        btn.onclick = chargerPlusFDT;
+        container.appendChild(btn);
+    }
+
+    function filterTimesheets() { const searchText = document.getElementById('searchInput').value.toLowerCase(); const isBureau = hasPermission(myRole, 'approve_timesheets'); let baseList = timesheetsData; if (currentInvTab === 'archives') { baseList = timesheetsData; } else if (!isBureau || currentInvTab === 'mine') { baseList = timesheetsData.filter(s => s.authorId === myUserId || !s.authorId); } else { baseList = timesheetsData.filter(s => s.status !== 'brouillon'); } const filtered = baseList.filter(sheet => { const cName = sheet.employe || sheet.authorName || ""; const pName = sheet.periode || ""; return (cName.toLowerCase().includes(searchText) || pName.toLowerCase().includes(searchText)); }); renderTimesheetList(filtered); }
+
+    function createTimePageHTML() {
+        const page = document.createElement('div'); page.className = 'page';
+        let rows = ""; for(let i=0; i<15; i++) { rows += `<tr><td><input type="text" class="cell-input date-input" placeholder="JJ/MM/AAAA"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input" style="text-align:left; padding-left:10px;"></td><td><input type="number" step="0.5" class="cell-input heure-input"></td></tr>`; }
+        page.innerHTML = `<div class="header-main"><img src="../assets/logo_dussault.png" alt="F. Dussault"></div><div class="ts-title">FEUILLE DE TEMPS</div><div class="ts-emp-info"><div class="ts-row"><span style="width:130px;">Nom de l'employé:</span><input type="text" class="input-nom ts-field" value="${myUserName}"></div><div class="ts-row" style="margin-top:5px;"><span style="width:90px;">Semaine du:</span><input type="text" class="input-semaine-debut ts-field date-input" placeholder="JJ/MM/AAAA"><span style="margin:0 10px;">au</span><input type="text" class="input-semaine-fin ts-field date-input" placeholder="JJ/MM/AAAA"></div></div><table class="temps-table"><thead><tr><th style="width:15%">Date</th><th style="width:15%"># Bon</th><th style="width:55%">Adresse</th><th style="width:15%">Heures</th></tr></thead><tbody>${rows}</tbody></table>`;
+        return page;
+    }
+
+    window.calculerTotal = function() {
+        // Conservée pour compatibilité (appels externes éventuels) — ne fait plus rien depuis le retrait du TOTAL visible
+    };
+
+    function enforceDateFormat(e) { let input = e.target; let v = input.value.replace(/\D/g, ''); if (v.length > 8) { v = v.substring(0, 8); } let formatted = ''; if (v.length > 4) { formatted = v.substring(0, 2) + '/' + v.substring(2, 4) + '/' + v.substring(4, 8); } else if (v.length > 2) { formatted = v.substring(0, 2) + '/' + v.substring(2); } else { formatted = v; } input.value = formatted; }
+
+    function setupInputLogic(pageElement) {
+        const inputs = Array.from(pageElement.querySelectorAll('input'));
+        pageElement.querySelectorAll('.date-input').forEach(input => { input.addEventListener('input', enforceDateFormat); });
+        const startInput = pageElement.querySelector('.input-semaine-debut'); const endInput = pageElement.querySelector('.input-semaine-fin'); const firstTableDateInput = pageElement.querySelector('.temps-table tbody tr:first-child .date-input');
+        if(firstTableDateInput && startInput && endInput) {
+            firstTableDateInput.addEventListener('input', function() {
+                const val = this.value; if(val.length === 10) { const parts = val.split('/'); if(parts.length === 3) { const day = parseInt(parts[0], 10); const month = parseInt(parts[1], 10) - 1; const year = parseInt(parts[2], 10); const enteredDate = new Date(year, month, day); if(!isNaN(enteredDate.getTime())) { const dayOfWeek = enteredDate.getDay(); const startDate = new Date(enteredDate); startDate.setDate(startDate.getDate() - dayOfWeek); const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 6); startInput.value = String(startDate.getDate()).padStart(2, '0') + '/' + String(startDate.getMonth() + 1).padStart(2, '0') + '/' + startDate.getFullYear(); endInput.value = String(endDate.getDate()).padStart(2, '0') + '/' + String(endDate.getMonth() + 1).padStart(2, '0') + '/' + endDate.getFullYear(); } } }
+            });
+        }
+        inputs.forEach((input, index) => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); const td = input.closest('td'); if (td) { const tr = td.closest('tr'); const colIndex = Array.from(tr.children).indexOf(td); const nextTr = tr.nextElementSibling; if (nextTr) { const nextTd = nextTr.children[colIndex]; const nextInput = nextTd ? nextTd.querySelector('input') : null; if (nextInput) { nextInput.focus(); return; } } } if (index + 1 < inputs.length) { inputs[index + 1].focus(); } } else if (e.key === 'Backspace' && input.value === '') { if (index - 1 >= 0) { inputs[index - 1].focus(); } }
+            });
+            input.addEventListener('paste', function(e) {
+                e.preventDefault(); const clipboardData = (e.clipboardData || window.clipboardData).getData('text'); const rows = clipboardData.split(/\r\n|\n|\r/); const currentTd = input.closest('td'); if (!currentTd) { input.value = clipboardData.trim(); return; } const currentTr = currentTd.closest('tr'); const table = currentTr.closest('table'); const startRowIndex = Array.from(table.querySelectorAll('tbody tr')).indexOf(currentTr); const startColIndex = Array.from(currentTr.children).indexOf(currentTd); const tableRows = table.querySelectorAll('tbody tr');
+                rows.forEach((rowText, i) => { if (startRowIndex + i < tableRows.length && rowText.trim() !== "") { const cells = rowText.split('\t'); const targetRow = tableRows[startRowIndex + i]; cells.forEach((cellText, j) => { if (targetRow.children[startColIndex + j]) { const targetInput = targetRow.children[startColIndex + j].querySelector('input'); if (targetInput) { targetInput.value = cellText.trim(); if(targetInput.classList.contains('date-input')) { targetInput.dispatchEvent(new Event('input')); } } } }); } });
+            });
+        });
+    }
+
+    function addPage() { const newPage = createTimePageHTML(); wrapper.appendChild(newPage); setupInputLogic(newPage); if(currentZoom !== 1.0) updateZoom(); }
+    function deletePage() { if (wrapper.children.length > 1) { wrapper.removeChild(wrapper.lastElementChild); } else { showAlert("Impossible de supprimer la dernière page."); } }
+    function duplicatePage() {
+        const pages = wrapper.querySelectorAll('.page');
+        if (pages.length === 0) return;
+        const sourcePage = pages[pages.length - 1];
+        const newPage = createTimePageHTML();
+        wrapper.appendChild(newPage);
+        setupInputLogic(newPage);
+        // Copier TOUS les inputs (header + tableau de lignes), pas seulement le header
+        const sourceInputs = sourcePage.querySelectorAll('input');
+        const newInputs = newPage.querySelectorAll('input');
+        sourceInputs.forEach((input, index) => {
+            if (newInputs[index]) {
+                newInputs[index].value = input.value;
+            }
+        });
+        if (currentZoom !== 1.0) updateZoom();
+    }
+    function askClearInputs() { showConfirm("Effacer tout le contenu ?", function() { wrapper.querySelectorAll('input').forEach(input => input.value = ''); calculerTotal(); }); }
+
+    let currentZoom = 1.0; const minZoom = 0.3; const maxZoom = 3.0; const zoomDisplay = document.getElementById('zoom-level');
+    function fitToScreen() {
+        const scrollArea = document.getElementById('scrollArea');
+        if (!scrollArea) return;
+        const screenWidth = scrollArea.clientWidth;
+        // Si la vue n'est pas encore rendue (clientWidth=0), on réessaie au prochain frame
+        if (screenWidth === 0) {
+            requestAnimationFrame(fitToScreen);
+            return;
+        }
+        const pageWidth = 816;
+        if (screenWidth < pageWidth) {
+            currentZoom = (screenWidth / pageWidth) * 0.98;
+        } else {
+            currentZoom = 1.0;
+        }
+        currentZoom = Math.round(currentZoom * 100) / 100;
+        updateZoom();
+    }
+    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; wrapper.style.transform = `scale(${currentZoom})`; if(zoomDisplay) { zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; } const scrollArea = document.getElementById('scrollArea'); if(scrollArea) { const screenWidth = scrollArea.clientWidth; const scaledWidth = 816 * currentZoom; if (scaledWidth < screenWidth) { wrapper.style.marginLeft = ((screenWidth - scaledWidth) / 2) + "px"; } else { wrapper.style.marginLeft = "0px"; } } const unscaledHeight = wrapper.offsetHeight; const scaledHeight = unscaledHeight * currentZoom; if (currentZoom < 1.0) { wrapper.style.marginBottom = (scaledHeight - unscaledHeight + 50) + "px"; } else if (currentZoom > 1.0) { wrapper.style.marginBottom = (currentZoom * 400) + "px"; } else { wrapper.style.marginBottom = "100px"; } }
+    function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
+    function resetZoom() { fitToScreen(); } 
+    window.addEventListener('resize', () => { if (document.getElementById('view-editor').style.display === 'flex') { fitToScreen(); } });
+    
+    let initialDistance = 0; let initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
+    scrollArea.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); initialZoomState = currentZoom; } }, { passive: false });
+    scrollArea.addEventListener('touchmove', function(e) { if (e.touches.length === 2) { e.preventDefault(); const currentDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); if (initialDistance > 0) { const diff = currentDistance / initialDistance; currentZoom = initialZoomState * diff; updateZoom(); } } }, { passive: false });
+
+    initAuth();
+</script>
+
+<!-- MODAL REFUS FDT -->
+<div class="modal-overlay" id="refusModal" style="z-index:5000; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center;">
+    <div style="background:#2b2c36; width:90%; max-width:420px; padding:30px; border-radius:15px; border:1px solid #555; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        <div style="font-size:20px; color:var(--btn-red); font-weight:bold; margin-bottom:15px;">↩️ Renvoyer pour correction</div>
+        <p style="color:#aaa; font-size:14px; margin-bottom:15px;">Expliquez à l'employé ce qui doit être corrigé :</p>
+        <textarea id="refusNote" placeholder="Ex: Il manque les heures du mercredi 15..." style="width:100%; height:100px; background:#1e1f26; color:white; border:1px solid #555; padding:12px; border-radius:8px; font-family:sans-serif; font-size:14px; outline:none; resize:none; box-sizing:border-box;"></textarea>
+        <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+            <button style="background:#444; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;" onclick="closeRefusModal()">Annuler</button>
+            <button style="background:var(--btn-red); color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="confirmerRefus()">↩️ Renvoyer</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

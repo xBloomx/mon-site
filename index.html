@@ -23,7 +23,14 @@
     <script src="assets/shared/shared.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden;
+            /* Safe areas pour téléphones avec encoche/Dynamic Island */
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-left: env(safe-area-inset-left, 0px);
+            padding-right: env(safe-area-inset-right, 0px);
+            box-sizing: border-box;
+        }
 
         .sidebar { width: 80px; background-color: var(--sidebar-bg); display: flex; flex-direction: column; align-items: center; padding: 20px 0; z-index: 1000; transition: left 0.3s ease; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
         .sidebar::-webkit-scrollbar { display: none; }
@@ -50,7 +57,7 @@
         .view-section.fade-in { opacity: 1; }
         .module-frame { width: 100%; height: 100%; border: none; display: block; }
 
-        .menu-btn { display: none; position: fixed; top: 25px; right: 25px; z-index: 1100; background-color: var(--btn-yellow); border: none; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: opacity 0.15s ease, transform 0.15s ease; justify-content: center; align-items: center; }
+        .menu-btn { display: none; position: fixed; top: calc(25px + env(safe-area-inset-top, 0px)); right: calc(25px + env(safe-area-inset-right, 0px)); z-index: 1100; background-color: var(--btn-yellow); border: none; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: opacity 0.15s ease, transform 0.15s ease; justify-content: center; align-items: center; }
         .menu-btn:active { transform: scale(0.90); }
 
         /* Indicateur connexion */
@@ -72,7 +79,7 @@
         }
 
         @media (min-width: 769px) and (max-width: 1024px) { .sidebar { position: relative; left: 0; width: 80px; } .menu-btn { display: none; } }
-        @media (max-width: 768px) { .sidebar { position: fixed; top: 0; left: -100px; width: 100px; height: 100vh; background: var(--sidebar-bg); transition: left 0.3s ease; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); } .sidebar.open { left: 0; } .menu-btn { display: flex; } }
+        @media (max-width: 768px) { .sidebar { position: fixed; top: 0; left: -100px; width: 100px; height: 100vh; background: var(--sidebar-bg); transition: left 0.3s ease; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); padding-top: calc(20px + env(safe-area-inset-top, 0px)); padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); } .sidebar.open { left: 0; } .menu-btn { display: flex; } }
     </style>
 </head>
 <body>
@@ -354,6 +361,24 @@
             requestAnimationFrame(() => {
                 if (event.data.action === 'hide') { menuBtn.style.display = 'none'; }
                 else if (event.data.action === 'show') { menuBtn.style.display = ''; }
+            });
+        }
+        // Mode signature plein écran : un module entre en mode signature → cacher sidebar
+        if (event.data && event.data.type === 'signature_mode') {
+            requestAnimationFrame(() => {
+                if (event.data.action === 'enter') {
+                    // Plein écran : cacher sidebar + hamburger + safe-area du body
+                    sidebar.style.display = 'none';
+                    if (overlay) overlay.classList.remove('active');
+                    sidebar.classList.remove('open');
+                    menuBtn.style.display = 'none';
+                    document.body.style.padding = '0';
+                } else {
+                    // Sortie : restaurer
+                    sidebar.style.display = '';
+                    menuBtn.style.display = '';
+                    document.body.style.padding = '';
+                }
             });
         }
         if (event.data && event.data.type === 'permissions_updated') {
