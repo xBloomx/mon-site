@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Administration F.Dussault</title>
     
     <script>
@@ -18,6 +18,12 @@
     <style>
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Empêcher tout débordement horizontal de l'app sur mobile */
+        html, body { 
+            max-width: 100%;
+            overflow-x: hidden;
+        }
 
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
@@ -96,7 +102,17 @@
         #a0PermissionsPanel select, #a0PermissionsPanel input { width: 100%; padding: 12px; background: #2b2c36; border: 1px solid #555; color: white; border-radius: 6px; outline: none; font-weight: bold; }
         #a0PermissionsPanel select:focus, #a0PermissionsPanel input:focus { border-color: var(--btn-yellow); }
 
-        @media (max-width: 768px) { .main-content { padding: 15px; } .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; padding-right: 70px; } .settings-grid { grid-template-columns: 1fr; } .expanded-logs-panel { top: 10px !important; left: 10px !important; right: 10px !important; bottom: 10px !important; } }
+        @media (max-width: 768px) {
+            .main-content { padding: 15px; }
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; padding-right: 70px; }
+            .settings-grid { grid-template-columns: 1fr; }
+            .expanded-logs-panel { top: 10px !important; left: 10px !important; right: 10px !important; bottom: 10px !important; }
+
+            /* Sur mobile, neutraliser les min-width forcés qui causent un débordement horizontal */
+            .settings-card { min-width: 0 !important; }
+            /* Éviter les débordements sur les containers flex */
+            .main-content > div, .settings-card { max-width: 100%; box-sizing: border-box; }
+        }
     </style>
 </head>
 <body>
