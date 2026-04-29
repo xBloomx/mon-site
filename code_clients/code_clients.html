@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Gestion Clients F.Dussault</title>
+    
+    <script>
+        if (window.self === window.top) { window.location.href = '../login.html'; }
+    </script>
+    
+    <script src="../assets/shared/console-filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase-config.js"></script>
+    <link rel="stylesheet" href="../assets/shared/shared.css">
+    <script src="../assets/shared/shared.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
+
+        #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+
+        .dash-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        .header-actions { display: flex; align-items: center; gap: 15px; }
+
+        .btn-action { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s; }
+        .btn-action:hover { background-color: #ffd66b; transform: translateY(-2px); }
+
+        .btn-header-icon { background: #444; border: none; width: 38px; height: 38px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: #ccc; flex-shrink: 0; }
+        .btn-header-icon:hover { background: var(--btn-red); color: white; }
+
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 14px 15px 14px 45px; border-radius: 8px; font-size: 16px; outline: none; transition: 0.2s; }
+        .search-box input:focus { border-color: var(--btn-yellow); }
+        .search-icon { position: absolute; left: 15px; color: #888; pointer-events: none; display: flex; align-items: center; }
+
+        .filter-select { background: #1e1f26; border: 1px solid #444; color: white; padding: 14px 15px; border-radius: 8px; font-size: 15px; outline: none; cursor: pointer; min-width: 180px; font-family: inherit; }
+        .filter-select:focus { border-color: var(--btn-yellow); }
+
+        .discrete-stats { color: #aaa; font-size: 13px; font-style: italic; margin-top: -15px; margin-bottom: -10px; padding-left: 10px; }
+
+        .client-list { display: flex; flex-direction: column; gap: 15px; padding-bottom: 80px; }
+        
+        .client-item { background-color: var(--card-bg); padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; border-left: 5px solid transparent; }
+        .client-item:hover { transform: translateY(-3px); background-color: #343542; }
+        .client-item.status-residentiel { border-left-color: #28a745; }
+        .client-item.status-commercial { border-left-color: #007bff; }
+        .client-item.status-prospect { border-left-color: #6c757d; }
+
+        .cli-info { display: flex; gap: 20px; align-items: center; flex: 1; }
+        .cli-status { font-weight: bold; font-size: 13px; width: 140px; display:flex; align-items:center; gap:6px; text-transform: uppercase;}
+        .cli-status.commercial { color: #007bff; }
+        .cli-status.residentiel { color: #28a745; }
+        .cli-status.prospect { color: #6c757d; }
+        .cli-name { font-weight: bold; font-size: 18px; color: white; flex: 1; }
+        .cli-name-container { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .cli-chip-sub { font-size: 13px; color: white; background: #3a3b46; padding: 4px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #555; display: inline-flex; align-items: center; }
+        .cli-chip-contact { font-size: 12px; color: var(--btn-yellow); background: rgba(252, 202, 70, 0.15); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(252, 202, 70, 0.3); display: inline-flex; align-items: center; }
+        .cli-alert-badge { background: var(--btn-red); color: white; font-size: 10px; padding: 4px 8px; border-radius: 6px; font-weight: bold; white-space:nowrap; border: 1px solid #ff7b7b; display:flex; align-items:center; gap:4px;}
+        .cli-contact { color: #aaa; font-size: 14px; width: 250px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .cli-contact-item { display: flex; align-items: flex-start; gap: 6px; justify-content: flex-end; text-align: right; }
+        .cli-contact-item.address { font-size: 12px; color: #888; margin-top: 2px; }
+        .cli-actions { display: flex; gap: 10px; margin-left: 20px; }
+        .btn-icon { background: #444; border: none; width: 36px; height: 36px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: white; flex-shrink: 0; }
+        .btn-icon:hover { background: var(--btn-yellow); color:black; }
+
+        @media (max-width: 768px) {
+            #view-dashboard { padding: 15px; }
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .header-actions { width: 100%; flex-direction: row; display: flex; gap: 10px; }
+            .dash-header .btn-action { flex: 1; justify-content: center; }
+            .toolbar { flex-direction: column; align-items: stretch; gap: 10px; width: 100%; }
+            .search-box, .search-box input { width: 100%; }
+            .filter-select { width: 100%; }
+            .discrete-stats { margin-top: -5px; margin-bottom: 0px; text-align: center; padding-left: 0; }
+            .client-item { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .cli-info { flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; }
+            .cli-status { width: auto; }
+            .cli-contact { width: 100%; align-items: flex-start; font-size: 13px; margin-top: 5px; }
+            .cli-contact-item { justify-content: flex-start; text-align: left; }
+            .cli-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
+            .modal-card { width: 95% !important; padding: 20px !important; }
+            .form-row { flex-direction: column; gap: 0; }
+            .contact-row { flex-wrap: wrap; border-bottom: 1px solid #333; padding-bottom: 10px; }
+            .contact-row input { width: 100%; margin-bottom: 5px; flex: none; font-size: 16px; }
+            .btn-remove-row { width: 100%; text-align: right; }
+            .gps-options { margin-left: 0; margin-top: 10px; width: 100%; display: flex; gap: 10px; justify-content: space-between; }
+            .gps-btn { flex: 1; text-align: center; padding: 6px 5px; font-size: 13px; }
+        }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; z-index: 4000; justify-content: center; align-items: center; }
+        .modal-overlay.z-high { z-index: 4500; background: rgba(0,0,0,0.85); }
+        .modal-card { background: var(--card-bg); width: 850px; padding: 30px; border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        .modal-card.small-card { width: 350px; text-align: center; }
+        .modal-title { font-size: 28px; color: white; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid var(--btn-yellow); padding-bottom: 10px; display: inline-block;}
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 14px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background: #1e1f26; border: 1px solid #555; color: white; border-radius: 8px; font-family: sans-serif; font-size: 14px; outline: none; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--btn-yellow); }
+        .form-row { display: flex; gap: 15px; }
+        
+        .contacts-container { border: 1px solid #444; padding: 10px; border-radius: 8px; background: #1e1f26; margin-bottom: 15px; }
+        .contact-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+        .contact-row input.inp-name { flex: 2; }
+        .contact-row input.inp-role { flex: 1.5; }
+        .contact-row input.inp-phone { flex: 1.5; }
+        .contact-row input.inp-email { flex: 2; }
+        
+        .btn-add-contact { background: #444; color: white; width: 100%; padding: 10px; border: 1px dashed #666; border-radius: 8px; cursor: pointer; font-size: 13px; margin-top: 5px;}
+        .btn-add-contact:hover { background: #555; }
+        .btn-remove-row { background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-weight: bold; font-size: 20px; display:flex; align-items:center; justify-content:center;}
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .modal-actions.center { justify-content: center; }
+        .btn-cancel { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-submit { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; display:flex; align-items:center; gap:6px;}
+        .btn-delete { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display:flex; align-items:center; gap:6px;}
+
+        .view-section-title { color: var(--btn-yellow); font-size: 14px; font-weight: bold; margin: 15px 0 5px 0; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .view-row { margin-bottom: 8px; display: flex; align-items: center;}
+        .view-label { color: #888; width: 140px; font-size: 13px; }
+        .view-val { color: white; font-weight: 500; flex: 1; }
+        
+        .gps-options { display: flex; gap: 10px; width: 100%; }
+        .gps-btn { text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; font-weight: bold; transition: 0.2s; display:flex; align-items:center; justify-content:center; gap:5px; flex: 1; }
+        .gps-google { background: #4285F4; color: white; }
+        .gps-apple { background: #ffffff; color: black; }
+
+        .box-note { background:#1e1f26; padding:10px; border-radius:8px; color:#ddd; font-style:italic; min-height:40px; white-space: pre-wrap; border: 1px solid #444; }
+        .box-alert { background: rgba(255, 77, 77, 0.1); border: 1px solid var(--btn-red); color: var(--btn-red); padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; display:flex; align-items:center; gap:8px;}
+        
+        .contact-item { background: #333; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+        .ci-name { font-weight: bold; color: white; font-size: 15px; }
+        .ci-role { font-size: 12px; color: var(--btn-yellow); font-style: italic; background: rgba(252, 202, 70, 0.1); padding: 1px 6px; border-radius: 4px; display: inline-block; }
+
+        .corbeille-item { background: #1a1b23; border: 1px dashed var(--btn-red); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="security-loader" style="position: fixed; inset: 0; background: #1e1f26; z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="color: #444; font-size: 12px; font-family: sans-serif;">Chargement du module...</div>
+</div>
+
+<svg style="display: none;">
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol>
+    <symbol id="icon-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></symbol>
+    <symbol id="icon-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.19 11.9 19.79 19.79 0 0 1 1.12 3.23 2 2 0 0 1 3.11 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></symbol>
+    <symbol id="icon-map-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></symbol>
+    <symbol id="icon-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></symbol>
+    <symbol id="icon-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></symbol>
+    <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></symbol>
+    <symbol id="icon-archive" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></symbol>
+</svg>
+
+<div class="main-content">
+    <div id="view-dashboard">
+       <div class="dash-header">
+            <div class="dash-title">
+                <h1>Clients</h1>
+                <p>Répertoire & Historique</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-action" onclick="openEditModal()">
+                    <svg class="svg-icon"><use href="#icon-user-plus"></use></svg> Nouveau client
+                </button>
+                <button class="btn-header-icon" id="btn-show-corbeille" onclick="openCorbeille()" title="Ouvrir la corbeille" style="display: none;">
+                    <svg class="svg-icon"><use href="#icon-trash"></use></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
+                <input type="text" id="clientSearch" placeholder="Rechercher (Nom, Tél, Adresse...)" onkeyup="filterClients()">
+            </div>
+            <select id="statusFilter" class="filter-select" onchange="filterClients()">
+                <option value="all">Tous les statuts</option>
+                <option value="commercial">Commercial</option>
+                <option value="residentiel">Résidentiel</option>
+                <option value="prospect">Prospect</option>
+                <option value="archived">📦 Archivés</option>
+            </select>
+        </div>
+        
+        <div class="discrete-stats" id="filterResultText">Total : 0 client(s) dans le répertoire.</div>
+
+        <div class="client-list" id="clientListContainer"></div>
+    </div>
+</div>
+
+<!-- MODAL VISUALISATION -->
+<div class="modal-overlay" id="viewModal">
+    <div class="modal-card">
+        <div class="modal-title" id="viewModalTitle">Fiche Client</div>
+        <div id="vAlertSection" style="display:none;" class="box-alert">
+            <svg class="svg-icon"><use href="#icon-alert-circle"></use></svg>
+            <span>ATTENTION : <span id="vAlertText"></span></span>
+        </div>
+        <div class="view-section-title">Informations Générales</div>
+        <div class="view-row"><div class="view-label">Entreprise</div><div class="view-val" id="vCompany">-</div></div>
+        <div class="view-row" id="vRowSubcontractor" style="display:none;"><div class="view-label">Sous-traitant</div><div class="view-val" id="vSubcontractor">-</div></div>
+        <div class="view-row"><div class="view-label">Contact Dossier</div><div class="view-val" id="vContact">-</div></div>
+        <div class="view-row"><div class="view-label">Statut</div><div class="view-val" id="vStatus">-</div></div>
+        <div class="view-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+            <div style="display:flex; width:100%;">
+                <div class="view-label">Adresse</div>
+                <div class="view-val" id="vAddress">-</div>
+            </div>
+            <div class="gps-options">
+                <a href="#" id="vLinkGoogle" target="_blank" class="gps-btn gps-google">
+                    <svg style="width:14px;height:14px;fill:white;display:inline-block;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    Google Maps
+                </a>
+                <a href="#" id="vLinkApple" target="_blank" class="gps-btn gps-apple">
+                    <svg style="width:14px;height:14px;fill:black;display:inline-block;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    Apple Plans
+                </a>
+            </div>
+        </div>
+        <div class="view-section-title">Liste des Contacts</div>
+        <div id="vContactsList"></div>
+        <div id="vTarifSection" style="display:none;">
+            <div class="view-section-title">Spécifications Tarifaires</div>
+            <div class="box-note" id="vTarif" style="border-color:var(--btn-yellow); color:#fff; font-style:normal;"></div>
+        </div>
+        <div class="view-section-title">Notes Dossier</div>
+        <div class="box-note" id="vNotes"></div>
+        <div id="vFacturesSection" style="display:none;">
+            <div class="view-section-title" style="color:var(--btn-blue);">Factures associées</div>
+            <div id="vFacturesList" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('viewModal')">Fermer</button>
+            <button class="btn-submit" onclick="switchToEdit()">
+                <svg class="svg-icon"><use href="#icon-settings"></use></svg> Modifier
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ÉDITION -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-card">
+        <div class="modal-title" id="edModalTitle">Éditer Client</div>
+        <input type="hidden" id="edId">
+        <div class="form-group">
+            <label style="color:var(--btn-red); font-weight:bold; display:flex; align-items:center; gap:5px;">
+                <svg class="svg-icon" style="width:14px; height:14px;"><use href="#icon-alert-circle"></use></svg> Alerte Prioritaire (Chien, Mauvais payeur...)
+            </label>
+            <input type="text" id="edAlert" placeholder="S'affiche en rouge..." style="border-color:var(--btn-red);">
+        </div>
+        <div class="form-row">
+            <div class="form-group" style="flex:2">
+                <label>Nom de l'entreprise</label>
+                <input type="text" id="edCompany" placeholder="Ex: Bridgestone">
+            </div>
+            <div class="form-group" style="flex:1">
+                <label>Statut</label>
+                <select id="edStatus" onchange="toggleCommercialFields()">
+                    <option value="residentiel">Résidentiel</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="prospect">Prospect / Inconnu</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group" id="grpSubcontractor" style="display:none;">
+            <label>Nom du sous-traitant <span style="color:#aaa; font-weight:normal; font-size:12px;">(Optionnel)</span></label>
+            <input type="text" id="edSubcontractor" placeholder="Ex: Equans">
+        </div>
+        <div class="form-group">
+            <label>Contact principal</label>
+            <input type="text" id="edContact" placeholder="Ex: Marie Tremblay">
+        </div>
+        <div class="form-group">
+            <label>Adresse principale <span style="color:var(--btn-red)">*</span></label>
+            <input type="text" id="edAddress" placeholder="Adresse complète (Obligatoire)">
+        </div>
+        <div class="form-group">
+            <label>Contacts (Téléphones / Courriels) <span style="color:var(--btn-red)">*</span></label>
+            <div class="contacts-container" id="edContactsList"></div>
+            <button type="button" class="btn-add-contact" onclick="addContactRow()">+ Ajouter un contact</button>
+        </div>
+        <div class="form-group" id="grpTarif" style="display:none;">
+            <label style="color:var(--btn-yellow); font-weight:bold;">Spécifications tarifaires</label>
+            <textarea id="edTarif" rows="3" placeholder="Taux, Déplacement..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>Notes internes</label>
+            <textarea id="edNotes" rows="3" placeholder="Notes..."></textarea>
+        </div>
+        <div class="modal-actions" id="edModalActions"></div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMATION SUPPRESSION -->
+<div class="modal-overlay z-high" id="confirmModal">
+    <div class="modal-card small-card">
+        <div class="modal-title" style="color: var(--btn-red); text-decoration: none; border:none;">Supprimer ce client ?</div>
+        <div class="modal-msg">Le client sera déplacé dans la corbeille.</div>
+        <div class="modal-actions center">
+            <button class="btn-cancel" onclick="closeConfirmModal()">Annuler</button>
+            <button class="btn-delete" onclick="executeDeleteClient()">Oui, supprimer</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CORBEILLE -->
+<div class="modal-overlay" id="corbeilleModal">
+    <div class="modal-card">
+        <div class="modal-title" style="color: var(--btn-red); display:flex; align-items:center; justify-content:center; gap:8px;">
+            <svg class="svg-icon"><use href="#icon-trash"></use></svg> Corbeille de Sécurité
+        </div>
+        <p style="color: #aaa; text-align: center; margin-bottom: 20px; font-size: 13px;">
+            Ces clients ont été supprimés. Vous pouvez les restaurer ou les détruire définitivement.
+        </p>
+        <div id="corbeilleList"></div>
+        <div class="modal-actions" style="margin-top: 30px;">
+            <button class="btn-cancel" onclick="closeModal('corbeilleModal')">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ALERTE -->
+<div class="modal-overlay z-high" id="alertModal">
+    <div class="modal-card small-card">
+        <div class="modal-title" style="color: var(--btn-yellow); border:none; margin-bottom: 10px;">Information</div>
+        <p id="alertMessage" style="color: #e0e0e0; margin-bottom: 25px; font-size: 15px;">...</p>
+        <button class="btn-action" style="width: 100%; justify-content: center;" onclick="closeAlertModal()">Compris</button>
+    </div>
+</div>
+
+<script>
+    // Nettoyage XSS
+    function sanitize(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+        let myRole = 'A3'; 
+    let myUserId = null;
+    let clients = [];
+    let clientToDeleteId = null;
+    let clientsPage = 0;
+    const CLIENTS_PAGE_SIZE = 25;
+    let clientsHasMore = false; 
+    let currentViewingId = null;
+
+    const defaultRolesConfig = {
+        'A1': { perms: ['view_all_invoices', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'delete_clients', 'view_admin'] },
+        'A2': { perms: ['view_all_invoices', 'approve_timesheets', 'manage_tools'] },
+        'A3': { perms: ['transfer_tools'] }
+    };
+
+    // Roles chargés depuis Supabase (cache local pour la session)
+    let _cachedRoles = null;
+
+    async function loadRolesCache() {
+        if (_cachedRoles) return;
+        try {
+            const { data } = await supabaseClient
+                .from('parametres_globaux')
+                .select('valeur')
+                .eq('cle', 'roles_config')
+                .maybeSingle();
+            _cachedRoles = data?.valeur ? JSON.parse(data.valeur) : defaultRolesConfig;
+        } catch(e) { _cachedRoles = defaultRolesConfig; }
+    }
+
+    function hasPermission(role, permId) {
+        if (role === 'A0') return true;
+        const roles = _cachedRoles || defaultRolesConfig;
+        const roleData = roles[role] || defaultRolesConfig[role];
+        if (!roleData || !roleData.perms) return false;
+        return roleData.perms.includes(permId);
+    }
+
+    // =============================================
+    // INIT — Chargement depuis Supabase
+    // =============================================
+    async function init() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) { window.top.location.href = '../login.html'; return; }
+        await loadRolesCache();
+
+        myUserId = user.id;
+        const { data: profil } = await supabaseClient.from('profils').select('role').eq('id', user.id).maybeSingle();
+        if (profil) myRole = profil.role;
+
+        if (hasPermission(myRole, 'delete_clients')) {
+            document.getElementById('btn-show-corbeille').style.display = 'flex';
+        }
+
+        await loadClients();
+
+        document.getElementById('security-loader').style.display = 'none';
+        window.parent.postMessage({ type: 'module_ready', module: 'view-client' }, '*');
+    }
+
+    // =============================================
+    // CHARGEMENT depuis Supabase
+    // =============================================
+    async function loadClients(reset = true) {
+        if (reset) {
+            clientsPage = 0;
+            clients = [];
+        }
+
+        const from = clientsPage * CLIENTS_PAGE_SIZE;
+        const to = from + CLIENTS_PAGE_SIZE - 1;
+
+        const { data, error } = await supabaseClient
+            .from('clients')
+            .select('*')
+            .order('nom', { ascending: true })
+            .range(from, to + 1); // +1 pour détecter s'il y en a plus
+
+        if (error) { console.error('Erreur chargement clients:', error); return; }
+
+        clientsHasMore = (data || []).length > CLIENTS_PAGE_SIZE;
+        const pageData = (data || []).slice(0, CLIENTS_PAGE_SIZE);
+
+        if (reset) {
+            clients = pageData;
+        } else {
+            clients = [...clients, ...pageData];
+        }
+
+        updateCorbeilleCount();
+        filterClients();
+    }
+
+    async function chargerPlusClients() {
+        const btn = document.getElementById('btn-charger-plus-clients');
+        if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
+        clientsPage++;
+        await loadClients(false);
+    }
+
+    // =============================================
+    // SAUVEGARDE dans Supabase
+    // =============================================
+    async function saveClient() {
+        const id = document.getElementById('edId').value;
+        const alertVal = document.getElementById('edAlert').value.trim();
+        const company = document.getElementById('edCompany').value.trim();
+        const contact = document.getElementById('edContact').value.trim();
+        const address = document.getElementById('edAddress').value.trim();
+        const status = document.getElementById('edStatus').value;
+        const notes = document.getElementById('edNotes').value;
+        const tarif = document.getElementById('edTarif').value;
+        let subcontractor = document.getElementById('edSubcontractor').value.trim();
+        if (status !== 'commercial') subcontractor = '';
+
+        if (!company && !contact && !subcontractor) { openAlertModal("Vous devez entrer au moins un Nom d'entreprise, un Sous-traitant ou un Contact principal."); return; }
+        if (!address) { openAlertModal("L'adresse est obligatoire pour créer la fiche client."); return; }
+
+        let contactsList = [];
+        let hasPhone = false;
+        document.querySelectorAll('.contact-row').forEach(row => {
+            const name = row.querySelector('.inp-name').value.trim();
+            const role = row.querySelector('.inp-role').value.trim();
+            const phone = row.querySelector('.inp-phone').value.trim();
+            const email = row.querySelector('.inp-email').value.trim();
+            if (phone.length > 0) hasPhone = true;
+            if (name || phone || email) contactsList.push({ name, role, phone, email });
+        });
+
+        if (!hasPhone) { openAlertModal("Il faut ajouter au moins un numéro de téléphone valide."); return; }
+
+        const payload = {
+            nom: company || subcontractor || contact,
+            type: status,
+            telephone: contactsList[0]?.phone || '',
+            courriel: contactsList[0]?.email || '',
+            adresse: address,
+            contacts: contactsList,
+            notes: notes,
+            user_id: myUserId,
+            est_supprime: false,
+            // Champs extras dans notes jsonb — on stocke tout dans un objet étendu
+        };
+
+        // On stocke les champs supplémentaires dans la colonne notes en format étendu
+        // via une colonne contacts jsonb qui contient tout
+        const fullPayload = {
+            nom: company || subcontractor || contact,
+            type: status,
+            telephone: contactsList[0]?.phone || '',
+            courriel: contactsList[0]?.email || '',
+            adresse: address,
+            contacts: {
+                list: contactsList,
+                company: company,
+                subcontractor: subcontractor,
+                contact: contact,
+                alert: alertVal,
+                tarif: tarif,
+                notes: notes
+            },
+            notes: notes,
+            user_id: myUserId,
+            est_supprime: false
+        };
+
+        let error;
+        if (id) {
+            const { error: e } = await supabaseClient.from('clients').update(fullPayload).eq('id', id);
+            error = e;
+        } else {
+            const { error: e } = await supabaseClient.from('clients').insert([fullPayload]);
+            error = e;
+        }
+
+        if (error) { openAlertModal('Erreur lors de la sauvegarde : ' + error.message); return; }
+
+        await loadClients();
+        closeModal('editModal');
+    }
+
+    // =============================================
+    // SUPPRESSION (corbeille) dans Supabase
+    // =============================================
+    async function toggleArchiveClient(id, archive) {
+        const c = clients.find(cl => cl.id === id);
+        if (!c) return;
+        const extra = c.contacts || {};
+        extra.is_archived = archive;
+        const { error } = await supabaseClient.from('clients').update({ contacts: extra }).eq('id', id);
+        if (error) { openAlertModal('Erreur : ' + error.message); return; }
+        await loadClients();
+        closeModal('editModal');
+        showAlert(archive ? '📦 Client archivé.' : '✅ Client réactivé.');
+    }
+
+    async function executeDeleteClient() {
+        const { error } = await supabaseClient
+            .from('clients')
+            .update({ est_supprime: true })
+            .eq('id', clientToDeleteId);
+
+        if (error) { console.error(error); }
+        closeConfirmModal();
+        closeModal('editModal');
+        await loadClients();
+    }
+
+    async function restaurerClient(id) {
+        await supabaseClient.from('clients').update({ est_supprime: false }).eq('id', id);
+        await loadClients();
+        openCorbeille();
+    }
+
+    async function hardDeleteClient(id) {
+        showHardDeleteConfirm(id);
+    }
+
+    let hardDeleteId = null;
+
+    function showHardDeleteConfirm(id) {
+        hardDeleteId = id;
+        document.getElementById('hardConfirmModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    function closeHardConfirmModal() {
+        document.getElementById('hardConfirmModal').style.display = 'none';
+        hardDeleteId = null;
+        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
+    }
+
+    async function executeHardDelete() {
+        if (!hardDeleteId) return;
+        const { error } = await supabaseClient.from('clients').delete().eq('id', hardDeleteId);
+        if (error) { openAlertModal('Erreur lors de la suppression : ' + error.message); }
+        closeHardConfirmModal();
+        await loadClients();
+        openCorbeille();
+    }
+
+    // =============================================
+    // AFFICHAGE
+    // =============================================
+    function renderClients(list) {
+        const container = document.getElementById('clientListContainer');
+        container.innerHTML = '';
+
+        if (list.length === 0) {
+            container.innerHTML = '<div style="color:#aaa; text-align:center; padding:30px; font-style:italic;">Aucun client trouvé.</div>';
+            return;
+        }
+
+        list.forEach(c => {
+            const extra = c.contacts || {};
+            const contactsList = extra.list || [];
+            const company = extra.company || c.nom || '';
+            const subcontractor = extra.subcontractor || '';
+            const contact = extra.contact || '';
+            const alertVal = extra.alert || '';
+            const status = c.type || 'prospect';
+            const mainContact = contactsList[0] || { phone: '---' };
+
+            const card = document.createElement('div');
+            card.className = `client-item status-${status}`;
+            card.onclick = () => openViewModal(c.id);
+
+            let statusLabel = status === 'commercial' ? '<svg class="svg-icon"><use href="#icon-building"></use></svg> Commercial' : (status === 'residentiel' ? '<svg class="svg-icon"><use href="#icon-home"></use></svg> Résidentiel' : '<svg class="svg-icon"><use href="#icon-help"></use></svg> Prospect');
+            let mainName = company || subcontractor || contact || "Sans nom";
+            let chipsHTML = "";
+
+            if (status === 'commercial' && company && subcontractor) {
+                chipsHTML += `<span class="cli-chip-sub"><strong>${subcontractor}</strong></span>`;
+            }
+            if (status === 'commercial' && contact && contact !== mainName) {
+                chipsHTML += `<span class="cli-chip-contact">${contact}</span>`;
+            }
+
+            card.innerHTML = `
+                <div class="cli-info">
+                    <div class="cli-status ${status}">${statusLabel}</div>
+                    <div class="cli-name">
+                        <div class="cli-name-container">
+                            ${mainName} ${chipsHTML}
+                            ${alertVal ? '<span class="cli-alert-badge"><svg class="svg-icon" style="width:12px;height:12px;"><use href="#icon-alert-circle"></use></svg> ALERTE</span>' : ''}
+                        ${extra.is_archived ? '<span style="background:#555; color:#ccc; font-size:10px; padding:3px 8px; border-radius:6px; font-weight:bold;">📦 ARCHIVÉ</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="cli-contact">
+                        <div class="cli-contact-item"><span><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-phone"></use></svg></span> <span>${mainContact.phone ? `<a href="tel:${mainContact.phone}" style="color:inherit; text-decoration:none;" onclick="event.stopPropagation()">${mainContact.phone}</a>` : '---'}</span></div>
+                        <div class="cli-contact-item address"><span><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-map-pin"></use></svg></span> <span style="line-height:1.3;">${c.adresse ? (c.adresse.length > 40 ? c.adresse.substring(0,40)+'...' : c.adresse) : '---'}</span></div>
+                    </div>
+                </div>
+                <div class="cli-actions">
+                    <button class="btn-icon" onclick="openEditModal('${c.id}', event)" title="Modifier">
+                        <svg class="svg-icon"><use href="#icon-settings"></use></svg>
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        ajouterBoutonChargerPlus();
+    }
+
+    function filterClients() {
+        const term = document.getElementById('clientSearch').value.toLowerCase();
+        const statusF = document.getElementById('statusFilter').value;
+
+        const showArchived = statusF === 'archived';
+        const activeClients = clients.filter(c => !c.est_supprime && (showArchived ? c.contacts?.is_archived : !c.contacts?.is_archived));
+
+        const filtered = activeClients.filter(c => {
+            const extra = c.contacts || {};
+            const matchTerm = (c.nom || '').toLowerCase().includes(term) ||
+                              (extra.company || '').toLowerCase().includes(term) ||
+                              (extra.subcontractor || '').toLowerCase().includes(term) ||
+                              (c.adresse || '').toLowerCase().includes(term) ||
+                              (c.telephone || '').includes(term) ||
+                              (extra.list || []).some(ct => (ct.phone || '').includes(term));
+            const matchStatus = statusF === 'all' || statusF === 'archived' || c.type === statusF;
+            return matchTerm && matchStatus;
+        });
+
+        const resText = document.getElementById('filterResultText');
+        const suffixe = clientsHasMore ? ` (${clients.length} chargés — il y en a plus)` : '';
+        resText.textContent = (statusF === 'all' && term === '')
+            ? `Total : ${filtered.length} client(s) dans le répertoire.${suffixe}`
+            : `${filtered.length} client(s) affiché(s) selon vos filtres.`;
+
+        renderClients(filtered);
+    }
+
+    function ajouterBoutonChargerPlus() {
+        const container = document.getElementById('clientListContainer');
+        const btnExist = document.getElementById('btn-charger-plus-clients');
+        if (btnExist) btnExist.remove();
+
+        if (clientsHasMore) {
+            const btn = document.createElement('button');
+            btn.id = 'btn-charger-plus-clients';
+            btn.textContent = `Charger ${CLIENTS_PAGE_SIZE} clients de plus...`;
+            btn.style.cssText = 'width:100%; padding:14px; margin-top:10px; background:#2b2c36; color:#aaa; border:1px dashed #444; border-radius:10px; cursor:pointer; font-size:14px; font-weight:bold; transition:0.2s;';
+            btn.onmouseover = () => { btn.style.background = '#333'; btn.style.color = 'white'; };
+            btn.onmouseout = () => { btn.style.background = '#2b2c36'; btn.style.color = '#aaa'; };
+            btn.onclick = chargerPlusClients;
+            container.appendChild(btn);
+        }
+    }
+
+    function updateCorbeilleCount() {
+        const count = clients.filter(c => c.est_supprime).length;
+        const btn = document.getElementById('btn-show-corbeille');
+        if (btn) btn.title = `Corbeille (${count})`;
+    }
+
+    function openViewModal(id) {
+        currentViewingId = id;
+        const c = clients.find(cl => cl.id === id);
+        if (!c) return;
+
+        const extra = c.contacts || {};
+        const contactsList = extra.list || [];
+
+        document.getElementById('vCompany').textContent = extra.company || c.nom || '-';
+        document.getElementById('vContact').textContent = extra.contact || '-';
+        document.getElementById('vStatus').textContent = c.type || '-';
+        document.getElementById('vAddress').textContent = c.adresse || '-';
+        document.getElementById('vNotes').textContent = extra.notes || c.notes || 'Aucune note.';
+
+        const secSub = document.getElementById('vRowSubcontractor');
+        if (c.type === 'commercial' && extra.subcontractor) {
+            secSub.style.display = 'flex';
+            document.getElementById('vSubcontractor').textContent = extra.subcontractor;
+        } else { secSub.style.display = 'none'; }
+
+        document.getElementById('vLinkGoogle').href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.adresse || '')}`;
+        document.getElementById('vLinkApple').href = `http://maps.apple.com/?q=${encodeURIComponent(c.adresse || '')}`;
+
+        const alertSec = document.getElementById('vAlertSection');
+        if (extra.alert) { alertSec.style.display = 'flex'; document.getElementById('vAlertText').textContent = extra.alert; }
+        else { alertSec.style.display = 'none'; }
+
+        const secTarif = document.getElementById('vTarifSection');
+        if (c.type === 'commercial' && extra.tarif) { secTarif.style.display = 'block'; document.getElementById('vTarif').textContent = extra.tarif; }
+        else { secTarif.style.display = 'none'; }
+
+        const contList = document.getElementById('vContactsList');
+        contList.innerHTML = '';
+        contactsList.forEach(ct => {
+            const phoneLink = ct.phone ? `<a href="tel:${sanitize(ct.phone)}" style="color:white; text-decoration:none; font-weight:bold;" onclick="event.stopPropagation()">${sanitize(ct.phone)}</a>` : '---';
+            const emailLink = ct.email ? `<a href="mailto:${sanitize(ct.email)}" style="color:#aaa; font-size:11px; text-decoration:none;" onclick="event.stopPropagation()">${sanitize(ct.email)}</a>` : '';
+            contList.innerHTML += `<div class="contact-item"><div><div class="ci-name">${sanitize(ct.name)}</div>${ct.role ? `<div class="ci-role" style="margin-top:4px;">${sanitize(ct.role)}</div>` : ''}</div><div class="ci-details"><div style="text-align:right;">${phoneLink}</div><div style="text-align:right;">${emailLink}</div></div></div>`;
+        });
+
+        // Charger les factures associées à ce client
+        const nomClient = extra.company || c.nom || '';
+        if (nomClient) loadFacturesClient(nomClient);
+        else { const s = document.getElementById('vFacturesSection'); if(s) s.style.display = 'none'; }
+
+        document.getElementById('viewModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    function switchToEdit() { closeModal('viewModal'); openEditModal(currentViewingId); }
+
+    async function loadFacturesClient(clientNom) {
+        const section = document.getElementById('vFacturesSection');
+        const list = document.getElementById('vFacturesList');
+        if (!section || !list) return;
+
+        list.innerHTML = '<div style="color:#888; font-size:13px;">Chargement...</div>';
+        section.style.display = 'block';
+
+        const { data: factures } = await supabaseClient
+            .from('factures')
+            .select('id, date, status')
+            .ilike('client', `%${clientNom}%`)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (!factures || factures.length === 0) {
+            list.innerHTML = '<div style="color:#888; font-size:13px; font-style:italic;">Aucune facture trouvée pour ce client.</div>';
+            return;
+        }
+
+        const statusColors = {
+            'brouillon': '#aaa', 'envoyee': '#3498db', 'approuvee': '#28a745',
+            'renvoye': '#ff4d4d', 'Convertie': '#9b59b6'
+        };
+
+        list.innerHTML = factures.map(f => `
+            <div style="background:#1e1f26; border-radius:8px; padding:10px 15px; display:flex; justify-content:space-between; align-items:center; border-left:3px solid ${statusColors[f.status] || '#aaa'};">
+                <span style="color:white; font-weight:bold; font-family:monospace;">${sanitize(f.id)}</span>
+                <span style="color:#aaa; font-size:13px;">${sanitize(f.date || '')}</span>
+                <span style="font-size:12px; padding:2px 8px; border-radius:4px; background:rgba(255,255,255,0.1); color:${statusColors[f.status] || '#aaa'};">${sanitize(f.status || '')}</span>
+            </div>`).join('');
+    }
+
+    function openEditModal(id=null, e=null) {
+        if (e) e.stopPropagation();
+        document.getElementById('editModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+
+        const actionsDiv = document.getElementById('edModalActions');
+        const contList = document.getElementById('edContactsList');
+        contList.innerHTML = '';
+        actionsDiv.innerHTML = `<button class="btn-cancel" onclick="closeModal('editModal')">Annuler</button><button class="btn-submit" onclick="saveClient()">Enregistrer</button>`;
+
+        if (id) {
+            const c = clients.find(cl => cl.id === id);
+            const extra = c.contacts || {};
+            document.getElementById('edId').value = c.id;
+            document.getElementById('edAlert').value = extra.alert || '';
+            document.getElementById('edCompany').value = extra.company || '';
+            document.getElementById('edSubcontractor').value = extra.subcontractor || '';
+            document.getElementById('edContact').value = extra.contact || '';
+            document.getElementById('edAddress').value = c.adresse || '';
+            document.getElementById('edStatus').value = c.type || 'residentiel';
+            document.getElementById('edNotes').value = extra.notes || c.notes || '';
+            document.getElementById('edTarif').value = extra.tarif || '';
+            (extra.list || []).forEach(ct => addContactRow(ct));
+            toggleCommercialFields();
+
+            if (hasPermission(myRole, 'delete_clients')) {
+                const btnDel = document.createElement('button');
+                btnDel.className = 'btn-delete';
+                btnDel.innerHTML = `<svg class="svg-icon"><use href="#icon-trash"></use></svg> Supprimer`;
+                btnDel.onclick = () => askDeleteClient(c.id);
+                actionsDiv.prepend(btnDel);
+
+                // Bouton Archiver
+                const isArchived = c.contacts?.is_archived || false;
+                const btnArchive = document.createElement('button');
+                btnArchive.className = 'btn-cancel';
+                btnArchive.style.cssText = 'background:#555; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px;';
+                btnArchive.innerHTML = isArchived
+                    ? `<svg class="svg-icon"><use href="#icon-refresh"></use></svg> Réactiver`
+                    : `<svg class="svg-icon"><use href="#icon-archive"></use></svg> Archiver`;
+                btnArchive.onclick = () => toggleArchiveClient(c.id, !isArchived);
+                actionsDiv.prepend(btnArchive);
+            }
+        } else {
+            document.getElementById('edId').value = '';
+            document.getElementById('edAlert').value = '';
+            document.getElementById('edStatus').value = 'residentiel';
+            document.getElementById('edCompany').value = '';
+            document.getElementById('edSubcontractor').value = '';
+            document.getElementById('edContact').value = '';
+            document.getElementById('edAddress').value = '';
+            document.getElementById('edNotes').value = '';
+            document.getElementById('edTarif').value = '';
+            toggleCommercialFields();
+            addContactRow();
+        }
+    }
+
+    function toggleCommercialFields() {
+        const isCommercial = document.getElementById('edStatus').value === 'commercial';
+        document.getElementById('grpTarif').style.display = isCommercial ? 'block' : 'none';
+        document.getElementById('grpSubcontractor').style.display = isCommercial ? 'block' : 'none';
+    }
+
+    function addContactRow(data = {name:'', role:'', phone:'', email:''}) {
+        const div = document.createElement('div');
+        div.className = 'contact-row';
+        div.innerHTML = `
+            <input type="text" placeholder="Nom" class="inp-name" value="${data.name || ''}">
+            <input type="text" placeholder="Poste" class="inp-role" value="${data.role || ''}">
+            <input type="text" placeholder="Tél" class="inp-phone" value="${data.phone || ''}" onkeyup="formatPhone(this)">
+            <input type="email" placeholder="Email" class="inp-email" value="${data.email || ''}">
+            <button class="btn-remove-row" onclick="this.parentElement.remove()">×</button>
+        `;
+        document.getElementById('edContactsList').appendChild(div);
+    }
+
+    function openCorbeille() {
+        const list = document.getElementById('corbeilleList');
+        list.innerHTML = '';
+        const deleted = clients.filter(c => c.est_supprime);
+
+        if (deleted.length === 0) {
+            list.innerHTML = '<div style="color:#aaa; text-align:center; padding: 20px;">La corbeille est vide.</div>';
+        } else {
+            deleted.forEach(c => {
+                const name = c.nom || "Sans nom";
+                list.innerHTML += `
+                    <div class="corbeille-item">
+                        <div>
+                            <div style="color:white; font-weight:bold;">${name}</div>
+                            <div style="color:#888; font-size:12px;">${c.adresse || ''}</div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button style="background:var(--btn-green); color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;" onclick="restaurerClient('${c.id}')"><svg class="svg-icon"><use href="#icon-refresh"></use></svg> Restaurer</button>
+                            <button style="background:var(--btn-red); color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;" onclick="hardDeleteClient('${c.id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg> Détruire</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('corbeilleModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    function askDeleteClient(id) { clientToDeleteId = id; document.getElementById('confirmModal').style.display = 'flex'; }
+    function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; }
+    function openAlertModal(msg) { document.getElementById('alertMessage').textContent = msg; document.getElementById('alertModal').style.display = 'flex'; }
+    function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; }
+    function formatPhone(input) { let v = input.value.replace(/\D/g, ''); if(v.length > 3 && v.length <= 6) v = v.slice(0,3)+'-'+v.slice(3); else if(v.length > 6) v = v.slice(0,3)+'-'+v.slice(3,6)+'-'+v.slice(6,10); input.value = v; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
+
+    init();
+</script>
+
+<div class="modal-overlay z-high" id="hardConfirmModal" style="z-index: 5000;">
+    <div class="modal-card small-card">
+        <div class="modal-title" style="color: var(--btn-red); text-decoration: none; border:none;">⚠️ Action irréversible</div>
+        <div style="color:#aaa; margin-bottom: 20px; font-size: 14px; line-height: 1.5;">Le client sera détruit à tout jamais. Cette action est impossible à annuler.</div>
+        <div class="modal-actions center">
+            <button class="btn-cancel" onclick="closeHardConfirmModal()">Annuler</button>
+            <button class="btn-delete" onclick="executeHardDelete()">Oui, détruire</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

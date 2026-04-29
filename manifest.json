@@ -1,0 +1,51 @@
+{
+    "name": "F.Dussault",
+    "short_name": "F.Dussault",
+    "description": "Interface de gestion F.Dussault",
+    "start_url": "/index.html",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#1e1f26",
+    "theme_color": "#1e1f26",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "assets/logo_app.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "assets/logo_app.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "assets/logo_app_maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Nouvelle facture",
+            "short_name": "Facture",
+            "url": "/index.html?view=factures",
+            "icons": [{ "src": "assets/logo_facture.png", "sizes": "96x96" }]
+        },
+        {
+            "name": "Feuille de temps",
+            "short_name": "Temps",
+            "url": "/index.html?view=temps",
+            "icons": [{ "src": "assets/logo_feuille_de_temps.png", "sizes": "96x96" }]
+        },
+        {
+            "name": "Messagerie",
+            "short_name": "Messages",
+            "url": "/index.html?view=messagerie",
+            "icons": [{ "src": "assets/logo_messagerie.png", "sizes": "96x96" }]
+        }
+    ]
+}
