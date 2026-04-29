@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Interface F.Dussault</title>
 
     <link rel="apple-touch-icon" href="assets/logo_app.png">
@@ -80,6 +80,13 @@
 
         @media (min-width: 769px) and (max-width: 1024px) { .sidebar { position: relative; left: 0; width: 80px; } .menu-btn { display: none; } }
         @media (max-width: 768px) { .sidebar { position: fixed; top: 0; left: -100px; width: 100px; height: 100vh; background: var(--sidebar-bg); transition: left 0.3s ease; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); padding-top: calc(20px + env(safe-area-inset-top, 0px)); padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); } .sidebar.open { left: 0; } .menu-btn { display: flex; } }
+
+        /* === Mode signature plein écran ===
+           Quand un module entre en mode signature, on cache la sidebar
+           et le bouton hamburger pour libérer toute la largeur. */
+        body.signature-mode-active .sidebar { display: none !important; }
+        body.signature-mode-active .menu-btn { display: none !important; }
+        body.signature-mode-active { padding: 0 !important; }
     </style>
 </head>
 <body>
@@ -367,22 +374,30 @@
         if (event.data && event.data.type === 'signature_mode') {
             requestAnimationFrame(() => {
                 if (event.data.action === 'enter') {
-                    // Plein écran : cacher sidebar + hamburger + safe-area du body
-                    sidebar.style.display = 'none';
+                    // Mode signature plein écran : ajout d'une classe au body
+                    // qui force la sidebar et hamburger à disparaître via CSS !important
+                    document.body.classList.add('signature-mode-active');
                     if (overlay) overlay.classList.remove('active');
                     sidebar.classList.remove('open');
-                    menuBtn.style.display = 'none';
-                    document.body.style.padding = '0';
                 } else {
                     // Sortie : restaurer
-                    sidebar.style.display = '';
-                    menuBtn.style.display = '';
-                    document.body.style.padding = '';
+                    document.body.classList.remove('signature-mode-active');
                 }
             });
         }
         if (event.data && event.data.type === 'permissions_updated') {
             initApp();
+        }
+        // Synchronisation des formations : Profil notifie → on forward à toutes les iframes
+        // pour qu'Accueil et Calendrier rechargent leurs données
+        if (event.data && event.data.type === 'formations_updated') {
+            document.querySelectorAll('iframe').forEach(iframe => {
+                try {
+                    if (iframe.contentWindow && iframe.contentWindow !== event.source) {
+                        iframe.contentWindow.postMessage({ type: 'formations_updated' }, '*');
+                    }
+                } catch (e) { /* ignore cross-origin */ }
+            });
         }
 
         // --- MOTEUR VISUEL TEMPORAIRE (Réception) ---

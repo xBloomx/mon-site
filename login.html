@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Connexion - F.Dussault</title>
 
     <link rel="apple-touch-icon" href="assets/logo_app.png">
@@ -24,6 +24,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            /* Safe areas pour téléphones avec encoche/Dynamic Island */
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-left: env(safe-area-inset-left, 0px);
+            padding-right: env(safe-area-inset-right, 0px);
+            box-sizing: border-box;
         }
 
         .login-container {
