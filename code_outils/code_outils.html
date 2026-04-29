@@ -142,12 +142,6 @@
             <label>Outil</label>
             <select id="inpOutil">
                 <option value="" disabled selected hidden>Sélectionner une machine...</option>
-                <option value="Machine à déboucher T3 (#1)">Machine à déboucher T3 (#1)</option>
-                <option value="Machine à déboucher T3 (#2)">Machine à déboucher T3 (#2)</option>
-                <option value="Machine à déboucher T4">Machine à déboucher T4</option>
-                <option value="Petite caméra">Petite caméra</option>
-                <option value="Grosse caméra">Grosse caméra</option>
-                <option value="Mâchoire mega press">Mâchoire mega press</option>
                 <option value="Autre...">Autre (Préciser en note)</option>
             </select>
         </div>
@@ -447,25 +441,42 @@
         renderTools(filtered);
     }
 
-    function updateToolDropdown() {
+    async function updateToolDropdown() {
         const select = document.getElementById('inpOutil');
-        const activeTools = toolsLog.filter(t => t.status === 'active').map(t => t.nom);
-        for (let i = 0; i < select.options.length; i++) {
-            const opt = select.options[i];
-            if (opt.value === '') continue;
-            if (!opt.hasAttribute('data-orig')) opt.setAttribute('data-orig', opt.textContent);
-            if (activeTools.includes(opt.value) && opt.value !== 'Autre...') {
-                opt.disabled = true;
-                opt.textContent = opt.getAttribute('data-orig') + ' — Indisponible';
-            } else {
-                opt.disabled = false;
-                opt.textContent = opt.getAttribute('data-orig');
-            }
+        if (!select) return;
+
+        // Récupérer la liste unique des outils depuis la table 'outils'
+        // On prend les noms distincts (un outil peut avoir plusieurs lignes : 1 par emprunt)
+        let toolNames = [];
+        try {
+            const { data, error } = await supabaseClient
+                .from('outils')
+                .select('nom')
+                .order('nom', { ascending: true });
+            if (error) throw error;
+            // Dédupliquer et trier
+            const uniqueNames = [...new Set((data || []).map(t => t.nom).filter(Boolean))];
+            toolNames = uniqueNames.sort((a, b) => a.localeCompare(b, 'fr'));
+        } catch (e) {
+            console.warn('Erreur chargement liste outils:', e);
         }
+
+        // Outils actuellement empruntés (non retournés) → griser
+        const activeTools = toolsLog.filter(t => t.status === 'active').map(t => t.nom);
+
+        // Reconstruire le select : placeholder + outils dynamiques + Autre
+        let html = '<option value="" disabled selected hidden>Sélectionner une machine...</option>';
+        toolNames.forEach(name => {
+            const isActive = activeTools.includes(name);
+            const safe = name.replace(/"/g, '&quot;');
+            html += `<option value="${safe}"${isActive ? ' disabled' : ''}>${safe}${isActive ? ' — Indisponible' : ''}</option>`;
+        });
+        html += '<option value="Autre...">Autre (Préciser en note)</option>';
+        select.innerHTML = html;
     }
 
-    function openBorrowModal() {
-        updateToolDropdown();
+    async function openBorrowModal() {
+        await updateToolDropdown();
         document.getElementById('inpPlombier').value = myUserName;
         document.getElementById('inpOutil').value = '';
         document.getElementById('inpAdresse').value = '';
