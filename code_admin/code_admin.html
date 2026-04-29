@@ -1072,7 +1072,7 @@
         list.innerHTML = suppliersData.map((f, idx) => `
             <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px;">
                 <span style="color:#ddd; font-size:14px;">${sanitize(f)}</span>
-                <button onclick="removeSupplier(${idx})" style="background:transparent; border:none; color:var(--btn-red); cursor:pointer; padding:4px 8px; border-radius:4px;" title="Retirer">
+                <button class="btn-del-emp" onclick="removeSupplier(${idx})" title="Retirer">
                     <svg class="svg-icon"><use href="#icon-trash"></use></svg>
                 </button>
             </div>
@@ -1153,7 +1153,7 @@
                         <span style="color:#ddd; font-size:14px; font-weight:bold;">${sanitize(t.nom || 'Sans nom')}</span>
                         ${assigneeText}
                     </div>
-                    <button onclick="removeTool('${sanitize(t.id)}', '${sanitize(t.nom || '').replace(/'/g, '&apos;')}')" style="background:transparent; border:none; color:var(--btn-red); cursor:pointer; padding:4px 8px; border-radius:4px;" title="Retirer de la liste">
+                    <button class="btn-del-emp" onclick="removeTool('${sanitize(t.id)}', '${sanitize(t.nom || '').replace(/'/g, '&apos;')}')" title="Retirer de la liste">
                         <svg class="svg-icon"><use href="#icon-trash"></use></svg>
                     </button>
                 </div>
