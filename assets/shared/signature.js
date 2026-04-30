@@ -132,9 +132,19 @@
             /* Plein écran sur mobile pour grand espace de signature */
             @media (max-width: 768px) {
                 #sig-fd-modal { padding: 10px; }
+                /* En portrait : canvas grand (mais en portrait l'overlay rotation s'affiche) */
                 #sig-fd-canvas { height: 60vh; min-height: 250px; }
                 #sig-fd-modal .sig-fd-actions { flex-direction: column; }
                 #sig-fd-modal .sig-fd-btn { width: 100%; padding: 16px; }
+            }
+            /* En paysage sur mobile : canvas plus petit pour laisser de la place
+               aux boutons "Effacer / Annuler / Valider" qui sont visibles en bas */
+            @media (max-width: 932px) and (orientation: landscape) {
+                #sig-fd-modal { padding: 8px; gap: 8px; }
+                #sig-fd-modal .sig-fd-title { font-size: 14px; margin-bottom: 4px; }
+                #sig-fd-canvas { height: calc(100vh - 130px); min-height: 150px; max-height: 70vh; }
+                #sig-fd-modal .sig-fd-actions { flex-direction: row; margin-top: 8px; flex-wrap: nowrap; }
+                #sig-fd-modal .sig-fd-btn { padding: 10px 14px; font-size: 13px; min-width: 0; }
             }
 
             /* Safe-area pour téléphones avec encoche/Dynamic Island */
