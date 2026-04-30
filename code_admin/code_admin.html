@@ -157,20 +157,12 @@
     </div>
 
     <div class="tabs-container">
-        <button class="btn-tab" id="tab-dashboard" onclick="switchTab('dashboard')" style="display:none;">
-            <svg class="svg-icon"><use href="#icon-chart"></use></svg> Tableau de bord
-        </button>
         <button class="btn-tab active" onclick="switchTab('users')">
             <svg class="svg-icon"><use href="#icon-users"></use></svg> Utilisateurs
         </button>
         <button class="btn-tab" onclick="switchTab('maintenance')" id="tab-dev" style="display:none;">
             <svg class="svg-icon"><use href="#icon-settings"></use></svg> Permissions & Système (A0)
         </button>
-    </div>
-
-    <!-- TABLEAU DE BORD ADMIN -->
-    <div class="settings-grid admin-section" id="sec-dashboard" style="grid-template-columns: 1fr;">
-        <div id="admin-dashboard" style="display:none; color:#aaa; font-style:italic;">Chargement du tableau de bord...</div>
     </div>
 
     <div class="settings-grid admin-section active" id="sec-users">
@@ -259,6 +251,15 @@
                 </div>
             </div>
         </div>
+
+        <div class="settings-card" id="a0ArchivesPanel" style="border-color: var(--btn-orange); grid-column: 1 / -1;">
+            <div class="card-header" style="color: var(--btn-orange);">
+                <div class="header-with-icon"><svg class="svg-icon" style="width:22px; height:22px;"><use href="#icon-archive"></use></svg> Nettoyer Archives</div>
+            </div>
+            <p style="color:#aaa; font-size:13px; margin-bottom:15px; line-height:1.4;">Supprime <b>définitivement</b> les documents archivés depuis plus d'un an.</p>
+            <div id="archivesExpiredCount" style="font-size:13px; color:#aaa; margin-bottom:10px;">Chargement…</div>
+            <button id="btnCleanArchives" style="width:100%; padding:12px; background:transparent; border:2px solid var(--btn-orange); color:var(--btn-orange); border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s;" onclick="cleanExpiredArchives()">Nettoyer</button>
+        </div>
     </div>
 
     <div class="settings-grid admin-section" id="sec-maintenance">
@@ -307,15 +308,6 @@
                         <button id="btnAliasNom" style="flex:1; padding:10px; border-radius:8px; border:2px solid #555; background:transparent; color:#aaa; font-weight:bold; cursor:pointer; transition:0.2s;" onclick="setAlias('nom')">Mon Nom</button>
                         <button id="btnAliasSys" style="flex:1; padding:10px; border-radius:8px; border:2px solid #555; background:transparent; color:#aaa; font-weight:bold; cursor:pointer; transition:0.2s;" onclick="setAlias('systeme')">Système</button>
                     </div>
-                </div>
-
-                <div class="settings-card" id="a0ArchivesPanel" style="flex: 1; border-color: var(--btn-orange); min-width: 250px;">
-                    <div class="card-header" style="color: var(--btn-orange); border-bottom:none; margin-bottom:0;">
-                        <div class="header-with-icon"><svg class="svg-icon" style="width:22px; height:22px;"><use href="#icon-archive"></use></svg> Nettoyer Archives</div>
-                    </div>
-                    <p style="color:#aaa; font-size:13px; margin-bottom:15px; line-height:1.4; flex:1;">Supprime <b>définitivement</b> les documents archivés depuis plus d'un an.</p>
-                    <div id="archivesExpiredCount" style="font-size:13px; color:#aaa; margin-bottom:10px;">Chargement…</div>
-                    <button id="btnCleanArchives" style="width:100%; padding:12px; background:transparent; border:2px solid var(--btn-orange); color:var(--btn-orange); border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s;" onclick="cleanExpiredArchives()">Nettoyer</button>
                 </div>
 
                 <div class="settings-card" id="a0LogsCleanupPanel" style="flex: 1; border-color: var(--btn-purple); min-width: 250px;">
@@ -545,72 +537,9 @@
                     if (el) el.style.display = 'none';
                 });
             }
-            // Tableau de bord admin pour A0 et A1
-            if (myRole === 'A0' || myRole === 'A1') {
-                document.getElementById('tab-dashboard').style.display = 'flex';
-                loadAdminDashboard();
-            }
         }
         document.getElementById('security-loader').style.display = 'none';
         window.parent.postMessage({ type: 'module_ready', module: 'view-admin' }, '*');
-    }
-
-    async function loadAdminDashboard() {
-        const dash = document.getElementById('admin-dashboard');
-        if (!dash) return;
-        dash.style.display = 'block';
-
-        try {
-            // Factures en attente
-            const { data: factures } = await supabaseClient.from('factures')
-                .select('id, client, author_name, status')
-                .in('status', ['envoyee', 'renvoye']);
-
-            // Feuilles de temps en attente
-            const { data: feuilles } = await supabaseClient.from('feuilles_de_temps')
-                .select('id, employe_nom, periode, status')
-                .eq('status', 'envoyee');
-
-            // Outils non retournés
-            const { data: outils } = await supabaseClient.from('outils')
-                .select('id, nom, assignee_nom')
-                .eq('status', 'active');
-
-            // Tickets ouverts
-            const { data: tickets } = await supabaseClient.from('tickets_support')
-                .select('id').eq('statut', 'ouvert');
-
-            dash.innerHTML = `
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:25px;">
-                    <div style="background:#2b2c36; border-radius:12px; padding:20px; border-left:4px solid var(--btn-yellow);">
-                        <div style="color:#aaa; font-size:13px; margin-bottom:5px;">Factures en attente</div>
-                        <div style="font-size:32px; font-weight:bold; color:var(--btn-yellow);">${(factures||[]).length}</div>
-                    </div>
-                    <div style="background:#2b2c36; border-radius:12px; padding:20px; border-left:4px solid var(--btn-blue);">
-                        <div style="color:#aaa; font-size:13px; margin-bottom:5px;">Feuilles de temps</div>
-                        <div style="font-size:32px; font-weight:bold; color:var(--btn-blue);">${(feuilles||[]).length}</div>
-                    </div>
-                    <div style="background:#2b2c36; border-radius:12px; padding:20px; border-left:4px solid var(--btn-green);">
-                        <div style="color:#aaa; font-size:13px; margin-bottom:5px;">Outils sortis</div>
-                        <div style="font-size:32px; font-weight:bold; color:var(--btn-green);">${(outils||[]).length}</div>
-                    </div>
-                    <div style="background:#2b2c36; border-radius:12px; padding:20px; border-left:4px solid var(--btn-red);">
-                        <div style="color:#aaa; font-size:13px; margin-bottom:5px;">Tickets support</div>
-                        <div style="font-size:32px; font-weight:bold; color:var(--btn-red);">${(tickets||[]).length}</div>
-                    </div>
-                </div>
-                ${(factures||[]).length > 0 ? `
-                <div style="color:var(--btn-yellow); font-size:13px; font-weight:bold; margin-bottom:10px; text-transform:uppercase;">Factures à traiter</div>
-                ${(factures||[]).map(f => `
-                    <div style="background:#2b2c36; border-radius:8px; padding:12px 15px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:white;">${sanitize(f.client || 'Client inconnu')}</span>
-                        <span style="color:#aaa; font-size:13px;">${sanitize(f.author_name || '')}</span>
-                        <span style="background:rgba(252,202,70,0.2); color:var(--btn-yellow); padding:3px 8px; border-radius:4px; font-size:12px;">${sanitize(f.status)}</span>
-                    </div>`).join('')}` : ''}
-            `;
-        } catch(e) {
-            console.error('Erreur dashboard admin:', e);
-        }
     }
 
     async function chargerListeEmployes() {
@@ -830,7 +759,7 @@
     let confirmAdminCallback = null;
 
     function showConfirmAdmin(msg, callback) {
-        document.getElementById('confirmAdminMsg').textContent = msg;
+        document.getElementById('confirmAdminMsg').innerHTML = msg;
         confirmAdminCallback = callback;
         document.getElementById('confirmAdminModal').style.display = 'flex';
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
