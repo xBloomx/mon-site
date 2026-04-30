@@ -112,6 +112,9 @@
             .settings-card { min-width: 0 !important; }
             /* Éviter les débordements sur les containers flex */
             .main-content > div, .settings-card { max-width: 100%; box-sizing: border-box; }
+            /* Forcer les rangées flex à empiler verticalement (4 panneaux Maintenance/Identité/Archives/Journal) */
+            .settings-row-flex { flex-direction: column !important; }
+            .settings-row-flex > .settings-card { flex: 1 1 100% !important; width: 100%; }
         }
     </style>
 </head>
@@ -285,7 +288,7 @@
 
         <div style="display: flex; flex-direction: column; gap: 20px;">
             
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div class="settings-row-flex" style="display: flex; gap: 20px; flex-wrap: wrap;">
                 <div class="settings-card" id="a0MaintenancePanel" style="flex: 1; border-color: var(--btn-red); min-width: 250px;">
                     <div class="card-header" style="color: var(--btn-red); border-bottom:none; margin-bottom:0;">
                         <div class="header-with-icon"><svg class="svg-icon" style="width:22px; height:22px;"><use href="#icon-shield"></use></svg> Mode Maintenance</div>
@@ -849,7 +852,21 @@
     function openEditUserModal(id, name, role) { document.getElementById('editUserId').value = id; document.getElementById('editUserName').value = name; const select = document.getElementById('editUserRole'); select.value = role; select.disabled = (role === 'A0'); document.getElementById('editUserModal').style.display = 'flex'; }
     async function updateEmploye() { const id = document.getElementById('editUserId').value; const name = document.getElementById('editUserName').value.trim(); const role = document.getElementById('editUserRole').value; if (!name) return; let updateData = { prenom_nom: name }; if (role !== 'A0') updateData.role = role; const { error } = await supabaseClient.from('profils').update(updateData).eq('id', id); if(error) { showAlert(error.message); } else { closeModal('editUserModal'); chargerListeEmployes(); } }
     async function creerEmploye() { const nom = document.getElementById('newUserName').value.trim(); const role = document.getElementById('newUserRole').value; const email = document.getElementById('newUserEmail').value.trim(); const password = document.getElementById('newUserPassword').value; if (!nom || !email || !password || !role) return; if (role === 'A0') return; const tempSup = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } }); const { data: authData, error: authError } = await tempSup.auth.signUp({ email, password }); if (authError) { showAlert(authError.message); return; } const { error: profileError } = await supabaseClient.from('profils').insert([{ id: authData.user.id, role, prenom_nom: nom }]); if (profileError) { showAlert(profileError.message); } closeModal('newUserModal'); chargerListeEmployes(); }
-    function toggleLogsExpand() { const panel = document.getElementById('a0LogsPanel'); const icon = document.querySelector('#icon-expand-logs use'); if (panel.classList.contains('expanded-logs-panel')) { panel.classList.remove('expanded-logs-panel'); icon.setAttribute('href', '#icon-maximize'); } else { panel.classList.add('expanded-logs-panel'); icon.setAttribute('href', '#icon-minimize'); } }
+    function toggleLogsExpand() {
+        const panel = document.getElementById('a0LogsPanel');
+        const icon = document.querySelector('#icon-expand-logs use');
+        if (panel.classList.contains('expanded-logs-panel')) {
+            // Sortie du mode étendu : restaurer le hamburger
+            panel.classList.remove('expanded-logs-panel');
+            icon.setAttribute('href', '#icon-maximize');
+            try { window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); } catch(e) {}
+        } else {
+            // Entrée en mode étendu : cacher le hamburger pour ne pas masquer les contrôles
+            panel.classList.add('expanded-logs-panel');
+            icon.setAttribute('href', '#icon-minimize');
+            try { window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); } catch(e) {}
+        }
+    }
 
     // ---------- AUDIT LOG (Chantier 7) ----------
     async function loadTechnicalLogs() {

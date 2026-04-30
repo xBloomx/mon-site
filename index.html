@@ -372,16 +372,21 @@
         }
         // Mode signature plein écran : un module entre en mode signature → cacher sidebar
         if (event.data && event.data.type === 'signature_mode') {
+            console.log('[Index] signature_mode reçu:', event.data.action);
             requestAnimationFrame(() => {
                 if (event.data.action === 'enter') {
-                    // Mode signature plein écran : ajout d'une classe au body
-                    // qui force la sidebar et hamburger à disparaître via CSS !important
+                    // Mode signature plein écran : on cache la sidebar et le hamburger
+                    // par la classe CSS, MAIS aussi en inline style pour être sûr
                     document.body.classList.add('signature-mode-active');
+                    sidebar.style.setProperty('display', 'none', 'important');
+                    menuBtn.style.setProperty('display', 'none', 'important');
                     if (overlay) overlay.classList.remove('active');
                     sidebar.classList.remove('open');
                 } else {
                     // Sortie : restaurer
                     document.body.classList.remove('signature-mode-active');
+                    sidebar.style.removeProperty('display');
+                    menuBtn.style.removeProperty('display');
                 }
             });
         }

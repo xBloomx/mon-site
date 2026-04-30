@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Calendrier F.Dussault</title>
     <script>if (window.self === window.top) { window.location.href = '../login.html'; }</script>
     <script src="../assets/shared/console-filter.js"></script>
@@ -351,6 +351,14 @@
         window.parent.postMessage({ type: 'module_ready', module: 'view-calendrier' }, '*');
     }
 
+    // Écoute des changements de formations (depuis Profil/Paramètres)
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'formations_updated') {
+            // Recharger les données pour rafraîchir l'affichage des expirations
+            loadData();
+        }
+    });
+
     async function fetchTeamMembers() {
         const { data } = await supabaseClient.from('profils').select('id, prenom_nom').order('role');
         if (data) teamMembers = data;
@@ -375,6 +383,7 @@
     let editingEventId = null;
     let isUrgenceMode = false; 
     let isSystemEvent = false;
+    let userFormations = []; // Formations de l'utilisateur (pour afficher leur date d'expiration)
 
     async function loadData() {
         const { data, error } = await supabaseClient.from('evenements').select('*');
@@ -382,6 +391,17 @@
             allData = data;
             calDefs = data.filter(d => d.type_entite === 'calendar_def');
             events = data.filter(d => d.type_entite === 'event');
+        }
+        // Charger aussi les formations de l'utilisateur pour les afficher comme événements système
+        try {
+            const { data: formData } = await supabaseClient
+                .from('formations')
+                .select('id, nom, date_expiration')
+                .eq('user_id', myUserId);
+            userFormations = formData || [];
+        } catch (e) {
+            console.warn('Erreur chargement formations:', e);
+            userFormations = [];
         }
         renderTabs();
         renderLegend();
@@ -488,6 +508,23 @@
         let sEnd = new Date(sStart); sEnd.setDate(sStart.getDate()+13);
         list.push({ id: 'sys-7', start: getVal(sStart), end: getVal(sEnd), t: "Vacances CCQ", type:'ccq' });
         list.push({ id: 'sys-8', start: `${year}-12-21`, end: `${year+1}-01-04`, t: "Vacances Hiver", type:'ccq' });
+
+        // Expirations de formations de l'utilisateur (synchronisé avec Profil/Paramètres)
+        userFormations.forEach((f, idx) => {
+            if (!f.date_expiration) return;
+            // N'afficher que si l'expiration est dans l'année en cours
+            const expDate = new Date(f.date_expiration);
+            if (isNaN(expDate.getTime())) return;
+            if (expDate.getFullYear() !== year) return;
+            const dateStr = getVal(expDate);
+            list.push({
+                id: 'sys-form-' + (f.id || idx),
+                d: dateStr,
+                t: 'Expiration : ' + (f.nom || 'Formation'),
+                type: 'formation'
+            });
+        });
+
         return list;
     }
 

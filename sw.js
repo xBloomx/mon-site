@@ -4,7 +4,7 @@
 //   - Images/assets statiques : cache-first (rapide, change rarement)
 //   - Supabase                : jamais touché (toujours réseau)
 
-const CACHE_NAME = 'fdussault-v18';
+const CACHE_NAME = 'fdussault-v19';
 
 // Tous les fichiers nécessaires pour que l'app fonctionne hors ligne.
 // IMPORTANT : on inclut TOUS les modules pour que la nav fonctionne offline.

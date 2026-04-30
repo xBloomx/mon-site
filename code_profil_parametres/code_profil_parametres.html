@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mon Profil - F.Dussault</title>
 
     <script>
@@ -685,6 +685,8 @@
         formations.push({ id: data.id, name: data.nom, dateExp: data.date_expiration, image: data.image_base64 });
         renderFormations();
         closeModal('formationModal');
+        // Notifier les autres modules (Accueil, Calendrier) qu'une formation a été ajoutée
+        try { window.parent.postMessage({ type: 'formations_updated' }, '*'); } catch (e) {}
     }
     
     async function deleteFormation(id) {
@@ -692,6 +694,8 @@
         if (error) { showAlert("<div style='color:var(--btn-red);'>❌ Erreur suppression : " + error.message + "</div>"); return; }
         formations = formations.filter(f => f.id !== id);
         renderFormations();
+        // Notifier les autres modules
+        try { window.parent.postMessage({ type: 'formations_updated' }, '*'); } catch (e) {}
     }
     
     function viewFullImage(id) { 

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Accueil F.Dussault</title>
 
     <script>
@@ -411,6 +411,14 @@
         // On avertit le grand patron (index.html) qu'on est à 100% prêt !
         window.parent.postMessage({ type: 'module_ready', module: 'view-accueil' }, '*');
     }
+
+    // Écoute des changements de formations (depuis Profil/Paramètres)
+    // Quand une formation est ajoutée/supprimée, on rafraîchit les alertes de certifications
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'formations_updated') {
+            checkCertifications();
+        }
+    });
 
     // --- SYSTÈME DE MODALE DE CONFIRMATION (REMPLACE POPUP CHROME) ---
     let confirmCallback = null;

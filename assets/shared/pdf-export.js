@@ -85,6 +85,7 @@
     }
 
     // ----- Génération du PDF (depuis un container .page-container) -----
+    // Retourne { blob, pageImages: [dataURL, ...] }
     async function generatePdfBlob(container) {
         await ensureLibs();
         const { jsPDF } = window.jspdf;
@@ -104,6 +105,8 @@
         });
         const pdfW = pdf.internal.pageSize.getWidth();
         const pdfH = pdf.internal.pageSize.getHeight();
+
+        const pageImages = []; // pour l'aperçu mobile
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
@@ -136,15 +139,29 @@
                         c.style.marginLeft = '0';
                         c.style.marginBottom = '0';
                     });
+                    // Rendre les inputs/textarea transparents dans le PDF :
+                    // - fond bleu remplacé par transparent
+                    // - garder la valeur saisie en noir
+                    // - garder la bordure inférieure pour l'effet "ligne à remplir"
+                    const fields = clonedDoc.querySelectorAll(
+                        'input[type="text"], input[type="number"], input[type="date"], input:not([type]), textarea, select'
+                    );
+                    fields.forEach(f => {
+                        f.style.background = 'transparent';
+                        f.style.backgroundColor = 'transparent';
+                        f.style.color = '#000';
+                        f.style.boxShadow = 'none';
+                    });
                 }
             });
 
             const imgData = canvas.toDataURL('image/jpeg', 0.92);
+            pageImages.push(imgData);
             if (i > 0) pdf.addPage();
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'FAST');
         }
 
-        return pdf.output('blob');
+        return { blob: pdf.output('blob'), pageImages };
     }
 
     // ----- Modal aperçu -----
@@ -175,13 +192,31 @@
             .pdfx-body {
                 flex: 1;
                 background: #525659;
-                display: flex; align-items: center; justify-content: center;
+                display: flex; align-items: flex-start; justify-content: center;
                 overflow: auto;
                 padding: 20px;
+                -webkit-overflow-scrolling: touch;
             }
             .pdfx-body iframe {
                 width: 100%; height: 100%; border: none; background: white;
                 box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            }
+            /* Aperçu : images des pages (mobile-friendly contrairement à <iframe> PDF) */
+            .pdfx-pages {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 16px;
+                width: 100%;
+                max-width: 900px;
+            }
+            .pdfx-page {
+                display: block;
+                width: 100%;
+                height: auto;
+                background: white;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+                border-radius: 2px;
             }
             .pdfx-loading {
                 color: white; font-size: 18px;
@@ -264,6 +299,11 @@
 
         function close() {
             // Libérer l'URL blob si présente
+            if (overlay._blobUrl) {
+                URL.revokeObjectURL(overlay._blobUrl);
+                overlay._blobUrl = null;
+            }
+            // Aussi vérifier les anciens iframes (compat)
             const iframe = overlay.querySelector('iframe');
             if (iframe && iframe.src && iframe.src.startsWith('blob:')) {
                 URL.revokeObjectURL(iframe.src);
@@ -290,10 +330,16 @@
                 overlay.querySelector('.pdfx-body').innerHTML =
                     `<div class="pdfx-error">⚠ ${msg}</div>`;
             },
-            setPdfBlob(blob, downloadFilename) {
+            setPdfBlob(blob, pageImages, downloadFilename) {
                 const url = URL.createObjectURL(blob);
+                // Aperçu : utiliser des <img> (au lieu d'un <iframe> PDF) pour que
+                // le rendu fonctionne correctement sur mobile (Safari iOS notamment,
+                // où les iframes PDF s'affichent à taille fixe et ne se redimensionnent pas).
+                const imgsHtml = pageImages.map((src, i) =>
+                    `<img class="pdfx-page" src="${src}" alt="Page ${i + 1}" />`
+                ).join('');
                 overlay.querySelector('.pdfx-body').innerHTML =
-                    `<iframe src="${url}#toolbar=0&navpanes=0" title="Aperçu PDF"></iframe>`;
+                    `<div class="pdfx-pages">${imgsHtml}</div>`;
                 const dlBtn = overlay.querySelector('[data-pdfx-action="download"]');
                 dlBtn.disabled = false;
                 dlBtn.onclick = () => {
@@ -304,6 +350,8 @@
                     a.click();
                     a.remove();
                 };
+                // Stocker l'URL pour révocation à la fermeture
+                overlay._blobUrl = url;
             },
             close
         };
@@ -320,8 +368,8 @@
         const modal = buildModal(filename);
 
         try {
-            const blob = await generatePdfBlob(opts.container);
-            modal.setPdfBlob(blob, filename);
+            const { blob, pageImages } = await generatePdfBlob(opts.container);
+            modal.setPdfBlob(blob, pageImages, filename);
         } catch (e) {
             console.error('[PDFExportFD] Erreur génération PDF :', e);
             modal.setError(

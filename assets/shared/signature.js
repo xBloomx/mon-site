@@ -137,6 +137,61 @@
                 #sig-fd-modal .sig-fd-btn { width: 100%; padding: 16px; }
             }
 
+            /* Safe-area pour téléphones avec encoche/Dynamic Island */
+            #sig-fd-modal {
+                padding-top: calc(20px + env(safe-area-inset-top, 0px));
+                padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+                padding-left: calc(20px + env(safe-area-inset-left, 0px));
+                padding-right: calc(20px + env(safe-area-inset-right, 0px));
+            }
+            @media (max-width: 768px) {
+                #sig-fd-modal {
+                    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+                    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+                    padding-left: calc(10px + env(safe-area-inset-left, 0px));
+                    padding-right: calc(10px + env(safe-area-inset-right, 0px));
+                }
+            }
+
+            /* Overlay "Tournez votre téléphone" en mode portrait sur mobile */
+            #sig-fd-rotate-hint {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.95);
+                z-index: 10000;
+                color: white;
+                text-align: center;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                padding: 30px;
+                box-sizing: border-box;
+            }
+            #sig-fd-rotate-hint.show { display: flex; animation: sigFdFade 0.2s ease; }
+            #sig-fd-rotate-hint .rotate-icon {
+                width: 80px; height: 80px;
+                margin-bottom: 25px;
+                animation: sigFdRotate 1.8s ease-in-out infinite;
+                color: var(--btn-yellow, #fcca46);
+            }
+            #sig-fd-rotate-hint h2 {
+                margin: 0 0 12px 0;
+                font-size: 22px;
+                font-weight: bold;
+            }
+            #sig-fd-rotate-hint p {
+                margin: 0;
+                font-size: 15px;
+                color: #bbb;
+                line-height: 1.5;
+                max-width: 320px;
+            }
+            @keyframes sigFdRotate {
+                0%, 100% { transform: rotate(0deg); }
+                40%, 60% { transform: rotate(90deg); }
+            }
+
             /* Indicateur "Signé" sur les zones .display-sig */
             .display-sig.has-signature {
                 position: relative;
@@ -207,6 +262,19 @@
         `;
         document.body.appendChild(_modal);
 
+        // Overlay "Tournez votre téléphone" (apparaît si mode signature + portrait + mobile)
+        const rotateHint = document.createElement('div');
+        rotateHint.id = 'sig-fd-rotate-hint';
+        rotateHint.innerHTML = `
+            <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+            <h2>Tournez votre téléphone</h2>
+            <p>Pour signer plus confortablement, mettez votre téléphone à l'horizontale.</p>
+        `;
+        document.body.appendChild(rotateHint);
+
         _canvas = _modal.querySelector('#sig-fd-canvas');
         _ctx = _canvas.getContext('2d');
 
@@ -249,8 +317,41 @@
                     };
                     img.src = current;
                 }
+                // Mettre à jour l'overlay rotation à chaque changement d'orientation
+                updateRotationHint();
             }
         });
+
+        // Aussi sur orientationchange (plus fiable sur certains mobiles)
+        window.addEventListener('orientationchange', () => {
+            if (_modal.classList.contains('show')) {
+                setTimeout(updateRotationHint, 100);
+            }
+        });
+    }
+
+    // ----- Affichage de l'overlay "Tournez votre téléphone" -----
+    // Apparaît seulement sur mobile en mode portrait pendant la signature
+    function updateRotationHint(forceShow) {
+        const hint = document.getElementById('sig-fd-rotate-hint');
+        if (!hint) return;
+
+        // Pas de modal actif (sauf si forceShow) → masquer
+        if (!forceShow && (!_modal || !_modal.classList.contains('show'))) {
+            hint.classList.remove('show');
+            return;
+        }
+
+        // Détection mobile (largeur viewport < 900px = mobile/petite tablette)
+        const isMobile = window.innerWidth < 900 || window.matchMedia('(pointer: coarse)').matches;
+        // Mode portrait : hauteur > largeur
+        const isPortrait = window.innerHeight > window.innerWidth;
+
+        if (isMobile && isPortrait) {
+            hint.classList.add('show');
+        } else {
+            hint.classList.remove('show');
+        }
     }
 
     // ----- Resize / setup canvas haute résolution -----
@@ -365,6 +466,19 @@
         }
 
         _modal.classList.add('show');
+        // Notifier le parent (index.html) qu'on entre en mode signature plein écran
+        try {
+            if (window.parent && window.parent !== window) {
+                console.log('[SignatureFD] Envoi signature_mode: enter au parent');
+                window.parent.postMessage({ type: 'signature_mode', action: 'enter' }, '*');
+            } else {
+                console.warn('[SignatureFD] Pas de window.parent — postMessage non envoyé');
+            }
+        } catch (e) { console.error('[SignatureFD] Erreur postMessage:', e); }
+        // Vérifier l'orientation tout de suite (forceShow=true car classList.add('show')
+        // peut ne pas être encore visible dans une vérification immédiate)
+        updateRotationHint(true);
+
         // Important : laisser le DOM se rendre avant de calculer la taille
         setTimeout(() => {
             resizeCanvas();
@@ -391,6 +505,15 @@
         _isDrawing = false;
         _lastPoint = null;
         _hasDrawn = false;
+        // Cacher l'overlay rotation s'il était affiché
+        const hint = document.getElementById('sig-fd-rotate-hint');
+        if (hint) hint.classList.remove('show');
+        // Notifier le parent qu'on sort du mode signature
+        try {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'signature_mode', action: 'exit' }, '*');
+            }
+        } catch (e) { /* ignore cross-origin */ }
     }
 
     function cancelSignature() {

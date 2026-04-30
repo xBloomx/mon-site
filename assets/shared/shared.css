@@ -22,6 +22,17 @@
 
     /* Couleurs accessoires */
     --blue-bg: #d1e9ff;
+
+    /* =====================================================================
+       SAFE AREAS — pour téléphones avec encoche/Dynamic Island/barre gestes
+       Supporté par : iPhone X+, Samsung S10+, Pixel, OnePlus, etc.
+       Sur les anciens téléphones sans encoche, ces valeurs valent 0
+       (donc aucun effet, c'est le comportement universel et sécurisé).
+       ===================================================================== */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * { box-sizing: border-box; }
