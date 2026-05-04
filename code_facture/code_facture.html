@@ -585,7 +585,7 @@
 
     // --- MODALES OUTILS ---
     let confirmCallback = null;
-    function showConfirm(msg, callback) { document.getElementById('confirmMsg').textContent = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function showConfirm(msg, callback) { document.getElementById('confirmMsg').innerHTML = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
     function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; confirmCallback = null; if (document.getElementById('view-editor').style.display !== 'flex') window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
     function executeConfirm() { if (confirmCallback) confirmCallback(); closeConfirmModal(); }
     function showAlert(msg) { document.getElementById('alertMsg').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
@@ -621,7 +621,7 @@
 
         let canEdit = false;
         if (!isBureau) { if (status === 'brouillon' || status === 'attente') canEdit = true; } 
-        else { if (status === 'brouillon' && isAuthor) canEdit = true; }
+        else { if (isAuthor && (status === 'brouillon' || status === 'attente')) canEdit = true; }
         // Override absolu : un document archivé est en lecture seule pour TOUT LE MONDE
         if (isArchived) canEdit = false;
 

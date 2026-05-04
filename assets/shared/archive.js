@@ -85,6 +85,10 @@
     }
 
     function canSeeAllArchives(role) {
+        // Utilise la permission dynamique si disponible, sinon fallback sur les rôles
+        if (typeof window.hasPermission === 'function') {
+            return window.hasPermission(role, 'view_archives_all');
+        }
         return role === 'A0' || role === 'A1';
     }
 

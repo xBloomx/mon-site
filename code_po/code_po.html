@@ -404,7 +404,9 @@
 
             let actionHtml = `<button class="btn-copy" onclick="copyTextToClipboard('${po.numero}', this)"><svg class="svg-icon"><use href="#icon-copy"></use></svg> Copier</button>`;
 
-            if (isBureau || po.author_id === myUserId) {
+            // L'auteur peut toujours supprimer son propre PO,
+            // ou un utilisateur avec delete_documents peut supprimer n'importe lequel
+            if (hasPermission(myRole, 'delete_documents') || po.author_id === myUserId) {
                 actionHtml += `<button class="btn-delete" onclick="askDeletePO('${po.id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>`;
             }
 

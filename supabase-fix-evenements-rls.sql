@@ -20,8 +20,9 @@
 -- - Tout utilisateur connecté peut LIRE les événements (filtrage côté JS
 --   selon shared_with)
 -- - Tout utilisateur connecté peut CRÉER ses propres événements
--- - Seul l'auteur (ou un admin A0/A1 avec manage_calendar) peut MODIFIER
---   ou SUPPRIMER un événement
+-- - L'auteur OU un utilisateur avec la permission `manage_calendar` peut
+--   MODIFIER ou SUPPRIMER un événement (basé sur les permissions
+--   configurables, pas sur une hiérarchie de rôles codée en dur)
 -- 
 -- Le script est IDEMPOTENT : il peut être relancé plusieurs fois sans
 -- problème (DROP IF EXISTS avant CREATE).
@@ -52,43 +53,32 @@ CREATE POLICY "evenements_insert"
     TO authenticated
     WITH CHECK (
         author_id = auth.uid()
-        OR EXISTS (
-            SELECT 1 FROM public.profils
-            WHERE id = auth.uid() AND role IN ('A0', 'A1')
-        )
+        OR public.user_has_permission('manage_calendar')
     );
 
--- 5. UPDATE : seul l'auteur ou un admin peut modifier
+-- 5. UPDATE : l'auteur OU quelqu'un avec la permission manage_calendar
+-- (plus de hiérarchie codée en dur — basé sur les permissions configurables)
 CREATE POLICY "evenements_update"
     ON public.evenements
     FOR UPDATE
     TO authenticated
     USING (
         author_id = auth.uid()
-        OR EXISTS (
-            SELECT 1 FROM public.profils
-            WHERE id = auth.uid() AND role IN ('A0', 'A1')
-        )
+        OR public.user_has_permission('manage_calendar')
     )
     WITH CHECK (
         author_id = auth.uid()
-        OR EXISTS (
-            SELECT 1 FROM public.profils
-            WHERE id = auth.uid() AND role IN ('A0', 'A1')
-        )
+        OR public.user_has_permission('manage_calendar')
     );
 
--- 6. DELETE : seul l'auteur ou un admin peut supprimer
+-- 6. DELETE : l'auteur OU quelqu'un avec la permission manage_calendar
 CREATE POLICY "evenements_delete"
     ON public.evenements
     FOR DELETE
     TO authenticated
     USING (
         author_id = auth.uid()
-        OR EXISTS (
-            SELECT 1 FROM public.profils
-            WHERE id = auth.uid() AND role IN ('A0', 'A1')
-        )
+        OR public.user_has_permission('manage_calendar')
     );
 
 -- ============================================================================

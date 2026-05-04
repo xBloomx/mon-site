@@ -179,7 +179,7 @@
                 <p>Répertoire & Historique</p>
             </div>
             <div class="header-actions">
-                <button class="btn-action" onclick="openEditModal()">
+                <button class="btn-action" id="btn-new-client" onclick="openEditModal()">
                     <svg class="svg-icon"><use href="#icon-user-plus"></use></svg> Nouveau client
                 </button>
                 <button class="btn-header-icon" id="btn-show-corbeille" onclick="openCorbeille()" title="Ouvrir la corbeille" style="display: none;">
@@ -408,6 +408,12 @@
 
         if (hasPermission(myRole, 'delete_clients')) {
             document.getElementById('btn-show-corbeille').style.display = 'flex';
+        }
+
+        // Cacher le bouton "Nouveau client" si l'utilisateur n'a pas la permission
+        if (!hasPermission(myRole, 'create_clients')) {
+            const btnNew = document.getElementById('btn-new-client');
+            if (btnNew) btnNew.style.display = 'none';
         }
 
         await loadClients();

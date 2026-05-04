@@ -97,12 +97,12 @@ BEGIN
   LIMIT 1;
 
   -- Si pas de config en DB, on utilise un fallback hardcodé
-  -- (correspond à defaultRolesConfig dans index.html)
+  -- (correspond à defaultRolesConfig dans code_admin.html)
   IF roles_config IS NULL THEN
     roles_config := '{
-      "A1": {"perms": ["view_all_invoices","view_all_po","approve_timesheets","manage_tools","transfer_tools","delete_clients","manage_calendar","manage_news","view_admin","access_po_tab","access_soumissions_tab","access_courriel_tab","delete_documents"]},
-      "A2": {"perms": ["view_all_invoices","view_all_po","approve_timesheets","manage_tools","manage_calendar","manage_news","access_po_tab","access_soumissions_tab","access_courriel_tab","delete_documents"]},
-      "A3": {"perms": ["transfer_tools","access_po_tab","access_soumissions_tab"]}
+      "A1": {"perms": ["view_all_invoices","view_all_po","access_po_tab","access_soumissions_tab","access_courriel_tab","approve_timesheets","manage_tools","transfer_tools","create_clients","delete_clients","manage_calendar","manage_news","view_admin","manage_suppliers","view_archives_all","delete_documents"]},
+      "A2": {"perms": ["view_all_invoices","view_all_po","access_po_tab","access_soumissions_tab","access_courriel_tab","approve_timesheets","manage_tools","create_clients","delete_clients","manage_calendar","manage_news"]},
+      "A3": {"perms": ["transfer_tools","access_po_tab","access_soumissions_tab","create_clients"]}
     }'::jsonb;
   END IF;
 

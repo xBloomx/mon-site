@@ -355,7 +355,7 @@
     }
 
     let confirmCallback = null;
-    function showConfirm(msg, callback, title="Confirmation") { document.getElementById('confirmTitle').innerHTML = `<svg class="svg-icon" style="margin-right:8px;"><use href="#icon-alert-triangle"></use></svg>` + title; document.getElementById('confirmMsg').textContent = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function showConfirm(msg, callback, title="Confirmation") { document.getElementById('confirmTitle').innerHTML = `<svg class="svg-icon" style="margin-right:8px;"><use href="#icon-alert-triangle"></use></svg>` + title; document.getElementById('confirmMsg').innerHTML = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
     function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; confirmCallback = null; if (document.getElementById('view-editor').style.display !== 'flex') window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
     document.getElementById('confirmYesBtn').onclick = function() { if (confirmCallback) confirmCallback(); closeConfirmModal(); };
     function showAlert(msg) { document.getElementById('alertMsg').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }

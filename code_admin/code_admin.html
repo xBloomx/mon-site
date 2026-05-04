@@ -443,20 +443,24 @@
         { id: 'access_po_tab', label: 'Accès à l\'onglet PO', desc: 'Affiche ou masque le bouton "Bons de commande" dans le menu.' },
         { id: 'access_soumissions_tab', label: 'Accès à l\'onglet Soumissions', desc: 'Affiche ou masque le bouton "Soumissions" dans le menu.' },
         { id: 'access_courriel_tab', label: 'Accès à l\'onglet Courriel', desc: 'Affiche ou masque le bouton "Courriel" dans le menu principal.' },
-        { id: 'approve_timesheets', label: 'Valider les feuilles de temps', desc: 'Permet de changer le statut des feuilles de temps.' },
+        { id: 'approve_timesheets', label: 'Traiter les feuilles de temps', desc: 'Permet de voir la boîte de réception et changer le statut des feuilles de temps.' },
         { id: 'manage_tools', label: 'Gérer la banque d\'outils', desc: 'Permet d\'ajouter, modifier ou supprimer des outils.' },
-        { id: 'transfer_tools', label: 'Transfert d\'outils (Terrain)', desc: 'Permet à un employé de transférer un outil.' },
-        { id: 'delete_clients', label: 'Supprimer un client', desc: 'Autorise l\'accès à la corbeille et la destruction des fiches clients.' },
-        { id: 'manage_calendar', label: 'Gérer le calendrier', desc: 'Permet de créer, modifier ou supprimer des événements.' },
+        { id: 'transfer_tools', label: 'Transfert d\'outils (Terrain)', desc: 'Permet à un employé de transférer un outil entre employés.' },
+        { id: 'create_clients', label: 'Créer un nouveau client', desc: 'Autorise la création de fiches clients.' },
+        { id: 'delete_clients', label: 'Supprimer un client', desc: 'Autorise la suppression et l\'accès à la corbeille de sécurité des clients.' },
+        { id: 'manage_calendar', label: 'Gérer le calendrier global', desc: 'Permet de créer, modifier ou supprimer des événements partagés.' },
         { id: 'manage_news', label: 'Publier des annonces', desc: 'Permet d\'afficher des notes sur le tableau de bord.' },
-        { id: 'view_admin', label: 'Accès panneau d\'administration', desc: 'Autorise la création de comptes et le nettoyage annuel.' }
+        { id: 'view_admin', label: 'Accès panneau d\'administration', desc: 'Autorise la création de comptes et le nettoyage annuel.' },
+        { id: 'manage_suppliers', label: 'Gérer les fournisseurs récurrents', desc: 'Permet d\'ajouter ou supprimer des fournisseurs dans le panneau admin.' },
+        { id: 'view_archives_all', label: 'Voir toutes les archives', desc: 'Accès aux archives de tous les utilisateurs (sinon, seulement les siennes).' },
+        { id: 'delete_documents', label: 'Supprimer définitivement un document', desc: 'Autorise la suppression définitive (sans archivage) de PO, factures, etc.' }
     ];
 
     const defaultRolesConfig = {
-        'A0': { name: 'A0 - Développeur', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin'] },
-        'A1': { name: 'A1 - Administrateur', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers'] },
-        'A2': { name: 'A2 - Bureau', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'manage_calendar', 'manage_news'] },
-        'A3': { name: 'A3 - Employé Terrain', isSystem: true, perms: ['transfer_tools', 'access_po_tab', 'access_soumissions_tab'] }
+        'A0': { name: 'A0 - Développeur', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers', 'view_archives_all', 'delete_documents'] },
+        'A1': { name: 'A1 - Administrateur', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers', 'view_archives_all', 'delete_documents'] },
+        'A2': { name: 'A2 - Bureau', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news'] },
+        'A3': { name: 'A3 - Employé Terrain', isSystem: true, perms: ['transfer_tools', 'access_po_tab', 'access_soumissions_tab', 'create_clients'] }
     };
 
     let roleDefinitions = { ...defaultRolesConfig }; // Sera remplacé par Supabase

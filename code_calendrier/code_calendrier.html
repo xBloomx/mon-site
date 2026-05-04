@@ -470,7 +470,7 @@
     }
 
     let confirmCallback = null;
-    function showConfirm(msg, callback) { document.getElementById('confirmMessage').textContent = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; }
+    function showConfirm(msg, callback) { document.getElementById('confirmMessage').innerHTML = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; }
     function executeConfirm() { if (confirmCallback) confirmCallback(); closeModal('confirmModal'); }
 
     function deleteCurrentCalendar() {
@@ -553,7 +553,9 @@
             // URGENCE (Visible partout)
             const urgEvent = events.find(e => e.cat_id === 'urgence' && dateStr >= e.start_date && dateStr <= e.end_date);
             if (urgEvent) {
-                const letter = urgEvent.author_name ? urgEvent.author_name.charAt(0).toUpperCase() : 'U';
+                // La lettre représente la personne EN GARDE (titre de l'événement),
+                // pas la personne qui a créé l'événement
+                const letter = urgEvent.title ? urgEvent.title.trim().charAt(0).toUpperCase() : 'U';
                 html += `<div class="urgence-badge filled" onclick="openViewEvent('${urgEvent.id}', event, false)" title="Garde: ${urgEvent.title}">${letter}</div>`;
             } else {
                 if (hasPermission(myRole, 'manage_calendar')) { html += `<div class="urgence-badge empty" onclick="openAddModal('${dateStr}', true, event)" title="Ajouter Garde d'urgence"><svg class="svg-icon"><use href="#icon-plus"></use></svg></div>`; }

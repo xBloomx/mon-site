@@ -178,6 +178,34 @@
     </div>
 </div>
 
+<!-- Modal de réception : un transfert a été initié, le destinataire confirme et met à jour le lieu -->
+<div class="modal-overlay" id="receiveTransferModal">
+    <div class="custom-form-card">
+        <div class="modal-header-custom" style="color:var(--btn-blue);">
+            <svg viewBox="0 0 24 24"><use href="#icon-transfer"></use></svg>
+            Transfert d'outil reçu
+        </div>
+        <div class="custom-group">
+            <label style="color:#aaa;">
+                <span id="receiveTransferFrom" style="color:var(--btn-yellow); font-weight:bold;">Quelqu'un</span>
+                souhaite vous transférer :
+            </label>
+            <div id="receiveTransferToolName" style="color:white; font-size:18px; font-weight:bold; margin-top:8px;"></div>
+        </div>
+        <div class="custom-group">
+            <label style="color:#aaa;">Lieu actuel : <span id="receiveTransferOldLocation" style="color:white;"></span></label>
+        </div>
+        <div class="custom-group">
+            <label>Nouveau lieu de l'outil <span style="color:var(--btn-red);">*</span></label>
+            <input type="text" id="inpReceiveNewLocation" placeholder="Ex: Camion, Atelier, Adresse du chantier..." />
+        </div>
+        <div class="modal-actions" style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn-modal-gray" style="flex:1;" onclick="refuseTransfer()">Refuser</button>
+            <button class="btn-modal-green" style="flex:1; background:var(--btn-green); color:white; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; border:none;" onclick="acceptTransfer()">Accepter</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="alertModal">
     <div class="modal-card-basic">
         <div style="font-size: 20px; color: var(--btn-yellow); font-weight:bold; margin-bottom: 15px;">Information</div>
@@ -251,8 +279,106 @@
         await fetchTeamMembers();
         await loadTools();
 
+        // Vérifier s'il y a des transferts en attente pour cet utilisateur
+        await checkPendingTransfers();
+
         document.getElementById('security-loader').style.display = 'none';
         window.parent.postMessage({ type: 'module_ready', module: 'view-outils' }, '*');
+    }
+
+    // =============================================
+    // SYSTÈME DE TRANSFERT AVEC CONFIRMATION
+    // =============================================
+    let pendingTransfersQueue = []; // Liste des transferts à valider, traités un par un
+    let currentPendingTransfer = null;
+
+    // Au démarrage : on cherche les outils qui m'ont été proposés en transfert
+    async function checkPendingTransfers() {
+        const { data, error } = await supabaseClient
+            .from('outils')
+            .select('id, nom, assignee_nom, notes, pending_transfer_to, pending_transfer_at')
+            .eq('pending_transfer_to', myUserName)
+            .eq('status', 'active');
+
+        if (error) { console.error('Erreur check transferts:', error); return; }
+        if (!data || data.length === 0) return;
+
+        pendingTransfersQueue = data;
+        showNextPendingTransfer();
+    }
+
+    // Affiche le prochain transfert en attente dans le modal
+    function showNextPendingTransfer() {
+        if (pendingTransfersQueue.length === 0) {
+            currentPendingTransfer = null;
+            return;
+        }
+        currentPendingTransfer = pendingTransfersQueue.shift();
+        document.getElementById('receiveTransferFrom').textContent = currentPendingTransfer.assignee_nom || 'Quelqu\'un';
+        document.getElementById('receiveTransferToolName').textContent = currentPendingTransfer.nom || '-';
+        document.getElementById('receiveTransferOldLocation').textContent = currentPendingTransfer.notes || '-';
+        document.getElementById('inpReceiveNewLocation').value = '';
+        document.getElementById('receiveTransferModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    // Le destinataire accepte : l'outil change de propriétaire ET de lieu
+    async function acceptTransfer() {
+        if (!currentPendingTransfer) return;
+        const newLocation = document.getElementById('inpReceiveNewLocation').value.trim();
+        if (!newLocation) {
+            showAlert("Veuillez indiquer le nouveau lieu de l'outil avant d'accepter.");
+            return;
+        }
+
+        const { error } = await supabaseClient
+            .from('outils')
+            .update({
+                assignee_nom: myUserName,
+                notes: newLocation,
+                pending_transfer_to: null,
+                pending_transfer_at: null
+            })
+            .eq('id', currentPendingTransfer.id);
+
+        if (error) { showAlert('Erreur : ' + error.message); return; }
+
+        const fromName = currentPendingTransfer.assignee_nom;
+        const toolName = currentPendingTransfer.nom;
+        document.getElementById('receiveTransferModal').style.display = 'none';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
+
+        await loadTools();
+        showAlert(`Transfert accepté. L'outil "${toolName}" vous a été transmis par ${fromName}.`);
+
+        // Traiter le prochain transfert s'il y en a un
+        setTimeout(showNextPendingTransfer, 500);
+    }
+
+    // Le destinataire refuse : on annule juste la demande, l'outil reste à l'expéditeur
+    async function refuseTransfer() {
+        if (!currentPendingTransfer) return;
+
+        const { error } = await supabaseClient
+            .from('outils')
+            .update({
+                pending_transfer_to: null,
+                pending_transfer_at: null
+            })
+            .eq('id', currentPendingTransfer.id);
+
+        if (error) { showAlert('Erreur : ' + error.message); return; }
+
+        const fromName = currentPendingTransfer.assignee_nom;
+        const toolName = currentPendingTransfer.nom;
+        document.getElementById('receiveTransferModal').style.display = 'none';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
+
+        await loadTools();
+        showAlert(`Transfert refusé. L'outil "${toolName}" reste assigné à ${fromName}.`);
+
+        // Traiter le prochain transfert s'il y en a un
+        setTimeout(showNextPendingTransfer, 500);
     }
 
     async function fetchTeamMembers() {
@@ -344,22 +470,46 @@
         closeConfirmModal();
     }
 
+    // L'expéditeur peut annuler sa demande de transfert avant que le destinataire confirme
+    async function cancelPendingTransfer(toolId) {
+        const t = toolsLog.find(x => x.id === toolId);
+        if (!t || !t.pending_transfer_to) return;
+
+        const { error } = await supabaseClient
+            .from('outils')
+            .update({
+                pending_transfer_to: null,
+                pending_transfer_at: null
+            })
+            .eq('id', toolId);
+
+        if (error) { showAlert('Erreur : ' + error.message); return; }
+        await loadTools();
+        showAlert(`Demande de transfert à ${t.pending_transfer_to} annulée.`);
+    }
+
     // =============================================
-    // TRANSFERT dans Supabase
+    // TRANSFERT dans Supabase (avec confirmation du destinataire)
     // =============================================
+    // Le transfert n'est PAS immédiat : il est mis en attente jusqu'à ce que
+    // le destinataire confirme et indique le nouveau lieu de l'outil.
+    // Tant qu'il n'a pas confirmé, l'outil reste assigné à l'employé d'origine.
     async function executeTransfer() {
         const newPlumber = document.getElementById('inpTransferTo').value;
         if (!newPlumber) return showAlert("Veuillez sélectionner un employé.");
 
         const { error } = await supabaseClient
             .from('outils')
-            .update({ assignee_nom: newPlumber })
+            .update({
+                pending_transfer_to: newPlumber,
+                pending_transfer_at: new Date().toISOString()
+            })
             .eq('id', itemToProcess);
 
         if (error) { showAlert('Erreur : ' + error.message); return; }
         await loadTools();
         closeModal('transferModal');
-        showAlert(`L'outil a été transféré avec succès à ${newPlumber}.`);
+        showAlert(`Demande de transfert envoyée à ${newPlumber}. L'outil restera à votre nom tant qu'il n'aura pas confirmé.`);
     }
 
     // =============================================
@@ -388,10 +538,28 @@
                 ? `<span class="status-badge out">En cours</span>`
                 : `<span class="status-badge in">Retourné</span>`;
 
+            // Badge supplémentaire : transfert en attente
+            const hasPendingTransfer = !!t.pending_transfer_to;
+            if (hasPendingTransfer) {
+                badge += ` <span class="status-badge" style="background: rgba(91, 192, 235, 0.15); color: var(--btn-blue); border: 1px solid rgba(91, 192, 235, 0.4);">↗ Transfert en attente : ${t.pending_transfer_to}</span>`;
+            }
+
             let actionsHTML = '';
             if (t.status === 'active') {
-                actionsHTML += `<button class="btn-return" onclick="askReturn('${t.id}')"><svg class="svg-icon"><use href="#icon-check"></use></svg> Marquer retourné</button>`;
-                actionsHTML += `<button class="btn-transfer" onclick="openTransferModal('${t.id}')"><svg class="svg-icon"><use href="#icon-transfer"></use></svg> Transférer</button>`;
+                // STRICT : seul l'emprunteur peut marquer un retour ou transférer.
+                // Si l'employé est absent, l'outil doit être récupéré physiquement
+                // chez lui de toute façon, donc le bureau ne peut pas faire le retour
+                // à distance — c'est l'employé qui doit le faire à son retour.
+                const isMyTool = (t.assignee_nom || '').trim() === (myUserName || '').trim();
+                if (isMyTool) {
+                    if (hasPendingTransfer) {
+                        // Si un transfert est déjà en attente, on propose juste de l'annuler
+                        actionsHTML += `<button class="btn-transfer" style="background:#888;" onclick="cancelPendingTransfer('${t.id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg> Annuler la demande</button>`;
+                    } else {
+                        actionsHTML += `<button class="btn-return" onclick="askReturn('${t.id}')"><svg class="svg-icon"><use href="#icon-check"></use></svg> Marquer retourné</button>`;
+                        actionsHTML += `<button class="btn-transfer" onclick="openTransferModal('${t.id}')"><svg class="svg-icon"><use href="#icon-transfer"></use></svg> Transférer</button>`;
+                    }
+                }
                 if (canManage) actionsHTML += `<button class="btn-delete" onclick="askDelete('${t.id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>`;
             } else {
                 if (canManage) actionsHTML = `<button class="btn-delete" onclick="askDelete('${t.id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>`;
@@ -489,6 +657,12 @@
         itemToProcess = toolId;
         const t = toolsLog.find(x => x.id === toolId);
         if (!t) return;
+
+        // Sécurité : si un transfert est déjà en attente, on ne propose pas d'en créer un autre
+        if (t.pending_transfer_to) {
+            showAlert(`Un transfert vers ${t.pending_transfer_to} est déjà en attente. Annulez-le avant d'en créer un nouveau.`);
+            return;
+        }
 
         document.getElementById('transferToolName').textContent = t.nom;
         const sel = document.getElementById('inpTransferTo');

@@ -424,7 +424,7 @@
     let confirmCallback = null;
 
     function showConfirm(msg, callback) {
-        document.getElementById('confirmMsg').textContent = msg;
+        document.getElementById('confirmMsg').innerHTML = msg;
         confirmCallback = callback;
         document.getElementById('confirmModal').style.display = 'flex';
         // NOUVEAU : Cacher le menu
