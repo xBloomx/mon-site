@@ -3,215 +3,624 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Connexion - F.Dussault</title>
+    <title>Demande de PO F.Dussault</title>
 
-    <link rel="apple-touch-icon" href="assets/logo_app.png">
-    <link rel="icon" type="image/png" href="assets/logo_app.png">
+    <script>
+        if (window.self === window.top) { window.location.href = '../login.html'; }
+    </script>
 
-    <script src="assets/shared/console-filter.js"></script>
+    <script src="../assets/shared/console-filter.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
-    <link rel="stylesheet" href="assets/shared/shared.css">
+    <script src="../supabase-config.js"></script>
+    <link rel="stylesheet" href="../assets/shared/shared.css">
+    <script src="../assets/shared/shared.js"></script>
 
     <style>
-        
-        body { 
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: var(--app-bg); 
-            color: var(--text-light);
-            margin: 0; 
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            /* Safe areas pour téléphones avec encoche/Dynamic Island */
-            padding-top: env(safe-area-inset-top, 0px);
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-            padding-left: env(safe-area-inset-left, 0px);
-            padding-right: env(safe-area-inset-right, 0px);
-            box-sizing: border-box;
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
+        #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        .dash-header { display: flex; justify-content: space-between; align-items: center; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        .action-btn { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s; }
+        .action-btn:hover { background-color: #ffd66b; transform: translateY(-2px); }
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 14px 15px 14px 45px; border-radius: 8px; font-size: 16px; outline: none; transition: 0.2s; }
+        .search-box input:focus { border-color: var(--btn-yellow); }
+        .search-icon { position: absolute; left: 15px; color: #888; pointer-events: none; display: flex; align-items: center; }
+        .tabs-container { display: flex; gap: 10px; }
+        .btn-tab { background: #1a1b23; color: #aaa; border: 1px solid #444; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-tab.active { background: var(--btn-blue); color: white; border-color: var(--btn-blue); }
+        .section-title { font-size: 16px; color: var(--btn-yellow); text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .po-list { display: flex; flex-direction: column; gap: 15px; padding-bottom: 30px; }
+        .po-item { background-color: var(--card-bg); padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--btn-green); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .po-info { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+        .po-number { font-size: 20px; font-weight: bold; color: var(--btn-yellow); font-family: monospace; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        .po-details { color: white; font-size: 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 5px; }
+        .po-details span { display: flex; align-items: center; gap: 5px; }
+        .po-subtext { color: #aaa; font-size: 13px; margin-top: 5px; display: flex; align-items: center; gap: 8px; }
+        .po-actions { display: flex; gap: 10px; margin-left: 20px; flex-wrap: wrap; justify-content: flex-end; }
+        .btn-copy { background: #444; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; gap: 6px; align-items: center; }
+        .btn-copy:hover { background: #555; }
+        .btn-delete { background: rgba(255, 77, 77, 0.1); color: var(--btn-red); border: 1px solid transparent; width: 40px; height: 40px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .btn-delete:hover { background: var(--btn-red); color: white; }
+        .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-family: sans-serif; background: var(--btn-green); color: white; display: flex; align-items: center; gap: 4px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; z-index: 4000; justify-content: center; align-items: center; }
+        .modal-card-basic { background: var(--card-bg); width: 350px; padding: 25px; border-radius: 15px; text-align: center; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px;}
+        .btn-modal-gray { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-modal-yellow { background: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+        .btn-modal-red { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; }
+        .custom-form-card { background: #252631; width: 90%; max-width: 450px; padding: 30px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid #444; max-height: 90vh; overflow-y: auto; }
+        .modal-header-custom { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; color: white; font-size: 24px; font-weight: normal; }
+        .modal-header-custom svg { width: 35px; height: 35px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+        .custom-group { margin-bottom: 18px; text-align: left; }
+        .custom-group label { display: block; color: white; margin-bottom: 7px; font-size: 14px; }
+        .custom-group input { width: 100%; padding: 12px 15px; background: #323443; border: 1px solid transparent; color: white; border-radius: 8px; font-size: 16px; outline: none; transition: 0.2s; }
+        .custom-group input:focus { border-color: var(--btn-yellow); }
+        .file-upload-btn { background: #1a1b23; border: 1px dashed #888; color: #ccc; padding: 12px; text-align: center; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; font-size: 14px; }
+        .file-upload-btn:hover { border-color: var(--btn-yellow); color: white; }
+        .btn-custom-submit { background-color: var(--btn-yellow); color: black; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; margin-top: 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-custom-submit:hover { background-color: #ffd66b; }
+        .btn-close-modal { position: absolute; top: 15px; right: 20px; background: none; border: none; color: #888; font-size: 30px; cursor: pointer; }
+        .btn-close-modal:hover { color: white; }
+        .po-result-box { background: #1a1b23; border-radius: 12px; padding: 20px; text-align: center; margin-top: 20px; border: 1px dashed var(--border-color); display: none; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .po-result-title { color: #aaa; font-size: 13px; margin-bottom: 5px; text-transform: uppercase; }
+        .po-result-number { color: var(--btn-yellow); font-size: 24px; font-weight: bold; font-family: monospace; letter-spacing: 1px; margin-bottom: 15px; }
+        .btn-copy-large { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; gap: 8px; align-items: center; width: 100%; justify-content: center; margin-bottom: 10px; }
+        .btn-copy-large:hover { background: #555; }
+        .btn-copy-large.success { background: var(--btn-green); }
 
-        .login-container {
-            background-color: var(--card-bg);
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .login-container h2 {
-            margin-top: 0;
-            margin-bottom: 25px;
-            color: var(--btn-yellow);
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            background-color: #1e1f26;
-            color: white;
-            box-sizing: border-box;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: var(--btn-yellow);
-        }
-
-        /* --- NOUVEAU : STYLE POUR L'ŒIL --- */
-        .password-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .password-wrapper input {
-            padding-right: 45px; /* Laisse de l'espace pour l'icône */
-        }
-
-        .eye-btn {
-            position: absolute;
-            right: 12px;
-            background: none;
-            border: none;
-            color: #888;
-            cursor: pointer;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-        }
-
-        .eye-btn:hover {
-            color: var(--text-light);
-        }
-
-        .eye-btn svg {
-            width: 22px;
-            height: 22px;
-            fill: currentColor;
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--btn-yellow);
-            color: black;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 10px;
-        }
-
-        .login-btn:hover {
-            background-color: #e5b63b;
-        }
-
-        #error-message {
-            color: #ff4c4c;
-            margin-top: 15px;
-            font-size: 14px;
-            display: none;
+        @media (max-width: 768px) {
+            #view-dashboard { padding: 15px; }
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; }
+            .dash-title { padding-right: 75px; width: 100%; }
+            .dash-header .action-btn { width: 100%; justify-content: center; }
+            .tabs-container { flex-direction: column; width: 100%; }
+            .btn-tab { width: 100%; justify-content: center; }
+            .po-item { flex-direction: column; align-items: flex-start; gap: 15px; padding: 15px; }
+            .po-actions { align-self: stretch; margin-left: 0; display: flex; width: 100%; gap: 10px; }
+            .btn-copy { flex: 1; justify-content: center; }
         }
     </style>
 </head>
 <body>
 
-    <form class="login-container" onsubmit="event.preventDefault(); seConnecter();">
-        <h2>Connexion</h2>
-        
-        <div class="input-group">
-            <label for="email">Courriel</label>
-            <input type="email" id="email" placeholder="nom@exemple.com" required>
+<div id="security-loader" style="position: fixed; inset: 0; background: #1e1f26; z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="color: #444; font-size: 12px; font-family: sans-serif;">Chargement du module...</div>
+</div>
+
+<svg style="display: none;">
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></symbol>
+    <symbol id="icon-map-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></symbol>
+    <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></symbol>
+    <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol>
+    <symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol>
+</svg>
+
+<div class="main-content">
+    <div id="view-dashboard">
+        <div class="dash-header">
+            <div class="dash-title">
+                <h1>Demande de PO</h1>
+                <p>Générateur de numéros uniques</p>
+            </div>
+            <button class="action-btn" id="btn-new-po" onclick="openPoModal()">
+                <svg class="svg-icon"><use href="#icon-plus"></use></svg> Demander un numéro de PO
+            </button>
         </div>
-        
-        <div class="input-group">
-            <label for="password">Mot de passe</label>
-            <div class="password-wrapper">
-                <input type="password" id="password" placeholder="••••••••" required>
-                <button type="button" class="eye-btn" onclick="togglePassword()" title="Afficher le mot de passe">
-                    <svg id="eye-icon" viewBox="0 0 24 24">
-                        <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.25 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
-                    </svg>
-                </button>
+
+        <div class="tabs-container" id="po-tabs" style="display:none;">
+            <button id="tab-mine" class="btn-tab active" onclick="switchPoTab('mine')">
+                <svg class="svg-icon" style="width:14px; height:14px;"><use href="#icon-user"></use></svg> Mes PO
+            </button>
+            <button id="tab-all" class="btn-tab" onclick="switchPoTab('all')">
+                <svg class="svg-icon" style="width:14px; height:14px;"><use href="#icon-building"></use></svg> Tous les PO
+            </button>
+        </div>
+
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
+                <input type="text" id="poSearch" placeholder="Rechercher (Numéro, Fournisseur, Adresse, Date...)" onkeyup="filterPO()">
             </div>
         </div>
 
-        <button type="submit" class="login-btn">Se connecter</button>
-        
-        <div id="error-message">Courriel ou mot de passe incorrect.</div>
-    </form>
+        <div class="section-title">Liste des PO</div>
+        <div class="po-list" id="poListContainer"></div>
+    </div>
+</div>
 
-    <script>
-        // Initialisation de Supabase
+<!-- MODAL NOUVEAU PO -->
+<div class="modal-overlay" id="poModal">
+    <div class="custom-form-card">
+        <button class="btn-close-modal" onclick="closeModal('poModal')">×</button>
+        <div class="modal-header-custom">
+            <svg class="svg-icon"><use href="#icon-file-text"></use></svg>
+            Nouveau Bon de Commande
+        </div>
+        <div id="poFormZone">
+            <div class="custom-group">
+                <label>Nom du plombier</label>
+                <input type="text" id="inpPlombier" placeholder="Ex: François">
+            </div>
+            <div class="custom-group">
+                <label>Fournisseur</label>
+                <select id="selFournisseur" onchange="onFournisseurChange()" style="width:100%; padding:10px; background:#1a1b23; border:1px solid #444; color:white; border-radius:6px; font-size:14px;">
+                    <option value="">-- Choisir un fournisseur --</option>
+                    <!-- Options remplies dynamiquement -->
+                </select>
+                <input type="text" id="inpFournisseurAutre" placeholder="Nom du fournisseur" style="display:none; margin-top:8px;">
+                <!-- Champ caché qui contient la valeur finale (compat avec ancien code) -->
+                <input type="hidden" id="inpFournisseur">
+            </div>
+            <div class="custom-group">
+                <label>Adresse / Lieu du chantier</label>
+                <input type="text" id="inpAdresse" placeholder="Adresse du chantier">
+            </div>
+            <div class="custom-group">
+                <label>Date</label>
+                <input type="text" id="inpDate" placeholder="JJ/MM/AAAA" inputmode="numeric" onkeyup="autoFormatDatePO(this)" maxlength="10">
+            </div>
+            <div class="custom-group">
+                <label>Photo de la soumission / reçu (Optionnel)</label>
+                <label class="file-upload-btn" for="inpPhoto">
+                    <svg class="svg-icon"><use href="#icon-camera"></use></svg>
+                    <span id="labelPhotoText">Ajouter une photo...</span>
+                </label>
+                <input type="file" id="inpPhoto" accept="image/*" style="display:none;" onchange="updateFileLabel(this)">
+            </div>
+            <button class="btn-custom-submit" onclick="generatePO()">Générer le numéro</button>
+        </div>
+        <div id="poResultZone" class="po-result-box">
+            <div class="po-result-title">Numéro généré avec succès</div>
+            <div class="po-result-number" id="displayNewPoNumber">PO-XXXXXX-XXXX</div>
+            <button class="btn-copy-large" id="btnCopyMain" onclick="copyPoNumber('displayNewPoNumber', this)">
+                <svg class="svg-icon"><use href="#icon-copy"></use></svg> Copier le numéro
+            </button>
+            <p style="font-size:12px; color:#aaa; margin-top:10px;">Ce numéro est maintenant enregistré dans votre liste.</p>
+        </div>
+    </div>
+</div>
 
-        // --- NOUVEAU : Fonction pour afficher/masquer le mot de passe ---
-        function togglePassword() {
-            const pwdInput = document.getElementById('password');
-            const eyeIcon = document.getElementById('eye-icon');
-            
-            if (pwdInput.type === 'password') {
-                pwdInput.type = 'text';
-                // Change l'icône pour l'œil ouvert
-                eyeIcon.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
-            } else {
-                pwdInput.type = 'password';
-                // Change l'icône pour l'œil barré
-                eyeIcon.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.25 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
+<!-- MODAL ALERTE -->
+<div class="modal-overlay" id="alertModal">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-yellow); font-weight:bold; margin-bottom: 15px;">Information</div>
+        <div style="color: #e0e0e0; margin-bottom: 25px; line-height: 1.4;" id="alertMsg">...</div>
+        <div class="modal-actions"><button class="btn-modal-yellow" style="width: 100%" onclick="closeAlertModal()">Compris</button></div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMATION -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-red); font-weight:bold; margin-bottom: 15px;" id="confirmTitle">Action</div>
+        <div style="color: #e0e0e0; margin-bottom: 25px;" id="confirmMsg">Êtes-vous sûr ?</div>
+        <div class="modal-actions">
+            <button class="btn-modal-gray" onclick="closeConfirmModal()">Annuler</button>
+            <button id="confirmActionBtn" class="btn-modal-red">Confirmer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let myRole = 'A3';
+    let myUserId = null;
+    let myUserName = 'Employé';
+    let currentPoTab = 'mine';
+    let poLog = [];
+    let poPage = 0; const PO_PAGE_SIZE = 25; let poHasMore = false;
+    let itemToProcessId = null;
+
+    const defaultRolesConfig = {
+        'A0': { perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin'] },
+        'A1': { perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin'] },
+        'A2': { perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'approve_timesheets', 'manage_tools', 'manage_calendar', 'manage_news'] },
+        'A3': { perms: ['transfer_tools', 'access_po_tab'] }
+    };
+
+    let _cachedRoles = null;
+
+    async function loadRolesCache() {
+        if (_cachedRoles) return;
+        try {
+            const { data } = await supabaseClient
+                .from('parametres_globaux')
+                .select('valeur')
+                .eq('cle', 'roles_config')
+                .maybeSingle();
+            _cachedRoles = data?.valeur ? JSON.parse(data.valeur) : defaultRolesConfig;
+        } catch(e) { _cachedRoles = defaultRolesConfig; }
+    }
+
+    function hasPermission(role, permId) {
+        if (role === 'A0') return true;
+        const roles = _cachedRoles || defaultRolesConfig;
+        const roleData = roles[role] || defaultRolesConfig[role];
+        if (!roleData || !roleData.perms) return false;
+        return roleData.perms.includes(permId);
+    }
+
+    // =============================================
+    // INIT
+    // =============================================
+    async function initAuth() {
+        await loadRolesCache();
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) { window.top.location.href = '../login.html'; return; }
+
+        myUserId = user.id;
+        const { data: profil } = await supabaseClient.from('profils').select('role, prenom_nom').eq('id', user.id).limit(1);
+        if (profil && profil.length > 0) {
+            myRole = profil[0].role;
+            myUserName = profil[0].prenom_nom || user.email.split('@')[0];
+            if (hasPermission(myRole, 'view_all_po')) {
+                document.getElementById('po-tabs').style.display = 'flex';
             }
         }
 
-        async function seConnecter() {
-            const emailInput = document.getElementById('email').value;
-            const passwordInput = document.getElementById('password').value;
-            const errorMessage = document.getElementById('error-message');
+        await loadData();
 
-            // Cacher le message d'erreur au début
-            errorMessage.style.display = 'none';
+        document.getElementById('security-loader').style.display = 'none';
+        window.parent.postMessage({ type: 'module_ready', module: 'view-po' }, '*');
+    }
 
-            if (!emailInput || !passwordInput) {
-                errorMessage.innerText = "Veuillez remplir tous les champs.";
-                errorMessage.style.display = 'block';
-                return;
-            }
+    // =============================================
+    // CHARGEMENT depuis Supabase
+    // =============================================
+    async function loadData(reset = true) {
+        if (reset) { poPage = 0; poLog = []; }
 
-            // Demande à Supabase de connecter l'utilisateur
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: emailInput,
-                password: passwordInput,
-            });
+        const from = poPage * PO_PAGE_SIZE;
+        const to = from + PO_PAGE_SIZE - 1;
 
-            if (error) {
-                console.error("Erreur de connexion :", error.message);
-                errorMessage.innerText = "Courriel ou mot de passe incorrect.";
-                errorMessage.style.display = 'block';
-            } else {
-                console.log("Connexion réussie !");
-                // Si ça fonctionne, on l'envoie vers l'application
-                window.location.href = 'index.html';
-            }
+        const { data, error } = await supabaseClient
+            .from('bons_de_commande')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(from, to + 1);
+
+        if (error) { console.error('Erreur chargement PO:', error); return; }
+
+        poHasMore = (data || []).length > PO_PAGE_SIZE;
+        const pageData = (data || []).slice(0, PO_PAGE_SIZE);
+        poLog = reset ? pageData : [...poLog, ...pageData];
+        filterPO();
+    }
+
+    async function chargerPlusPO() {
+        const btn = document.getElementById('btn-charger-plus-po');
+        if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
+        poPage++;
+        await loadData(false);
+    }
+
+    // =============================================
+    // GÉNÉRATION & SAUVEGARDE dans Supabase
+    // =============================================
+    async function generatePO() {
+        const plumber = document.getElementById('inpPlombier').value.trim();
+        const supplier = document.getElementById('inpFournisseur').value.trim();
+        const address = document.getElementById('inpAdresse').value.trim();
+        // Convertir JJ/MM/AAAA → YYYY-MM-DD pour Supabase
+        const rawDate = document.getElementById('inpDate').value;
+        const dateParts = rawDate.split('/');
+        const dateReq = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : rawDate;
+        const hasPhoto = document.getElementById('inpPhoto').files.length > 0;
+
+        if (!plumber || !supplier || !address || !dateReq) {
+            showAlert("Remplissez tous les champs obligatoires.");
+            return;
         }
-    </script>
 
+        const newPoNumber = generatePONumber(dateReq);
+
+        const { data, error } = await supabaseClient.from('bons_de_commande').insert([{
+            numero: newPoNumber,
+            fournisseur: supplier,
+            description: address,
+            status: 'enregistre',
+            author_id: myUserId,
+            author_nom: plumber,
+            date_po: dateReq,
+            items: { hasPhoto: hasPhoto }
+        }]).select().single();
+
+        if (error) { showAlert('Erreur lors de la sauvegarde : ' + error.message); return; }
+
+        poLog.unshift(data);
+        filterPO();
+
+        document.querySelector('.btn-custom-submit').style.display = 'none';
+        document.getElementById('displayNewPoNumber').textContent = newPoNumber;
+
+        const btnCopy = document.getElementById('btnCopyMain');
+        btnCopy.innerHTML = `<svg class="svg-icon"><use href="#icon-copy"></use></svg> Copier le numéro`;
+        btnCopy.className = "btn-copy-large";
+
+        document.getElementById('poResultZone').style.display = 'block';
+        switchPoTab('mine');
+    }
+
+    // =============================================
+    // SUPPRESSION dans Supabase
+    // =============================================
+    document.getElementById('confirmActionBtn').addEventListener('click', async function() {
+        if (!itemToProcessId) return;
+        const { error } = await supabaseClient.from('bons_de_commande').delete().eq('id', itemToProcessId);
+        if (error) { showAlert('Erreur : ' + error.message); return; }
+        poLog = poLog.filter(po => po.id !== itemToProcessId);
+        filterPO();
+        closeConfirmModal();
+    });
+
+    // =============================================
+    // AFFICHAGE
+    // =============================================
+    function formatDateFR(isoDate) {
+        if (!isoDate) return '';
+        const parts = isoDate.split('-');
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function generatePONumber(dateString) {
+        const d = new Date(dateString);
+        const yy = String(d.getFullYear()).slice(-2);
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const random = Math.floor(1000 + Math.random() * 9000);
+        return `PO-${yy}${mm}${dd}-${random}`;
+    }
+
+    function renderPOList(list) {
+        const container = document.getElementById('poListContainer');
+        container.innerHTML = '';
+
+        if (list.length === 0) {
+            container.innerHTML = '<div style="color:#888; font-style:italic; padding:10px;">Aucun bon de commande trouvé.</div>';
+            ajouterBoutonPlusPO();
+            return;
+        }
+
+        const isBureau = hasPermission(myRole, 'view_all_po');
+
+        list.forEach(po => {
+            const card = document.createElement('div');
+            card.className = 'po-item';
+
+            const hasPhoto = po.items?.hasPhoto;
+            const photoBadge = hasPhoto ? `<span style="font-size:12px; color:var(--btn-green); display:flex; align-items:center; gap:4px;"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-image"></use></svg> Photo jointe</span>` : '';
+
+            let actionHtml = `<button class="btn-copy" onclick="copyTextToClipboard('${po.numero}', this)"><svg class="svg-icon"><use href="#icon-copy"></use></svg> Copier</button>`;
+
+            // L'auteur peut toujours supprimer son propre PO,
+            // ou un utilisateur avec delete_documents peut supprimer n'importe lequel
+            if (hasPermission(myRole, 'delete_documents') || po.author_id === myUserId) {
+                actionHtml += `<button class="btn-delete" onclick="askDeletePO('${po.id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>`;
+            }
+
+            card.innerHTML = `
+                <div class="po-info">
+                    <div class="po-number">${po.numero} <span class="status-badge"><svg class="svg-icon" style="width:12px;height:12px;"><use href="#icon-check-circle"></use></svg> Enregistré</span></div>
+                    <div class="po-details">
+                        <span><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-user"></use></svg> <strong>${po.author_nom || '-'}</strong></span>
+                        <span><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-building"></use></svg> ${po.fournisseur || '-'}</span>
+                        ${photoBadge}
+                    </div>
+                    <div class="po-subtext">
+                        <span style="display:flex; align-items:center; gap:4px;"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-map-pin"></use></svg> ${po.description || '-'}</span>
+                        <span style="display:flex; align-items:center; gap:4px; margin-left:10px;"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-calendar"></use></svg> ${formatDateFR(po.date_po)}</span>
+                    </div>
+                </div>
+                <div class="po-actions">${actionHtml}</div>
+            `;
+            container.appendChild(card);
+        });
+        ajouterBoutonPlusPO();
+    }
+
+    function filterPO() {
+        const term = document.getElementById('poSearch').value.toLowerCase();
+        const isBureau = hasPermission(myRole, 'view_all_po');
+
+        let baseList = poLog;
+        if (!isBureau || currentPoTab === 'mine') {
+            baseList = poLog.filter(po => po.author_id === myUserId);
+        }
+
+        const filtered = baseList.filter(po => {
+            return (po.numero || '').toLowerCase().includes(term) ||
+                   (po.author_nom || '').toLowerCase().includes(term) ||
+                   (po.fournisseur || '').toLowerCase().includes(term) ||
+                   (po.description || '').toLowerCase().includes(term) ||
+                   (po.date_po || '').toLowerCase().includes(term) ||
+                   formatDateFR(po.date_po).toLowerCase().includes(term);
+        });
+
+        renderPOList(filtered);
+    }
+
+    function ajouterBoutonPlusPO() {
+        const container = document.getElementById('poListContainer');
+        const old = document.getElementById('btn-charger-plus-po');
+        if (old) old.remove();
+        if (!poHasMore || !container) return;
+        const btn = document.createElement('button');
+        btn.id = 'btn-charger-plus-po';
+        btn.textContent = `Charger ${PO_PAGE_SIZE} bons de commande de plus...`;
+        btn.style.cssText = 'width:100%; padding:14px; margin-top:10px; background:#2b2c36; color:#aaa; border:1px dashed #444; border-radius:10px; cursor:pointer; font-size:14px; font-weight:bold;';
+        btn.onclick = chargerPlusPO;
+        container.appendChild(btn);
+    }
+
+    function switchPoTab(tab) {
+        currentPoTab = tab;
+        document.getElementById('tab-mine').classList.remove('active');
+        document.getElementById('tab-all').classList.remove('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+        loadData(true);
+    }
+
+    // ---------- FOURNISSEURS RÉCURRENTS ----------
+    // Liste par défaut si rien n'est sauvegardé en DB encore
+    const DEFAULT_FOURNISSEURS = ['Deschênes', 'Wolseley', 'Plomberie Provinciale'];
+    let _cachedFournisseurs = null; // Cache local, rechargé à chaque ouverture du modal
+
+    async function loadFournisseurs() {
+        try {
+            const { data } = await supabaseClient
+                .from('parametres_globaux')
+                .select('valeur')
+                .eq('cle', 'fournisseurs_recurrents')
+                .maybeSingle();
+            if (data?.valeur) {
+                const parsed = JSON.parse(data.valeur);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    _cachedFournisseurs = parsed;
+                    return parsed;
+                }
+            }
+        } catch (e) { /* fallback */ }
+        // Pas de valeur en DB ou erreur → liste par défaut
+        _cachedFournisseurs = [...DEFAULT_FOURNISSEURS];
+        return _cachedFournisseurs;
+    }
+
+    async function populateFournisseurSelect() {
+        const list = await loadFournisseurs();
+        const sel = document.getElementById('selFournisseur');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- Choisir un fournisseur --</option>';
+        list.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f;
+            opt.textContent = f;
+            sel.appendChild(opt);
+        });
+        // Toujours en dernier : "Autre..."
+        const autreOpt = document.createElement('option');
+        autreOpt.value = '__autre__';
+        autreOpt.textContent = 'Autre...';
+        sel.appendChild(autreOpt);
+    }
+
+    function onFournisseurChange() {
+        const sel = document.getElementById('selFournisseur');
+        const autreInp = document.getElementById('inpFournisseurAutre');
+        const hidden = document.getElementById('inpFournisseur');
+        if (!sel || !autreInp || !hidden) return;
+        if (sel.value === '__autre__') {
+            autreInp.style.display = 'block';
+            autreInp.focus();
+            hidden.value = autreInp.value.trim();
+        } else {
+            autreInp.style.display = 'none';
+            autreInp.value = '';
+            hidden.value = sel.value;
+        }
+    }
+
+    // Quand l'utilisateur tape dans le champ "Autre", on met à jour le hidden
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'inpFournisseurAutre') {
+            const hidden = document.getElementById('inpFournisseur');
+            if (hidden) hidden.value = e.target.value.trim();
+        }
+    });
+    // ---------- FIN FOURNISSEURS RÉCURRENTS ----------
+
+    function openPoModal() {
+        document.getElementById('inpPlombier').value = myUserName;
+        // Reset du select + champ Autre (en plus du hidden)
+        const sel = document.getElementById('selFournisseur');
+        const autreInp = document.getElementById('inpFournisseurAutre');
+        if (sel) sel.value = '';
+        if (autreInp) { autreInp.value = ''; autreInp.style.display = 'none'; }
+        document.getElementById('inpFournisseur').value = '';
+        // Charger/rafraîchir la liste à chaque ouverture (au cas où qqn aurait modifié dans Admin entre-temps)
+        populateFournisseurSelect();
+        document.getElementById('inpAdresse').value = '';
+        // Formater la date d'aujourd'hui en JJ/MM/AAAA
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2,'0');
+        const mm = String(today.getMonth()+1).padStart(2,'0');
+        const yyyy = today.getFullYear();
+        document.getElementById('inpDate').value = `${dd}/${mm}/${yyyy}`;
+        document.getElementById('inpPhoto').value = '';
+        document.getElementById('labelPhotoText').textContent = "Ajouter une photo...";
+        document.getElementById('poResultZone').style.display = 'none';
+        document.querySelector('.btn-custom-submit').style.display = 'flex';
+        document.getElementById('poModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    function updateFileLabel(input) {
+        const spanText = document.getElementById('labelPhotoText');
+        const label = input.previousElementSibling;
+        if (input.files && input.files.length > 0) {
+            spanText.textContent = "Photo sélectionnée (" + input.files[0].name + ")";
+            label.style.borderColor = "var(--btn-green)";
+            label.style.color = "var(--btn-green)";
+        } else {
+            spanText.textContent = "Ajouter une photo...";
+            label.style.borderColor = "#888";
+            label.style.color = "#ccc";
+        }
+    }
+
+    function askDeletePO(id) {
+        itemToProcessId = id;
+        document.getElementById('confirmTitle').textContent = "Supprimer";
+        document.getElementById('confirmMsg').textContent = "Effacer définitivement ce PO ?";
+        document.getElementById('confirmModal').style.display = 'flex';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    function copyPoNumber(elementId, btnElement) {
+        const text = document.getElementById(elementId).textContent;
+        copyTextToClipboard(text, btnElement, true);
+    }
+
+    function copyTextToClipboard(text, btnElement, isLargeBtn = false) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = btnElement.innerHTML;
+            const originalClass = btnElement.className;
+            btnElement.innerHTML = `<svg class="svg-icon"><use href="#icon-check"></use></svg> Copié !`;
+            btnElement.className = isLargeBtn ? "btn-copy-large success" : "btn-copy success";
+            btnElement.style.background = "var(--btn-green)";
+            btnElement.style.color = "white";
+            setTimeout(() => {
+                btnElement.innerHTML = originalText;
+                btnElement.className = originalClass;
+                btnElement.style.background = "";
+            }, 2000);
+        });
+    }
+
+    function autoFormatDatePO(input) {
+        let v = input.value.replace(/[^0-9]/g, '');
+        if (v.length >= 3 && v.length <= 4) v = v.slice(0,2) + '/' + v.slice(2);
+        else if (v.length >= 5) v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4,8);
+        input.value = v;
+    }
+
+    function showAlert(msg) { document.getElementById('alertMsg').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; }
+    function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; }
+    function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; itemToProcessId = null; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
+
+    initAuth();
+</script>
 </body>
 </html>

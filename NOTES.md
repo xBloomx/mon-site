@@ -1,811 +1,720 @@
-# 📋 État du projet F.Dussault — Notes de transition
-
-**Dernière mise à jour :** 28 avril 2026 (fix 4 erreurs console)
-
-Ce document contient toutes les décisions et l'état du projet pour pouvoir reprendre proprement dans une nouvelle conversation Claude.
-
----
-
-## ✅ Chantiers terminés
-
-### Chantier 1 : Sécurité Supabase (terminé et déployé)
-
-**Côté DB :**
-- RLS activé sur les 14 tables
-- Colonne `mot_de_passe_clair` supprimée de `profils`
-- 55 policies créées avec hiérarchie A0/A1/A2/A3
-- Fonctions helper : `is_admin()`, `current_user_role()`, `user_has_permission()`
-- Trigger anti-promotion : `prevent_self_role_change`
-- Config des rôles dans `parametres_globaux.cle = 'roles_config'`
-
-**Côté code :**
-- Viewports corrigés (zoom à nouveau possible)
-- Service worker v3 avec tous les modules cachés
-- Manifest avec shortcuts PWA
-- `assets/shared/shared.css` et `shared.js` créés (toast, gestion erreurs Supabase)
-- `index.html` charge le shared et setup le toast listener
-
-### Chantier 2 : Sauvegarde auto + Numérotation + Archivage (terminé et déployé)
-
-**Phase 1 — Numérotation auto + Autosave** (matin du 26 avril)
-- Factures : numérotation `F-0001`, `F-0002`... auto-générée côté DB
-- Autosave localStorage avec debounce 2s + force 30s sur factures, soumissions, feuilles de temps
-- Toast "Brouillon restauré" silencieux à l'ouverture
-- Voir `CHANGELOG-PHASE1-PART2.md`
-
-**Phase 2 — Archivage soft delete** (soir du 26 avril)
-- 5 nouvelles colonnes sur les 3 tables (`is_archived`, `archived_at`, `archived_by`, `archived_by_name`, `archive_reason`)
-- Trigger Postgres qui logge automatiquement chaque archivage/restauration
-- RLS update : doc archivé en lecture seule absolue (sauf restauration A0)
-- Onglet "Archives" sur les 3 modules
-- Panneau Admin "Nettoyer Archives" avec compteur + suppression > 1 an
-- Tout mutualisé dans `assets/shared/archive.js`
-- SQL exécuté : ✅
-- Voir `CHANGELOG-PHASE2-ARCHIVAGE.md`
-
-### Chantier 3 : Nettoyage technique (terminé le 26 avril soir)
-
-**Bilan :** projet de 5.8 Mo → 1.3 Mo (-77%)
-
-- **Service Worker v3 → v4** : ajout des fichiers shared/ et logos qui ont migré dans /assets/
-- **Manifest** : vraie icône maskable créée (`logo_app_maskable.png`) avec safe zone
-- **Dédoublonnage** : 16 logos dupliqués/orphelins supprimés des dossiers code_*
-- **Compression** : tous les logos de /assets/ compressés (-73%)
-- 3 fichiers HTML mis à jour pour pointer vers `../assets/...`
-- Voir `CHANGELOG-CHANTIER3-NETTOYAGE.md`
-
-**À faire après mise en prod :** vider le cache navigateur ou déconnecter
-le SW une fois pour passer en v4. Ensuite, automatique pour tout le monde.
-
-### Chantier 4 : Mutualisation CSS (terminé le 26 avril soir)
-
-**Bilan :** variables CSS définies une seule fois dans `shared.css` au lieu de 14 endroits.
-
-- **Variables CSS** (`--app-bg`, `--btn-yellow`, etc.) : retirées des 13 modules,
-  centralisées dans `assets/shared/shared.css`
-- **`* { box-sizing }`** : centralisé dans shared.css
-- **`.svg-icon`** : centralisé dans shared.css (12 copies retirées)
-- **Découverte importante** : 9 modules sur 12 ne chargeaient pas shared.css avant !
-  Ils ont été corrigés (charge maintenant `shared.css` + `shared.js`).
-  → **Bonus** : tous les modules ont maintenant accès à `window.showToast()`
-- `login.html` charge aussi shared.css maintenant
-- Exception conservée : `code_calendrier` garde son `:root` local pour
-  ses 2 variables spécifiques (`--cal-grid-border`, `--cal-header-bg`)
-- Voir `CHANGELOG-CHANTIER4-CSS.md`
-
-**Pour changer le thème jaune en autre chose** : modifier `--btn-yellow`
-et `--sidebar-bg` dans `assets/shared/shared.css` (1 seul fichier).
-
-### Chantier 5 : Export PDF avec aperçu (terminé le 26 avril soir)
-
-**Bilan :** vrai export PDF avec modal d'aperçu + bouton télécharger,
-indépendant du menu d'impression du navigateur.
-
-- **Nouveau module shared** : `assets/shared/pdf-export.js`
-  - Charge html2canvas + jsPDF à la demande depuis CDN
-  - Modal d'aperçu avec iframe
-  - Nom de fichier intelligent : `F-0001_Tremblay_2026-04-26.pdf`
-  - API : `window.PDFExportFD.openPreview({container, docType, docNumber, clientName, date})`
-- **3 modules d'édition** mis à jour :
-  - Bouton "Imprimer" → "PDF / Imprimer"
-  - Fonction `exporterPDF()` réécrite (factures, soumissions, feuilles)
-  - Plus de `window.print()` qui dépendait du navigateur
-- **SW v4 → v5** : ajout de pdf-export.js au cache
-- Voir `CHANGELOG-CHANTIER5-PDF.md`
-
-**Limitation connue** : premier export en mode hors-ligne échoue (libs
-CDN à télécharger). Une fois en cache navigateur, marche offline.
-
-### Chantier 6 : Signature électronique améliorée (terminé le 26 avril soir)
-
-**Bilan :** signature vraiment utilisable sur le terrain (mobile +
-desktop), code mutualisé.
-
-- **Nouveau module shared** : `assets/shared/signature.js`
-  - Trait lissé (courbes quadratiques) au lieu de cassant
-  - Canvas haute résolution (devicePixelRatio)
-  - Modal plein écran sur mobile (60% de la hauteur)
-  - Bouton **Effacer** pour recommencer sans fermer
-  - **Annuler** garde la signature précédente intacte
-  - Vibration tactile au début du tracé (Android)
-  - Touche **Échap** pour annuler
-  - Indicateur "✓ Signé" sur les zones signées (badge vert)
-  - Pré-charge la signature précédente au reclic
-  - API : `SignatureFD.attach(img)`, `attachAll(container)`,
-    `watchContainer(container)`, `refreshIndicators(container)`
-- **2 modules** mis à jour : `code_facture.html` et `code_soumissions.html`
-  - Ajout du `<script>` signature.js
-  - Activation au boot via `watchContainer` + `attachAll`
-  - Refresh des indicateurs après chargement d'un doc
-- **Code mort restant** : l'ancien système (modal `#sig-modal` + ~80
-  lignes JS) est encore présent mais inactif. Ménage optionnel pour
-  plus tard, ne dérange rien.
-- **SW v5 → v6** : ajout de signature.js au cache
-- Voir `CHANGELOG-CHANTIER6-SIGNATURE.md`
-
-### Chantier 7 : Audit Log complet (terminé le 26 avril soir)
-
-**Bilan :** vrai journal d'audit, traçabilité totale via triggers
-PostgreSQL, accessible aussi à A1 (patron).
-
-**SQL à exécuter :** `supabase-phase3-auditlog.sql` (idempotent)
-
-- **Table `logs_systeme` enrichie** : 5 nouvelles colonnes
-  (`table_name`, `doc_id`, `action`, `user_id`, `details_json`)
-- **6 triggers PostgreSQL** : INSERT/UPDATE/DELETE sur factures,
-  soumissions, feuilles_de_temps, clients, bons_de_commande + UPDATE OF
-  role sur profils
-- **Anti-doublon** : le trigger sait détecter les archivages (déjà
-  loggés Phase 2) et ne les re-logge pas
-- **Connexion loggée côté JS** une fois par session (sessionStorage)
-- **Page Admin "Journal d'Audit"** :
-  - Accessible à **A0 et A1** (avant : A0 seulement)
-  - 4 filtres combinables : recherche + action + table + utilisateur
-  - Export CSV des logs filtrés (BOM UTF-8 pour Excel)
-  - Couleurs par action (vert création, rouge suppression, etc.)
-  - Tableau 4 colonnes : Date | Action | Utilisateur | Détails
-  - Limite 500 logs avec compteur affiché
-- **Panneau "Nettoyer Journal"** (mauve, A0 only) à côté de "Nettoyer
-  Archives" : RPC `count_logs_expired()` et `delete_expired_logs()`
-  pour suppression manuelle des logs > 1 an
-- 2 nouvelles fonctions Postgres réservées admin :
-  `count_logs_expired()` et `delete_expired_logs()`
-- Voir `CHANGELOG-CHANTIER7-AUDITLOG.md`
-
-**Pour A1** : tab-dev visible mais panneaux A0-only masqués
-(Permissions, Maintenance, Archives, Nettoyer logs, Support).
-
----
-
-## 📌 Infos techniques importantes
-
-### Comptes utilisateurs (en dev)
-- **Xavier** (xavierbouclin@gmail.com) — A0 — UUID `348cb023-2ad1-4c29-9975-08fe8b0a31e9`
-- **Tristan** (ttbouclin1@gmail.com) — A1 — UUID `3a61d67a-0949-4ed0-a10d-86c3f69b2e88`
-- **Jean** (123@gmail.com) — A3 — UUID `0c34b103-fbcb-4b4e-87f3-cc453bdcb004`
-
-### Hiérarchie des rôles
-- **A0** : super admin (Xavier) — tout autorisé
-- **A1** : patron / gestion
-- **A2** : chef équipe / contremaître
-- **A3** : employé régulier / plombier
-- Possibilité d'ajouter A4, A5... plus tard via `parametres_globaux.roles_config`
-
-### Notes métier
-- Les "factures" dans l'app ne sont PAS des factures comptables — ce sont des **rapports de chantier / bons de travail**. Le bureau s'en sert pour générer la vraie facture après.
-- D'où la rétention courte (1 an suffit) et la flexibilité sur la numérotation.
-
-### Structure des données Supabase
-Les valeurs des formulaires sont stockées en JSONB :
-- `input_values` (jsonb) : array des valeurs des `<input>`
-- `sig_values` (jsonb) : array des base64 des signatures
-
-C'est sur ce mécanisme que repose la sauvegarde auto.
-
-### Architecture fichiers (après Chantier 3)
-- **Tous les logos** sont maintenant dans `/assets/` uniquement
-- Les modules `code_*` les référencent via `../assets/nom_du_logo.png`
-- Pour ajouter un logo : poser dans `/assets/`, référencer en relatif, ajouter au cache du SW
-
----
-
-## 🐛 Audit + corrections de bugs (27 avril 2026)
-
-Audit statique complet du code (script Python qui analyse chaque fichier
-HTML/JS pour trouver références cassées, fonctions manquantes, IDs
-fantômes, etc.). 4 vrais bugs trouvés et corrigés :
-
-1. **Recherche cassée dans Factures** : `onkeyup="filterInvoices()"`
-   appelait une fonction inexistante. Corrigé en
-   `onkeyup="renderInvoiceList()"` qui faisait déjà le travail.
-
-2. **Compteur de factures invisible** : code cherchait `#inv-compteur`
-   absent du HTML. Ajout du `<div>` correspondant.
-
-3. **Bouton "Charger plus" cassé dans Soumissions et Feuilles de temps** :
-   cherchait `getElementById('listContainer')` au lieu des vrais IDs
-   `quoteListContainer` et `timesheetListContainer`. Conséquence : si tu
-   avais plus de 50 docs, tu ne pouvais pas voir les suivants. Corrigé.
-
-4. **Shortcuts PWA ne fonctionnaient pas** : le `manifest.json` définit
-   `?view=factures`, `?view=temps`, `?view=messagerie` mais `index.html`
-   n'avait aucune logique pour lire ce paramètre. Ajout de la fonction
-   `handlePWAShortcut()` qui parse l'URL et clique sur le bon module.
-
-### 🆕 Amélioration UX — Compactage des lignes vides (Feuilles de temps)
-
-Quand l'utilisateur saisit ses heures dans la feuille de temps et qu'il
-laisse une **ligne complètement vide entre deux lignes remplies**, ces
-lignes vides sont maintenant **automatiquement déplacées à la fin** au
-moment de la sauvegarde.
-
-- Déclenchement : à chaque clic sur **Sauvegarder** ou **Envoyer au bureau**
-- **Pas pendant la saisie** : l'utilisateur peut taper où il veut, rien
-  ne bouge tant qu'il ne sauvegarde pas
-- Définition d'une "ligne vide" : les **4 champs** (Date, # Bon, Adresse,
-  Heures) sont **tous vides** après trim. Si même un seul champ est
-  rempli, la ligne reste à sa place.
-- Aucune donnée perdue : c'est juste un réordonnancement.
-- Le total des heures est calculé après le compactage (résultat identique).
-
-### 🆕 Ajustements Feuilles de temps (27 avril)
-
-**Dupliquer copie maintenant la page entière**
-- Avant : seuls le nom de l'employé + la semaine étaient copiés
-- Maintenant : tous les inputs (header + lignes du tableau) sont copiés
-- Utile pour reproduire une semaine type qui se répète
-
-**Case TOTAL retirée de la feuille**
-- L'input "TOTAL : ___" en bas de chaque page n'existe plus
-- Le calcul du total est **conservé** côté code (variable `totalGlobal`)
-  → toujours sauvegardé dans Supabase comme avant
-- Toujours affiché dans le **dashboard** (carte de chaque feuille de
-  temps avec les heures totales en jaune)
-- L'utilisateur ne le voit plus dans le formulaire (à remettre plus tard
-  ailleurs si besoin, par exemple dans un menu)
-- CSS de `.total-box` aussi retiré
-- Fonction `calculerTotal()` conservée mais vidée (compatibilité avec
-  appels existants)
-
-**Centrage horizontal des pages aligné dans les 3 modules**
-- Avant : seulement les soumissions étaient parfaitement centrées
-  horizontalement. Factures et feuilles de temps avaient un léger
-  décalage à gauche selon le niveau de zoom.
-- Cause : différence de CSS entre les 3 modules
-  (`transform-origin: top left` vs `top center`, et présence ou non de
-  `margin: 0 auto` sur le container).
-- Fix : aligné les 3 modules sur le même pattern que soumissions
-  (`transform-origin: top center` + `margin: 0 auto`).
-
-### 🆕 Messagerie — Indicateur "🟢 Connecté" retiré
-
-Le statut de présence "🟢 Connecté" affiché sous le nom de la
-conversation a été complètement retiré.
-
-- **Pourquoi** : c'était hardcodé, ça affichait "Connecté" en dur peu
-  importe si la personne était vraiment en ligne. Mensonge
-  cosmétique → plutôt rien que faux.
-- **Retiré** : élément HTML `<p id="chatHeaderStatus">`, toutes les
-  valeurs `status: '🟢 Connecté'` dans `conversationsData`, et le code
-  JS qui manipulait `chatHeaderStatus`.
-- **Conservé** : tout le mécanisme Realtime Supabase
-  (`supabaseClient.channel(...)`, `.on(...)`, `.subscribe(...)`,
-  `removeChannel`) qui fait que les messages arrivent en temps réel.
-  Le retrait du faux statut n'affecte en rien la livraison des messages.
-
-### 🆕 PO — Fournisseurs récurrents (liste éditable)
-
-Le champ "Fournisseur" du modal Nouveau Bon de Commande devient un menu
-déroulant + option "Autre..." pour fournisseurs ponctuels. La liste est
-gérée depuis l'admin par A0/A1/A2.
-
-**Côté code_po.html :**
-- Le `<input type="text" id="inpFournisseur">` est remplacé par un
-  `<select id="selFournisseur">` qui se remplit dynamiquement
-- Si "Autre..." est choisi → un champ texte apparaît pour saisie libre
-- Un `<input type="hidden" id="inpFournisseur">` conserve le même ID
-  qu'avant pour la compat avec le code de save (ligne 307)
-- La liste est rechargée à chaque ouverture du modal (au cas où qqn
-  aurait modifié dans Admin entre-temps)
-
-**Côté code_admin.html :**
-- Nouveau panneau "Fournisseurs récurrents" (bleu) dans `sec-users`
-  juste après "Gestion du Personnel"
-- Champ texte + bouton "Ajouter" (ou Enter pour valider)
-- Liste avec bouton "X" pour retirer chaque entrée
-- Détection de doublons (insensible à la casse)
-- Confirmation avant suppression
-- Sauvegarde dans `parametres_globaux.cle = 'fournisseurs_recurrents'`
-  (JSON array)
-
-**Permissions :**
-- Nouvelle perm : `manage_suppliers`
-- Ajoutée par défaut à A0, A1 **et A2**
-- Pour A2 : ajout aussi de `view_admin` pour qu'il puisse ouvrir l'onglet
-  Admin, mais on masque pour lui le panneau "Gestion du Personnel"
-  (`employeesPanel` caché). Donc A2 voit Admin avec **uniquement** le
-  panneau Fournisseurs.
-
-**Données :**
-- Pré-remplissage automatique au premier usage : Deschênes, Wolseley,
-  Plomberie Provinciale
-- Pas de SQL à exécuter — utilise la table `parametres_globaux`
-  existante
-- Anciens PO non affectés : leur valeur `fournisseur` reste en texte
-  libre (historique préservé)
-
-### 🆕 Tableau de bord Admin — Nouveaux panneaux
-
-3 nouveaux panneaux ajoutés dans l'onglet "Tableau de bord" (sec-users)
-et 1 panneau déplacé.
-
-**1. Outils — Inventaire** (vert) — A0/A1
-- Permet d'ajouter rapidement un nouvel outil dans la table `outils`
-- Champ texte + bouton Ajouter (ou Enter pour valider)
-- Liste des outils existants avec leur assigné (ou "Non assigné")
-- Bouton retirer pour supprimer un outil de l'inventaire (avec confirm)
-- Détection de doublons par nom (insensible à la casse)
-- L'outil est créé avec `status: 'active'` et `assignee_nom: null` →
-  apparaît dans le module Outils prêt à être assigné
-
-**2. Compteurs** (jaune) — A0/A1
-- Carte gauche : **Dernière facture** créée (ex: F-0042) +
-  Prochaine (F-0043)
-- Carte droite : **Dernier PO** créé (ex: PO-260427-1234) +
-  Total de PO créés
-- Numérotation factures basée sur le `MAX(id)` qui correspond au
-  pattern `F-XXXX` (cohérent avec la fonction SQL `next_facture_number()`)
-- Numérotation PO : juste le dernier en date + total
-
-**3. Tickets de Support** (orange) — A0/A1 — DÉPLACÉ
-- Avant : dans l'onglet "Permissions et système" (réservé A0)
-- Après : dans le tableau de bord (visible aussi pour A1)
-- Logique JS inchangée (`initSupportUI()`)
-- A1 voit donc maintenant les tickets de support, en plus du journal
-  d'audit → le patron a une vraie vue d'ensemble
-
-**Permissions résumées :**
-| Rôle | Personnel | Fournisseurs | Outils | Compteurs | Support |
-|---|---|---|---|---|---|
-| A0 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| A1 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| A2 | ❌ (Admin pas accessible) | | | | |
-| A3 | ❌ (Admin pas accessible) | | | | |
-
-**Note** : A2 avait été temporairement autorisé à gérer les fournisseurs,
-mais retiré le 27 avril (plus simple). Si tu veux le remettre plus tard,
-ajouter `view_admin` et `manage_suppliers` aux perms de A2 dans
-`code_admin.html` et `index.html`, puis remettre le bloc `else if
-(myRole === 'A2')` dans `initAdmin()` qui masquait `employeesPanel`.
-
-### 🆕 Factures — Bouton "Dupliquer" (bleu) retiré
-
-Sur les cartes de factures du dashboard, il y avait un petit bouton
-bleu de duplication (à côté du X de suppression). Il a été retiré.
-
-- **Conséquence** : on ne peut plus dupliquer une facture en 1 clic
-  depuis le dashboard
-- **Code conservé** : la fonction `duplicateInvoice()` (~30 lignes)
-  reste dans le fichier mais n'est plus jamais appelée. Si tu veux
-  remettre le bouton plus tard, c'est juste 1 ligne à rajouter dans
-  `actionsHTML` (cherche le commentaire "Vue normale : bouton Supprimer
-  (= archiver)" dans `code_facture.html` ligne ~1064).
-- **Note** : ce bouton n'existait que dans factures, pas dans
-  soumissions ni feuilles de temps.
-
-### 🐛 Fix critique — Erreurs de sauvegarde "Lock broken" / "Failed to fetch"
-
-**Symptôme observé** : au clic sur Sauvegarder ou Envoyer au bureau,
-l'utilisateur recevait parfois :
-- `TypeError: Failed to fetch`
-- `AbortError: Lock broken by another request with the 'steal' option.`
-- Et dans feuilles de temps spécifiquement, du HTML brut s'affichait
-  dans le message (`<br><small style='color:#aaa;'>...</small>`)
-
-**Cause racine** : l'app charge Supabase 12 fois (1 client par iframe).
-Quand 2 requêtes essaient de toucher le lock d'authentification en
-même temps (clic + autosave qui se déclenche en parallèle), le lock
-est "volé" et la 1ère requête échoue.
-
-**Trois corrections appliquées :**
-
-1. **Bug HTML brut dans feuilles de temps** : `showAlert()` utilisait
-   `.textContent` au lieu de `.innerHTML`, donc les balises HTML du
-   message d'erreur s'affichaient littéralement. Corrigé en `.innerHTML`
-   (cohérent avec factures et soumissions).
-
-2. **Retry automatique** : nouveau helper `window.SharedFD.withRetry()`
-   ajouté dans `assets/shared/shared.js`. Détecte les erreurs
-   transitoires (`AbortError`, `Lock broken`, `Failed to fetch`,
-   `network`, HTTP 5xx) et réessaie automatiquement **1 fois** après
-   600ms. Invisible pour l'utilisateur dans 99% des cas.
-   - Wrappe les appels `upsert` dans : `code_facture.html` ligne ~948,
-     `code_soumissions.html` ligne ~520, `code_feuille_de_temps.html`
-     ligne ~528.
-   - API : `withRetry(operation, { delay: 600, maxAttempts: 2 })`
-   - Pattern d'usage :
-     ```js
-     const retry = window.SharedFD ? window.SharedFD.withRetry : (op) => op();
-     const { error } = await retry(() => supabaseClient.from('X').upsert(payload));
-     ```
-
-3. **Messages d'erreur user-friendly** : si malgré le retry une erreur
-   persiste, le message est désormais clair :
-   - "Une autre opération est en cours. Attends 2 secondes et réessaie."
-     (Lock broken)
-   - "Pas de connexion internet. Vérifie ta connexion et réessaie."
-     (network)
-   - "Tu n'as pas la permission de modifier cette facture/soumission/
-     feuille." (RLS)
-   - Plus le message technique brut.
-
-**À tester** : clique vite sur Sauvegarder plusieurs fois d'affilée,
-ou clique pendant que l'autosave tourne. Avec le retry, ça devrait
-passer silencieusement. Si ça échoue quand même, le message sera
-propre.
-
-### 🐛 Fix critique — Calendrier : bouton Sauvegarder sans effet
-
-**Symptôme** : dans le calendrier, le bouton "Sauvegarder" du modal
-"Service d'urgence" (ou "Nouvel Événement") ne faisait rien. Le modal
-se fermait, mais l'événement n'apparaissait pas dans le calendrier.
-
-**Cause double :**
-1. **SQL** : la table `evenements` avait RLS activé (via le SQL
-   sécurité initial qui touche toutes les tables) mais **aucune
-   policy** définie. Conséquence : tout INSERT/UPDATE/DELETE était
-   bloqué par défaut.
-2. **JS** : le code `saveEvent()` appelait `upsert` mais ne vérifiait
-   pas l'erreur retournée. L'opération échouait silencieusement, le
-   modal se fermait, l'utilisateur ne voyait rien.
-
-**SQL à exécuter** : `supabase-fix-evenements-rls.sql` (à la racine).
-Idempotent (relançable). Crée 4 policies :
-- `evenements_select` : tous les utilisateurs auth peuvent lire (le
-  filtrage par calendrier/partage se fait côté JS)
-- `evenements_insert` : auteur = utilisateur courant, ou admin (A0/A1)
-- `evenements_update` : auteur ou admin
-- `evenements_delete` : auteur ou admin
-
-**JS corrigé** : `code_calendrier.html`
-- `saveEvent()` : utilise `withRetry`, vérifie l'erreur, désactive le
-  bouton pendant la sauvegarde, message user-friendly si échec
-- `saveCalendar()` (création de calendrier custom) : pareil
-- `deleteCurrentCalendar()` : pareil pour les 2 deletes en cascade
-- `deleteCurrentEvent()` : pareil
-
-**À tester** : crée un événement Service d'urgence ou un événement
-normal. Doit apparaître immédiatement dans le calendrier. Si ça
-échoue, message clair affiché.
-
-### 🐛 Fix critique — Désalignement entre schéma DB et code JS
-
-**Symptômes observés** au save dans soumissions et feuilles de temps :
-- Soumissions : `invalid input syntax for type bigint: "S-8796"`
-- Feuilles : `Could not find the 'employe_nom' column of 'feuilles_de_temps' in the schema cache`
-
-**Cause** : pendant le développement le code JS et la structure des
-tables Supabase ont divergé.
-
-1. **Soumissions** : la colonne `id` est de type `bigint` (entier
-   auto-incrément) mais le code envoie `"S-8796"` (texte). Ce souci
-   avait déjà été corrigé pour `factures` en Phase 1, mais pas pour
-   les soumissions.
-
-2. **Feuilles de temps** : le code envoie une colonne `employe_nom`
-   mais la table avait probablement `employe` à la place (ou rien).
-
-**SQL à exécuter** : `supabase-fix-schemas.sql` (à la racine).
-Idempotent (relançable). Le script :
-
-- **Vide les tables `soumissions` et `feuilles_de_temps`** (tu as
-  confirmé que c'est OK, les données étaient pas importantes)
-- Change le type `soumissions.id` de `bigint` vers `text` (mêmes étapes
-  qu'on a faites pour factures)
-- Pour `feuilles_de_temps.employe_nom` : détection intelligente
-  - Si `employe_nom` existe déjà → ne touche pas
-  - Si `employe` existe → renomme `employe` en `employe_nom`
-  - Si rien → ajoute la colonne `employe_nom text`
-- Vérifie aussi `bons_de_commande.id` (si bigint, change en text)
-- À la fin, affiche les types des colonnes `id` de toutes les tables
-  pour vérification
-
-**À tester après exécution** :
-1. Crée une nouvelle soumission, sauvegarde → doit marcher sans
-   erreur, l'ID sera du genre `S-1234`
-2. Crée une nouvelle feuille de temps, sauvegarde → doit marcher
-3. Vérifie aussi qu'envoyer au bureau marche
-
-### 🆕 Uniformisation de l'icône suppression/archivage
-
-Les cartes de **factures** affichaient un simple `X` rouge pour le
-bouton supprimer/archiver, alors que tous les autres modules
-(soumissions, feuilles, clients, outils, PO, etc.) utilisaient déjà
-la jolie icône poubelle SVG (`icon-trash`).
-
-- **Fix** : `code_facture.html` ligne ~1085, remplacement du `X` par
-  `<svg class="svg-icon"><use href="#icon-trash"></use></svg>` (mêmes
-  dimensions 18x18 que dans les feuilles de temps)
-- **Vérification** : toutes les définitions de `icon-trash` dans les
-  12 modules ont le même hash MD5 → cohérence visuelle complète
-- Aucun autre `X` littéral comme bouton de suppression dans le code
-
-### 🆕 Audit complet de cohérence visuelle (8 corrections)
-
-Suite à un audit visuel approfondi de tous les modules, 8 incohérences
-détectées et corrigées :
-
-**Bugs SVG (typos invisibles à l'œil mais réels dans le code) :**
-1. `icon-edit` dans `code_calendrier.html` avait une typo (`2-2h14`
-   au lieu de `2 2v14`) qui déformait subtilement l'icône.
-2. `icon-save` dans `code_profil_parametres.html` avait une typo
-   similaire dans le path SVG.
-
-**Incohérences de boutons "Nouveau X" :**
-3. "Nouvelle feuille" n'avait pas le `style="background-color:
-   var(--btn-yellow);"` → couleur grise au lieu du jaune des autres.
-4. "Nouvelle feuille" avait une minuscule (devrait être "Nouvelle
-   Feuille" comme "Nouvelle Facture" / "Nouvelle Soumission").
-
-**Cohérence des classes CSS :**
-5. PO utilisait `class="btn-action"` au lieu de `class="action-btn"`.
-   Renommage global dans `code_po.html` (CSS + HTML).
-
-**Compteurs manquants :**
-6. Soumissions et Feuilles de temps n'avaient pas le compteur "X
-   chargée(s)" qui existait dans Factures. Ajout des `<div
-   id="quote-compteur">` et `<div id="ts-compteur">` + mise à jour
-   des fonctions `renderQuoteList()` et `renderTimesheetList()`.
-
-**Style btn-icon :**
-7. `code_clients.html` avait un `btn-icon` rond (`border-radius:
-   50%`) avec rotation au hover, alors que les autres modules ont des
-   carrés arrondis (`8px`) sans rotation. Aligné sur le standard.
-
-**Modal d'alerte :**
-8. Clients avait un titre "Attention" en rouge `#ff4d4d`, alors que
-   les 9 autres modules ont "Information" en jaune `var(--btn-yellow)`.
-   Aligné sur le standard.
-
-**Vérification finale** : icônes `icon-edit`, `icon-save`, `icon-trash`
-sont maintenant toutes identiques dans les 12 modules (vérifié par
-hash MD5).
-
-### 🐛 Fix critique — Brouillon localStorage qui restaurait les anciennes données
-
-**Symptôme** : quand tu cliques "Nouvelle Soumission" (ou Facture, ou
-Feuille de temps), l'ancien contenu de la dernière soumission s'affichait
-dans le formulaire vide, comme si le formulaire était "hanté". Sauvegarder
-écrasait alors la précédente au lieu d'en créer une nouvelle.
-
-**Cause** : l'autosave (Phase 1) sauve les brouillons en localStorage
-sous une clé `fdussault_draft_<module>_<id>`. Quand l'ID est `null`
-(brouillon non encore sauvegardé), la clé devient `..._<module>_new`.
-Mais cette clé `_new` n'était jamais effacée :
-- Tu écris du contenu → autosave stocke dans `..._soumission_new`
-- Tu sauvegardes → ID devient `S-8796`, `..._soumission_S-8796` est
-  effacé... mais `..._soumission_new` reste accroché
-- Tu reviens plus tard sur "Nouvelle Soumission" → `currentQuoteId =
-  null` → `..._soumission_new` existe toujours → restauration des
-  anciennes données
-
-**Corrections appliquées dans les 3 modules** (factures, soumissions,
-feuilles de temps) :
-
-1. **Au début de `openNewQuote/Invoice/Timesheet`** : effacer
-   explicitement `localStorage.removeItem('fdussault_draft_<module>_new')`
-   AVANT de réinitialiser le formulaire et de démarrer l'autosave.
-
-2. **À la fin du save** : après avoir mis à jour `currentXId` avec le
-   nouveau numéro, effacer aussi `..._<module>_new` (en plus du
-   `clearAutosaveForCurrent()` qui efface l'ID nouveau).
-
-Plus aucune contamination entre soumissions/factures/feuilles successives.
-
----
-
-## 📂 Organisation des fichiers à la racine
-
-```
-mon-site-chantier7-complete/
-├── NOTES.md                            ← ce fichier (à jour)
-├── index.html, login.html, sw.js, manifest.json, supabase-config.js
-├── supabase-securite.sql               ← Chantier 1 (RLS)
-├── supabase-phase1-numerotation.sql    ← Phase 1 (numérotation auto)
-├── supabase-phase2-archivage.sql       ← Phase 2 (archivage)
-├── supabase-phase3-auditlog.sql        ← Phase 3 (audit log) — DÉJÀ EXÉCUTÉ ?
-├── assets/
-│   ├── *.png (logos, compressés)
-│   └── shared/
-│       ├── shared.css, shared.js       ← thème, toast, helpers
-│       ├── autosave.js                 ← Phase 1
-│       ├── archive.js                  ← Phase 2
-│       ├── pdf-export.js               ← Chantier 5
-│       └── signature.js                ← Chantier 6
-├── code_*/code_*.html                  ← 12 modules
-└── docs/                               ← historique, à consulter au besoin
-    ├── CHANGELOG-SECURITE.md           (Chantier 1)
-    ├── CHANGELOG-PHASE1-PART2.md       (numérotation + autosave)
-    ├── CHANGELOG-PHASE2-ARCHIVAGE.md   (archivage)
-    ├── CHANGELOG-CHANTIER3-NETTOYAGE.md (poids/images)
-    ├── CHANGELOG-CHANTIER4-CSS.md      (mutualisation CSS)
-    ├── CHANGELOG-CHANTIER5-PDF.md      (export PDF)
-    ├── CHANGELOG-CHANTIER6-SIGNATURE.md (signature améliorée)
-    └── CHANGELOG-CHANTIER7-AUDITLOG.md (audit log)
-```
-
----
-
-## 🚀 Pour reprendre dans une nouvelle conversation
-
-7 chantiers complètement terminés. Le projet est dans un état très
-propre : sécurisé, fonctionnel, léger, mutualisé, avec audit log.
-
-**Pistes restantes du plan original (par ordre d'impact) :**
-
-🥇 **À fort impact métier** :
-- **Templates de soumissions** — modèles récurrents (chauffe-eau,
-  débouchage) pour générer une soumission en 2 clics
-- **Dashboard analytique sur l'Accueil** — CA mois, top clients, factures
-  en attente
-- **Photos avant/après** sur fiches client (Supabase Storage)
-
-🥈 **Améliorations utiles** :
-- **Notifications push** réelles (Web Push API + Supabase Edge Functions
-  — complexe, iOS limité)
-- **Calculatrice CMMTQ** dans Outils
-
-🏗️ **Gros chantier technique** :
-- **Migration SPA** (Vite + vanilla JS) — règle le problème des 12
-  iframes. Réécrit l'architecture, ~3-5 sessions, risque de régression
-  élevé. À garder pour quand on a vraiment du temps.
-
-**Si besoin de reprendre :**
-1. Renvoyer à Claude le zip à jour du projet
-2. Coller ce document `NOTES.md` dans la conversation
-3. Préciser ce qu'on veut faire ensuite
-
-Claude pourra alors démarrer un nouveau chantier sans avoir à redécouvrir
-le code.
-
----
-
-## 🐛 Fix 28 avril (soir) — 4 erreurs console DevTools
-
-Suite à inspection des DevTools (F12 → Console), 4 erreurs détectées
-et corrigées :
-
-**1. `Uncaught ReferenceError: timesheetObj is not defined` (feuilles de temps)**
-- Ligne 403-405 de `code_feuille_de_temps.html` : `applyEditorSecurity()`
-  utilisait `timesheetObj` (ancien nom) au lieu de `sheetObj` (nom du
-  paramètre). Plantait à chaque ouverture d'une feuille existante.
-- Aussi corrigé ligne 460 : commentaire `// timesheetObj passé fitToScreen();`
-  qui mangeait l'appel à `fitToScreen()`. Maintenant 2 lignes séparées.
-
-**2. Erreurs HTTP 400 Supabase (`id=eq.null`, profil)**
-- Dans `code_profil_parametres.html`, `initAuth()` appelait
-  `initProfileData()` sans setter `myUserIdGlobal = user.id`. Du coup
-  les requêtes partaient avec `id=null` → 400 Bad Request.
-- Fix : `myUserIdGlobal = user.id;` ajouté avant `initProfileData()`,
-  + garde de sécurité dans `initProfileData` qui abandonne si l'ID
-  n'est pas défini.
-
-**3. Erreur HTTP 404 `count_logs_expired`**
-- La fonction RPC n'existait pas dans Supabase (Phase 3 SQL pas
-  exécuté).
-- Fix : `loadLogsExpiredCount()` détecte maintenant le 404 et affiche
-  "Fonction non disponible (exécuter Phase 3 SQL)" proprement, au lieu
-  de spammer la console avec une erreur.
-- **Action utilisateur si le message apparaît** : exécuter
-  `supabase-phase3-auditlog.sql` dans Supabase SQL Editor.
-
-**4. Bonus — 3 bugs `showConfirm` cassés dans admin**
-- En investiguant, trouvé que 3 fonctions appelaient `showConfirm()`
-  qui n'existe pas dans `code_admin.html` (le module utilise
-  `showConfirmAdmin()`). Conséquence : silence total au clic.
-- Fix : remplacement `showConfirm` → `showConfirmAdmin` dans :
-  - `cleanExpiredLogs` (Nettoyer Journal)
-  - `removeSupplier` (Retirer un fournisseur récurrent)
-  - `removeTool` (Retirer un outil de l'inventaire)
-
-**5. Avertissement meta apple-mobile-web-app-capable déprécié**
-- Chrome demande aussi `<meta name="mobile-web-app-capable">` pour
-  les PWA modernes.
-- Fix : ajout dans `index.html` (en plus de la version Apple).
-
-### 🐛 Fix 28 avril (tard) — Filtre anti-bruit pour les warnings Lock Supabase
-
-**Symptôme** (visible après exécution du SQL Phase 3) :
-- 30+ warnings/erreurs dans la console au démarrage de l'app :
-  - "Lock 'lock:fdussault-auth-v1' was not released within 5000ms"
-  - "AbortError: Lock broken by another request with the 'steal' option"
-  - "Erreur d'initialisation : AbortError"
-  - "Uncaught (in promise) AbortError: Lock broken"
-
-**Cause racine** : l'app charge le client Supabase 12 fois (une par
-iframe). Chaque instance essaie d'acquérir le même lock localStorage
-`lock:fdussault-auth-v1` au démarrage → conflits massifs. Supabase
-gère la situation en interne (acquire forcé après 5s), donc l'app
-fonctionne quand même, mais les warnings polluent la console.
-
-**Pourquoi pas de fix architectural** : la vraie solution serait de
-migrer vers une SPA avec un seul client Supabase, mais c'est un gros
-chantier (3-5 sessions, risque de régression élevé). Pour le moment,
-on filtre le bruit cosmétique.
-
-**Fix appliqué** : nouveau bloc en haut de `assets/shared/shared.js`
-qui :
-1. Wrapper `console.warn` et `console.error` pour ignorer les
-   messages contenant "Lock not released within", "lock:fdussault-auth"
-   ou "AbortError + Lock broken"
-2. Listener sur `unhandledrejection` qui empêche les promesses
-   rejetées avec ces erreurs de polluer la console
-3. Préserve tous les autres warnings/erreurs (qui restent visibles)
-
-**Le code applicatif a déjà** : un helper `withRetry()` dans `shared.js`
-qui détecte les erreurs transitoires (Lock broken, etc.) et réessaie
-automatiquement. Il est appliqué aux upserts dans les 3 modules
-factures/soumissions/feuilles + 4 endroits dans le calendrier. Les
-opérations critiques sont donc déjà robustes.
-
-**Conséquence** : la console redevient lisible (les vraies erreurs
-ressortent), l'app continue à fonctionner normalement.
-
-Comme le filtre est dans `shared.js` et que tous les 12 modules
-chargent ce fichier, la couverture est complète.
-
-### 🎨 Fix mobile — Bouton "Rédiger" courriel
-
-**Symptôme** : sur mobile, le bouton "Rédiger" du module Courriel
-était partiellement caché par le hamburger (menu ≡ en haut à droite).
-
-**Fix** dans `code_courriel.html` :
-- Sur écrans ≤ 900px, le bouton devient un **cercle 44×44** avec
-  uniquement l'icône (texte "Rédiger" caché)
-- Ajout d'un `margin-right: 60px` pour laisser de la place au
-  hamburger (~50px)
-- Le titre "Rédiger un courriel" en tooltip si on hover
-
-Sur desktop, le bouton reste comme avant (ovale jaune avec icône + texte).
-
-**Note** : d'autres modules ont des boutons d'action principaux
-(`Nouvelle Facture`, `Emprunter un outil`, etc.) qui pourraient aussi
-être collés au hamburger sur mobile. Si problème observé, appliquer
-la même logique avec span text caché sur mobile.
-
-### 🐛 Fix v2 — Le filtre console ne marchait pas (timing)
-
-**Symptôme** : malgré le filtre ajouté dans `shared.js`, la console
-montrait encore 25+ erreurs `Lock broken` et `AbortError`.
-
-**Cause** : `shared.js` se charge **APRÈS** `supabase-js` et
-`supabase-config.js`. Quand Supabase commence à acquérir le lock
-au démarrage, mon filtre n'est pas encore en place. Du coup les
-premières erreurs passent.
-
-**Fix v2** :
-1. Le filtre a été déplacé dans un fichier dédié : `assets/shared/console-filter.js`
-2. Ce fichier est chargé en **TOUT premier** (avant supabase-js) dans :
-   - `index.html` et `login.html`
-   - Les 12 modules
-3. Le filtre intercepte aussi les `error` events globaux (pas juste
-   `unhandledrejection`)
-4. Pour les objets Error, on inspecte `message`, `name` ET `stack`
-   pour matcher les patterns
-5. Service Worker bumpé en v7 pour forcer le rechargement
-6. Le bloc redondant retiré de `shared.js`
-
-Ordre de chargement final dans chaque module :
-```
-1. console-filter.js   ← intercepte tout
-2. supabase-js@2       ← le client lourd qui fait des locks
-3. supabase-config.js
-4. shared.js
-5. ...autres
-```
-
-### 🐛 Fix 29 avril — Centrage feuille sur mobile
-
-**Symptôme** : sur mobile (≤ 600px en gros), la page (facture,
-soumission, feuille de temps) était en pleine taille (816px) et
-débordait à droite, non centrée. Sur desktop ça allait.
-
-**Cause** : la fonction `fitToScreen()` calcule le zoom en fonction
-de `scrollArea.clientWidth`. Mais sur mobile, quand la fonction est
-appelée immédiatement après l'affichage de la vue éditeur
-(`viewEditor.style.display = 'flex'`), le navigateur n'a pas encore
-fini son rendu → `clientWidth` retourne 0 → la condition
-`screenWidth > 0 && screenWidth < pageWidth` est fausse → on garde
-`currentZoom = 1.0` → débordement.
-
-Sur desktop, le problème ne se voyait pas parce que même sans zoom,
-l'écran fait > 816px donc `currentZoom = 1.0` est correct.
-
-**Fix** : si `clientWidth === 0`, on réessaie au prochain frame avec
-`requestAnimationFrame(fitToScreen)`. Une fois le navigateur a fini
-le rendu, la fonction calcule correctement le zoom et on appelle
-`updateZoom()` qui centre la page (via le `marginLeft` calculé).
-
-Appliqué dans les 3 modules : factures, soumissions, feuilles de temps.
-
-**Service Worker bumpé en v8** pour forcer le rechargement.
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mon Profil - F.Dussault</title>
+
+    <script>
+        if (window.self === window.top) { window.location.href = '../login.html'; }
+    </script>
+
+    <script src="../assets/shared/console-filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase-config.js"></script>
+    <link rel="stylesheet" href="../assets/shared/shared.css">
+    <script src="../assets/shared/shared.js"></script>
+    <style>
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background-color: var(--app-bg); 
+            color: var(--text-light); 
+            margin: 0; padding: 0; 
+            min-height: 100vh; display: flex; flex-direction: column;
+            overflow-y: auto; overflow-x: hidden;
+        }
+
+        .main-content { 
+            flex: 1; display: flex; flex-direction: column; 
+            padding: 30px; max-width: 1200px; margin: 0 auto; width: 100%; 
+        }
+        
+        .dash-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px;
+        }
+        
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; display: flex; align-items: center; gap: 10px;}
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        
+        .header-actions { display: flex; gap: 15px; flex-wrap: wrap; }
+        
+        /* BOUTON SAUVEGARDER - ALIGNÉ SUR LE DESIGN DE FACTURE */
+        .btn-main-save { 
+            background-color: var(--btn-yellow); color: black; border: none; 
+            padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; 
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); white-space: nowrap; 
+            transition: 0.2s; display: flex; align-items: center; gap: 8px;
+        }
+        .btn-main-save:hover { background-color: #ffd66b; transform: translateY(-2px); }
+        
+        .btn-logout-header { 
+            background-color: transparent; color: var(--btn-red); border: 2px solid var(--btn-red); 
+            padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; 
+            cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; 
+        }
+        .btn-logout-header:hover { background-color: var(--btn-red); color: white; }
+        
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        .settings-card { 
+            background-color: var(--card-bg); padding: 25px; border-radius: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); border: 1px solid #333; 
+            display: flex; flex-direction: column; 
+        }
+        
+        .card-header { 
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; 
+            font-size: 18px; font-weight: bold; color: var(--btn-yellow); 
+            margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; 
+        }
+        .card-header-left { display: flex; align-items: center; gap: 10px; }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 8px; font-size: 13px; font-weight: bold;}
+        .form-group input { 
+            width: 100%; padding: 12px 15px; background: #1a1b23; border: 1px solid #444; 
+            color: white; border-radius: 8px; font-size: 15px; outline: none; transition: 0.2s; 
+        }
+        .form-group input:focus { border-color: var(--btn-yellow); }
+        
+        .form-row { display: flex; gap: 15px; } 
+        .form-row .form-group { flex: 1; }
+        
+        /* SIGNATURE */
+        .signature-container { 
+            background: white; border-radius: 8px; border: 2px dashed #888; 
+            height: 180px; position: relative; margin-bottom: 10px; overflow: hidden; 
+        }
+        #sig-canvas { width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+        
+        .sig-actions { display: flex; justify-content: space-between; align-items: center; }
+        .btn-clear-sig { background: transparent; color: #aaa; border: none; font-size: 13px; cursor: pointer; text-decoration: underline; padding: 0;}
+        .btn-clear-sig:hover { color: white; }
+
+        /* FORMATIONS */
+        .formation-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; padding-right: 5px; }
+        .formation-item { background: #1a1b23; border: 1px solid #444; border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; }
+        
+        .form-thumb { 
+            width: 55px; height: 55px; object-fit: cover; border-radius: 6px; cursor: pointer; 
+            border: 1px solid #555; background: #2b2c36; display: flex; align-items: center; 
+            justify-content: center; font-size: 10px; color: #888; flex-shrink: 0; transition: transform 0.2s; text-align: center;
+        }
+        .form-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .form-name { font-weight: bold; font-size: 15px; color: white; }
+        .form-date { font-size: 12px; color: #aaa; }
+        .form-status { font-size: 11px; font-weight: bold; padding: 3px 6px; border-radius: 4px; display: inline-block; width: fit-content; }
+        
+        .status-ok { background: rgba(40, 167, 69, 0.2); color: var(--btn-green); border: 1px solid var(--btn-green);}
+        .status-warn { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107;}
+        .status-exp { background: rgba(255, 77, 77, 0.2); color: var(--btn-red); border: 1px solid var(--btn-red);}
+        
+        .btn-add-small { background: #444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 6px; transition:0.2s;}
+        .btn-add-small:hover { background: #555; }
+        .btn-del-small { background: transparent; color: var(--btn-red); border: none; cursor: pointer; flex-shrink: 0; padding:5px; display:flex;}
+        
+        .img-upload-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #323443; border: 1px dashed #888; color: #ccc; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .img-preview { width: 100%; max-height: 150px; object-fit: contain; border-radius: 8px; margin-top: 10px; display: none; border: 1px solid #555; }
+        
+        /* SECURITE & BACKUP */
+        .btn-update-pwd { background: var(--btn-blue); color: white; border: none; padding: 12px 15px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; width: 100%; display:flex; justify-content:center; align-items:center; gap:8px;}
+        .btn-update-pwd:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* MODALES */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; z-index: 4000; justify-content: center; align-items: center; }
+        .modal-card-basic { background: var(--card-bg); width: 90%; max-width: 400px; padding: 25px; border-radius: 15px; text-align: center; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        .modal-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px;}
+        
+        .btn-modal-gray { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-modal-yellow { background: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; width:100%; }
+        .btn-modal-green { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight:bold; width:100%; }
+        
+        @media (max-width: 768px) { 
+            .main-content { padding: 15px; } 
+            .dash-header { flex-direction: column; align-items: flex-start; padding-right: 0; gap: 15px; } 
+            
+            .header-actions { 
+                width: 100%; 
+                flex-direction: row; 
+                gap: 10px; 
+            } 
+            
+            .btn-main-save { 
+                flex: 1; 
+                justify-content: center; 
+                order: 1; 
+            } 
+            
+            .btn-logout-header { 
+                width: 42px; 
+                height: 42px;
+                justify-content: center; 
+                align-items: center;
+                padding: 0; 
+                border-radius: 50%; /* Arrondi parfait comme une icône sur mobile */
+                background-color: var(--btn-red); 
+                border: none; 
+                color: white; 
+                order: 2; 
+            } 
+            .btn-logout-header span { display: none; } 
+            .btn-logout-header .svg-icon { margin: 0; width: 20px; height: 20px; }
+            
+            .settings-grid { grid-template-columns: 1fr; } 
+            .form-row { flex-direction: column; gap: 0; } 
+        }
+    </style>
+</head>
+<body>
+
+<div id="security-loader" style="position: fixed; inset: 0; background: #1e1f26; z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="color: #444; font-size: 12px; font-family: sans-serif;">Chargement du module...</div>
+</div>
+
+<svg style="display: none;">
+    <symbol id="icon-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></symbol>
+    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></symbol>
+    <symbol id="icon-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></symbol>
+    <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></symbol>
+    <symbol id="icon-life-buoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"></line><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"></line><line x1="14.83" y1="9.17" x2="18.36" y2="5.64"></line><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line></symbol>
+</svg>
+
+<div class="main-content">
+    <div class="dash-header">
+        <div class="dash-title">
+            <h1>Mon Profil</h1>
+            <p>Gérez vos informations et votre sécurité</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-logout-header" onclick="seDeconnecterDirectement()">
+                <svg class="svg-icon"><use href="#icon-log-out"></use></svg> <span>Déconnexion</span>
+            </button>
+            <button class="btn-main-save" onclick="saveAllSettings()">
+                <svg class="svg-icon"><use href="#icon-save"></use></svg> Sauvegarder
+            </button>
+        </div>
+    </div>
+
+    <div class="settings-grid">
+        
+        <div class="settings-card" style="border-color: var(--btn-yellow);">
+            <div class="card-header" style="color: var(--btn-yellow);">
+                <div class="card-header-left"><svg class="svg-icon"><use href="#icon-user"></use></svg> Identité du Plombier</div>
+            </div>
+            <p style="color:#aaa; font-size:13px; margin-top:0; margin-bottom:15px;">Ces informations pré-rempliront automatiquement vos factures et soumissions.</p>
+            <div class="form-group">
+                <label>Nom complet</label>
+                <input type="text" id="profName" placeholder="Ex: François Dussault">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="text" id="profPhone" placeholder="Ex: 514-555-0000">
+                </div>
+                <div class="form-group">
+                    <label>Courriel de contact</label>
+                    <input type="email" id="profEmail" placeholder="Ex: plombier@email.com">
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card" style="border-color: var(--btn-purple);">
+            <div class="card-header" style="color: var(--btn-purple);">
+                <div class="card-header-left"><svg class="svg-icon"><use href="#icon-edit"></use></svg> Ma Signature Officielle</div>
+            </div>
+            <p style="color:#aaa; font-size:13px; margin-top:0; margin-bottom:15px;">Dessinez votre signature. Elle sera apposée au bas de vos documents générés.</p>
+            
+            <div class="signature-container" style="border-color: var(--btn-purple);">
+                <canvas id="sig-canvas"></canvas>
+            </div>
+            <div class="sig-actions">
+                <span style="font-size:12px; color:#888;">Tracez dans le cadre ci-dessus</span>
+                <button class="btn-clear-sig" onclick="clearSignature()">Effacer et recommencer</button>
+            </div>
+        </div>
+
+        <div class="settings-card" style="border-color: var(--btn-green);">
+            <div class="card-header" style="color: var(--btn-green);">
+                <div class="card-header-left"><svg class="svg-icon"><use href="#icon-award"></use></svg> Mes Certifications</div>
+                <button class="btn-add-small" onclick="openFormationModal()">
+                    <svg class="svg-icon"><use href="#icon-plus"></use></svg> Ajouter
+                </button>
+            </div>
+            <p style="color:#aaa; font-size:13px; margin-top:0; margin-bottom:15px;">Vos cartes de compétences s'afficheront automatiquement dans le calendrier lors de leur expiration.</p>
+            <div class="formation-list" id="formationList"></div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            
+            <div class="settings-card" style="border-color: var(--btn-blue);">
+                <div class="card-header" style="color: var(--btn-blue); border-bottom:none; margin-bottom:0;">
+                    <div class="card-header-left"><svg class="svg-icon"><use href="#icon-shield"></use></svg> Sécurité du compte</div>
+                </div>
+                
+                <div class="form-group" style="margin-top:15px; margin-bottom: 10px;">
+                    <label>Ancien mot de passe</label>
+                    <input type="password" id="oldPassword" placeholder="Mot de passe actuel">
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Nouveau mot de passe</label>
+                    <input type="password" id="newPassword" placeholder="Nouveau mot de passe (Min 6 car.)">
+                </div>
+                <button class="btn-update-pwd" style="background:var(--btn-blue);" onclick="updateMyPassword()">
+                    <svg class="svg-icon"><use href="#icon-lock"></use></svg> Mettre à jour mon mot de passe
+                </button>
+            </div>
+
+            <div class="settings-card" style="border-color: var(--btn-orange); flex: 1;">
+                <div class="card-header" style="color: var(--btn-orange); border-bottom:none; margin-bottom:0;">
+                    <div class="card-header-left"><svg class="svg-icon"><use href="#icon-life-buoy"></use></svg> Support Technique</div>
+                </div>
+                <p style="color:#aaa; font-size:13px; margin-top:10px; margin-bottom:15px;">Un bug ? Une suggestion ? Envoyez un message direct au développeur système.</p>
+                <button class="btn-update-pwd" style="background:var(--btn-orange); color:black; margin-top: auto;" onclick="document.getElementById('ticketModal').style.display = 'flex'; document.getElementById('ticketMessage').value = '';">
+                    <svg class="svg-icon"><use href="#icon-life-buoy"></use></svg> Signaler un problème
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="formationModal">
+    <div class="modal-card-basic" style="text-align: left;">
+        <div style="font-size: 20px; color: var(--btn-green); font-weight:bold; margin-bottom: 20px; display:flex; align-items:center; gap:8px;">
+            <svg class="svg-icon"><use href="#icon-award"></use></svg> Nouvelle Carte
+        </div>
+        <div class="form-group">
+            <label>Nom (Ex: ASP Construction...)</label>
+            <input type="text" id="inpFormName">
+        </div>
+        <div class="form-group">
+            <label>Date d'expiration</label>
+            <input type="date" id="inpFormDate">
+        </div>
+        <div class="form-group">
+            <label>Photo de la carte (Optionnel)</label>
+            <label class="img-upload-btn" for="inpFormImage">
+                <svg class="svg-icon"><use href="#icon-camera"></use></svg> Photographier / Choisir...
+            </label>
+            <input type="file" id="inpFormImage" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+            <img id="formImagePreview" class="img-preview" src="">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-gray" onclick="closeModal('formationModal')">Annuler</button>
+            <button class="btn-modal-green" style="flex:1;" onclick="saveFormation()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="imageViewerModal">
+    <div class="image-viewer-content" style="max-width:90%; max-height:90%;">
+        <img id="fullSizeImage" src="" style="max-width:100%; max-height:80vh; border-radius:12px; border: 2px solid #555;">
+        <div style="margin-top:15px; text-align:center;">
+            <button class="btn-modal-gray" onclick="closeModal('imageViewerModal')">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="ticketModal" style="z-index: 5000;">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-orange); font-weight:bold; margin-bottom: 15px; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <svg class="svg-icon"><use href="#icon-life-buoy"></use></svg> Signaler un problème
+        </div>
+        <p style="color:#ccc; font-size:13px; margin-bottom:15px; line-height:1.4;">Décrivez précisément le bug rencontré ou votre suggestion. Ce message sera lu par l'administrateur système.</p>
+        <div class="form-group">
+            <textarea id="ticketMessage" placeholder="Expliquez le problème ici..." style="width:100%; height:120px; background:#1e1f26; border:1px solid #555; color:white; padding:10px; border-radius:8px; font-family:sans-serif; outline:none; resize:none;"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-gray" onclick="document.getElementById('ticketModal').style.display='none'">Annuler</button>
+            <button class="btn-modal-yellow" style="flex:1; background:var(--btn-orange);" onclick="envoyerTicket()">Envoyer</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="alertModal" style="z-index: 5000;">
+    <div class="modal-card-basic">
+        <div style="font-size: 20px; color: var(--btn-yellow); font-weight:bold; margin-bottom: 15px;">Information</div>
+        <div style="color: #e0e0e0; margin-bottom: 25px; line-height: 1.4;" id="alertMsg">...</div>
+        <div class="modal-actions">
+            <button class="btn-modal-yellow" onclick="closeAlertModal()">Compris</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- CONNEXION SUPABASE ---
+
+    async function initAuth() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            window.top.location.href = '../login.html';
+            return;
+        }
+
+        // Setter l'ID utilisateur AVANT d'appeler initProfileData
+        // (sinon les requêtes Supabase partent avec id=null → HTTP 400)
+        myUserIdGlobal = user.id;
+
+        initProfileData();
+
+        document.getElementById('security-loader').style.display = 'none';
+        window.parent.postMessage({ type: 'module_ready', module: 'view-parametres' }, '*');
+    }
+
+    async function seDeconnecterDirectement() {
+        await supabaseClient.auth.signOut();
+        window.top.location.href = '../login.html';
+    }
+
+    async function envoyerTicket() {
+        const msg = document.getElementById('ticketMessage').value.trim();
+        if (!msg) return showAlert("<div style='color:var(--btn-red);'>Veuillez inscrire un message avant d'envoyer.</div>");
+
+        const { error } = await supabaseClient.from('tickets_support').insert([{
+            author_id: myUserIdGlobal,
+            author_nom: document.getElementById('profName').value || 'Employé Anonyme',
+            message: msg,
+            statut: 'ouvert'
+        }]);
+
+        if (error) {
+            showAlert("<div style='color:var(--btn-red);'>❌ Erreur d'envoi : " + error.message + "</div>");
+            return;
+        }
+
+        document.getElementById('ticketMessage').value = '';
+        document.getElementById('ticketModal').style.display = 'none';
+        showAlert("<div style='display:flex; align-items:center; justify-content:center; gap:8px;'><svg class='svg-icon' style='color:var(--btn-green);'><use href='#icon-check-circle'></use></svg> Message envoyé au bureau avec succès !</div>");
+    }
+
+    // --- CHANGEMENT DE MOT DE PASSE (SÉCURITÉ) ---
+    async function updateMyPassword() {
+        const oldPwdInput = document.getElementById('oldPassword');
+        const newPwdInput = document.getElementById('newPassword');
+        const oldPwd = oldPwdInput.value;
+        const newPwd = newPwdInput.value;
+        
+        if(!oldPwd || !newPwd) {
+            return showAlert("<div style='color:var(--btn-red);'>Veuillez remplir les deux champs de mot de passe.</div>");
+        }
+        if(newPwd.length < 6) {
+            return showAlert("<div style='color:var(--btn-red);'>Le nouveau mot de passe doit contenir au moins 6 caractères.</div>");
+        }
+        
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        
+        const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+            email: user.email,
+            password: oldPwd
+        });
+
+        if (signInError) {
+            return showAlert("<div style='color:var(--btn-red);'>L'ancien mot de passe est incorrect.</div>");
+        }
+        
+        const { error: updateError } = await supabaseClient.auth.updateUser({ password: newPwd });
+        
+        if(updateError) {
+            showAlert("Erreur lors de la mise à jour : " + updateError.message);
+        } else {
+            // mot_de_passe_clair supprimé — Supabase Auth gère les mots de passe de façon sécurisée
+            
+            oldPwdInput.value = '';
+            newPwdInput.value = '';
+            showAlert("<div style='display:flex; align-items:center; justify-content:center; gap:8px;'><svg class='svg-icon' style='color:var(--btn-green);'><use href='#icon-check-circle'></use></svg> Mot de passe mis à jour avec succès !</div>");
+        }
+    }
+
+    // --- DONNÉES (IDENTITÉ & SIGNATURE) — Supabase ---
+    let formations = [];
+    let myUserIdGlobal = null;
+    let currentFormationImageBase64 = null; 
+
+    const canvas = document.getElementById('sig-canvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false; 
+    let signatureHasData = false;
+    
+    function resizeCanvas() { 
+        const ratio = Math.max(window.devicePixelRatio || 1, 1); 
+        canvas.width = canvas.offsetWidth * ratio; 
+        canvas.height = canvas.offsetHeight * ratio; 
+        ctx.scale(ratio, ratio); 
+        ctx.lineWidth = 3; 
+        ctx.lineCap = 'round'; 
+        ctx.strokeStyle = '#000'; 
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    
+    function getPos(e) { 
+        const rect = canvas.getBoundingClientRect(); 
+        return { 
+            x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left, 
+            y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top 
+        }; 
+    }
+    
+    function startDrawing(e) { 
+        drawing = true; signatureHasData = true; 
+        ctx.beginPath(); 
+        const pos = getPos(e); 
+        ctx.moveTo(pos.x, pos.y); 
+        if(e.type === 'touchstart') e.preventDefault(); 
+    }
+    
+    function moveDrawing(e) { 
+        if (!drawing) return; 
+        const pos = getPos(e); 
+        ctx.lineTo(pos.x, pos.y); ctx.stroke(); 
+        if(e.type === 'touchmove') e.preventDefault(); 
+    }
+    
+    canvas.addEventListener('mousedown', startDrawing); 
+    window.addEventListener('mousemove', moveDrawing); 
+    window.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('touchstart', startDrawing, {passive: false}); 
+    canvas.addEventListener('touchmove', moveDrawing, {passive: false}); 
+    canvas.addEventListener('touchend', () => drawing = false);
+    
+    function clearSignature() { 
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        signatureHasData = false; 
+    }
+
+    async function initProfileData() {
+        setTimeout(resizeCanvas, 100);
+
+        // Garde : si l'ID n'est pas défini, on ne lance pas les requêtes
+        // (sinon elles partent avec id=null → HTTP 400)
+        if (!myUserIdGlobal) {
+            console.warn('initProfileData: myUserIdGlobal non défini, abandon');
+            return;
+        }
+
+        try {
+            // Charger profil depuis Supabase
+            const { data: profil } = await supabaseClient
+                .from('profils')
+                .select('prenom_nom, telephone, courriel, signature_base64')
+                .eq('id', myUserIdGlobal)
+                .maybeSingle();
+
+            if (profil) {
+                document.getElementById('profName').value = profil.prenom_nom || "";
+                document.getElementById('profPhone').value = profil.telephone || "";
+                document.getElementById('profEmail').value = profil.courriel || "";
+
+                if (profil.signature_base64) {
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.drawImage(img, 0, 0, canvas.offsetWidth, canvas.offsetHeight);
+                        signatureHasData = true;
+                    };
+                    img.src = profil.signature_base64;
+                }
+            }
+
+            // Charger formations depuis Supabase
+            const { data: formData } = await supabaseClient
+                .from('formations')
+                .select('*')
+                .eq('user_id', myUserIdGlobal)
+                .order('date_expiration', { ascending: true });
+
+            formations = (formData || []).map(f => ({
+                id: f.id,
+                name: f.nom,
+                dateExp: f.date_expiration,
+                image: f.image_base64
+            }));
+            renderFormations();
+
+        } catch(e) {
+            console.error('Erreur chargement profil:', e);
+        }
+    }
+
+    async function saveAllSettings() {
+        const btn = document.querySelector('.btn-save-profile');
+        if (btn) { btn.disabled = true; btn.textContent = 'Sauvegarde...'; }
+
+        try {
+            const updateData = {
+                prenom_nom: document.getElementById('profName').value.trim(),
+                telephone: document.getElementById('profPhone').value.trim(),
+                courriel: document.getElementById('profEmail').value.trim(),
+                signature_base64: signatureHasData ? canvas.toDataURL() : null
+            };
+
+            const { error } = await supabaseClient
+                .from('profils')
+                .update(updateData)
+                .eq('id', myUserIdGlobal);
+
+            if (error) throw error;
+            showAlert("<div style='display:flex; align-items:center; justify-content:center; gap:8px;'><svg class='svg-icon' style='color:var(--btn-green);'><use href='#icon-check-circle'></use></svg> Votre identité et signature ont été sauvegardées !</div>");
+        } catch(e) {
+            showAlert("<div style='color:var(--btn-red);'>❌ Erreur de sauvegarde : " + e.message + "</div>");
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Sauvegarder'; }
+        }
+    }
+
+    // --- FORMATIONS ET CERTIFICATIONS ---
+    function handleImageUpload(event) {
+        const file = event.target.files[0]; 
+        if (!file) return; 
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image(); 
+            img.onload = function() {
+                const MAX_SIZE = 800; 
+                let width = img.width; 
+                let height = img.height;
+                
+                if (width > height) { 
+                    if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
+                } else { 
+                    if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } 
+                }
+                
+                const cvs = document.createElement('canvas'); 
+                cvs.width = width; cvs.height = height; 
+                
+                const ctxCvs = cvs.getContext('2d'); 
+                ctxCvs.drawImage(img, 0, 0, width, height);
+                
+                currentFormationImageBase64 = cvs.toDataURL('image/jpeg', 0.7);
+                const preview = document.getElementById('formImagePreview'); 
+                preview.src = currentFormationImageBase64; 
+                preview.style.display = 'block';
+            }; 
+            img.src = e.target.result;
+        }; 
+        reader.readAsDataURL(file);
+    }
+
+    function renderFormations() {
+        const list = document.getElementById('formationList'); 
+        list.innerHTML = '';
+        
+        if (formations.length === 0) { 
+            list.innerHTML = '<div style="color:#888; font-style:italic; font-size:13px; text-align:center; padding: 20px;">Aucune carte ou certification enregistrée.</div>'; 
+            return; 
+        }
+        
+        formations.sort((a,b) => new Date(a.dateExp) - new Date(b.dateExp));
+        
+        formations.forEach(f => {
+            const item = document.createElement('div'); 
+            item.className = 'formation-item';
+            
+            const today = new Date(); 
+            const expDate = new Date(f.dateExp); 
+            const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+            
+            let statusClass = 'status-ok'; 
+            let statusText = 'Valide';
+            
+            if (diffDays < 0) { 
+                statusClass = 'status-exp'; statusText = 'Expiré'; 
+            } else if (diffDays <= 30) { 
+                statusClass = 'status-warn'; statusText = `Expire dans ${diffDays} j.`; 
+            }
+            
+            const parts = f.dateExp.split('-'); 
+            const dateFR = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            
+            let imgHTML = f.image ? `<img class="form-thumb" src="${f.image}" onclick="viewFullImage('${f.id}')">` : `<div class="form-thumb">Pas<br>de photo</div>`;
+            
+            item.innerHTML = `
+                ${imgHTML}
+                <div class="form-info">
+                    <div class="form-name">${f.name}</div>
+                    <div class="form-date">Exp: ${dateFR}</div>
+                    <div class="form-status ${statusClass}">${statusText}</div>
+                </div>
+                <button class="btn-del-small" onclick="deleteFormation('${f.id}')">
+                    <svg class="svg-icon"><use href="#icon-trash"></use></svg>
+                </button>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function openFormationModal() { 
+        document.getElementById('inpFormName').value = ''; 
+        document.getElementById('inpFormDate').value = ''; 
+        document.getElementById('inpFormImage').value = ''; 
+        document.getElementById('formImagePreview').style.display = 'none'; 
+        currentFormationImageBase64 = null; 
+        document.getElementById('formationModal').style.display = 'flex'; 
+    }
+    
+    async function saveFormation() {
+        const name = document.getElementById('inpFormName').value.trim(); 
+        const dateExp = document.getElementById('inpFormDate').value;
+        
+        if (!name || !dateExp) { 
+            return showAlert("<div style='color:var(--btn-yellow);'>Veuillez remplir le nom et la date d'expiration.</div>"); 
+        }
+        
+        const newForm = {
+            user_id: myUserIdGlobal,
+            nom: name,
+            date_expiration: dateExp,
+            image_base64: currentFormationImageBase64
+        };
+
+        const { data, error } = await supabaseClient.from('formations').insert([newForm]).select().single();
+        if (error) { showAlert("<div style='color:var(--btn-red);'>❌ Erreur : " + error.message + "</div>"); return; }
+
+        formations.push({ id: data.id, name: data.nom, dateExp: data.date_expiration, image: data.image_base64 });
+        renderFormations();
+        closeModal('formationModal');
+        // Notifier les autres modules (Accueil, Calendrier) qu'une formation a été ajoutée
+        try { window.parent.postMessage({ type: 'formations_updated' }, '*'); } catch (e) {}
+    }
+    
+    async function deleteFormation(id) {
+        const { error } = await supabaseClient.from('formations').delete().eq('id', id);
+        if (error) { showAlert("<div style='color:var(--btn-red);'>❌ Erreur suppression : " + error.message + "</div>"); return; }
+        formations = formations.filter(f => f.id !== id);
+        renderFormations();
+        // Notifier les autres modules
+        try { window.parent.postMessage({ type: 'formations_updated' }, '*'); } catch (e) {}
+    }
+    
+    function viewFullImage(id) { 
+        const form = formations.find(f => f.id === id); 
+        if (form && form.image) { 
+            document.getElementById('fullSizeImage').src = form.image; 
+            document.getElementById('imageViewerModal').style.display = 'flex'; 
+        } 
+    }
+
+    // --- UTILITAIRES MODALES ---
+    function showAlert(msg) { 
+        document.getElementById('alertMsg').innerHTML = msg; 
+        document.getElementById('alertModal').style.display = 'flex'; 
+    }
+    function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    initAuth();
+</script>
+</body>
+</html>

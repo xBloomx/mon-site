@@ -1,61 +1,732 @@
--- ============================================================================
--- supabase-fix-chats-caches.sql
--- Système de masquage de conversations dans la messagerie
--- ============================================================================
---
--- CONTEXTE :
--- Quand un utilisateur "supprime" une conversation, on ne supprime pas les
--- messages de la table 'message' — ils restent visibles pour l'autre
--- participant. À la place, on enregistre dans cette table que CE user
--- a masqué CE chat.
---
--- Si un nouveau message arrive sur un chat masqué, le client doit retirer
--- l'entrée pour que la conversation réapparaisse (faisable côté client
--- via DELETE).
---
--- IDEMPOTENT : peut être relancé plusieurs fois sans problème.
--- ============================================================================
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Soumissions F.Dussault</title>
+    <script>if (window.self === window.top) { window.location.href = '../login.html'; }</script>
+    <script src="../assets/shared/console-filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase-config.js"></script>
+    <link rel="stylesheet" href="../assets/shared/shared.css">
+    <script src="../assets/shared/shared.js"></script>
+    <script src="../assets/shared/autosave.js"></script>
+    <script src="../assets/shared/archive.js"></script>
+    <script src="../assets/shared/pdf-export.js"></script>
+    <script src="../assets/shared/signature.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
+        #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        .dash-header { display: flex; justify-content: space-between; align-items: center; }
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 12px 15px 12px 40px; border-radius: 8px; font-size: 16px; outline: none; }
+        .search-icon { position: absolute; left: 12px; color: #888; pointer-events: none; display:flex; align-items:center;}
+        .tabs-container { display: flex; gap: 10px; margin-bottom: 5px; }
+        .btn-tab { background: #1a1b23; color: #aaa; border: 1px solid #444; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-tab.active { background: var(--btn-blue); color: white; border-color: var(--btn-blue); }
+        .quote-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 30px; }
+        .quote-item { background-color: var(--card-bg); padding: 12px 20px; border-radius: 10px; display: grid; grid-template-columns: 120px 1fr 140px 130px 100px 44px; align-items: center; gap: 15px; transition: transform 0.2s, background-color 0.2s; cursor: pointer; border: 1px solid transparent; border-left: 4px solid transparent; margin-bottom: 8px; }
+        .quote-item:hover { transform: translateX(5px); background-color: #343542; border-left-color: var(--btn-yellow); }
+        .inv-id { font-weight: bold; color: var(--btn-yellow); font-size: 15px; }
+        .inv-client { font-weight: bold; font-size: 16px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .inv-author { font-size: 14px; color: #888; font-style: italic; display: flex; align-items: center; gap: 6px; }
+        .inv-date { color: #aaa; font-size: 14px; text-align: right; font-weight: 500; }
+        .inv-status { font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: bold; display:flex; align-items:center; justify-content:center; gap:5px; width: 100%; text-align:center;}
+        .status-attente { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.5); }
+        .status-convertie { background: rgba(40, 167, 69, 0.2); color: var(--btn-green); border: 1px solid rgba(40, 167, 69, 0.5); }
+        .status-brouillon { background: #444; color: white; border: 1px solid #555; }
+        .inv-actions { display: flex; justify-content: flex-end; align-items: center; }
+        .btn-icon { background: #444; border: none; width: 36px; height: 36px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color:white; flex-shrink: 0;}
+        .btn-delete { background: rgba(255, 77, 77, 0.1); color: var(--btn-red); border: 1px solid transparent; }
+        .btn-delete:hover { background: var(--btn-red); color: white; }
+        #view-editor { display: none; flex-direction: column; height: 100%; }
+        .top-bar { height: auto; min-height: 80px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 20px; background: rgba(30, 31, 38, 0.95); border-bottom: 1px solid #333; z-index: 101; flex-wrap: wrap; }
+        .action-btn { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s; }
+        .action-btn:hover { background-color: #ffd66b; transform: translateY(-1px); }
+        .btn-back { background-color: var(--btn-grey) !important; color: white !important; }
+        .btn-save { background-color: var(--btn-green) !important; color: white !important; }
+        .btn-send { background-color: var(--btn-blue) !important; color: white !important; }
+        .btn-convert { background-color: var(--btn-blue) !important; color: white !important; }
+        .btn-unlock { background-color: var(--btn-orange) !important; color: white !important; }
+        .scroll-area { flex: 1; overflow: auto; padding: 15px 0; display: block; touch-action: auto; }
+        .page { width: 8.5in; height: 11in; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); box-sizing: border-box; display: flex; flex-direction: column; position: relative; margin: 0 auto 20px auto; color: black; padding: 0.25in; flex-shrink: 0; }
+        input { outline: none; border-radius: 0; }
+        input:focus { background-color: transparent !important; border-bottom: 2px solid #000 !important; }
+        #quote-container { display: block; width: 8.5in; transform-origin: top left; transition: transform 0.1s ease-out; padding-bottom: 50px; }
+        .top-section { width: 100%; }
+        .header-main { width: 100%; margin-top: -15px; margin-bottom: 0px; text-align: center;}
+        .header-main img { width: 100%; height: auto; display: block; }
+        .header-main h2 { margin: 2px 0 2px 0; font-family: Arial, sans-serif; letter-spacing: 6px; font-weight: 900; color: #333; font-size: 20px; text-transform: uppercase;}
+        .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 2px; }
+        .info-column { display: flex; flex-direction: column; gap: 1px; }
+        .field { display: flex; align-items: flex-end; font-size: 12px; font-weight: bold; min-height: 22px; }
+        .field label { white-space: nowrap; margin-right: 5px; }
+        .field input { background-color: var(--blue-bg) !important; border: none; border-bottom: 1px solid black; flex-grow: 1; height: 18px; padding: 0 5px; }
+        .banner-cmmtq { width: 100%; margin: 4px 0 4px 0; text-align: center; }
+        .banner-cmmtq img { width: 100%; height: auto; display: block; margin: 0 auto; }
+        .main-table { width: 100%; border-collapse: collapse; border: none; margin-bottom: 5px; } 
+        .main-table thead { border-top: 4px double black; }
+        .main-table th { border: 1px solid black; font-size: 9px; background: #eee; padding: 2px; }
+        .main-table td { border: 1px solid black; height: 23px; background-color: var(--blue-bg); padding: 0; }
+        .main-table tbody tr:last-child td { border-bottom: 4px double black; }
+        .main-table input { width: 100%; height: 100%; background: transparent; border: none; padding: 0 5px; box-sizing: border-box; font-size: 12px; color: black; font-weight: bold;}
+        .bottom-section { margin-top: auto; width: 100%; }
+        .time-wrapper { width: 100%; border: 1px solid black; border-collapse: collapse; table-layout: fixed; margin-top: 0; }
+        .time-label-col { width: 110px; border-right: 1px solid black; padding: 5px; vertical-align: top; }
+        .time-label-col span { font-size: 8px; font-weight: bold; }
+        .time-label-col h2 { font-size: 18px; margin: 5px 0 0 0; font-weight: 900; }
+        .inner-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .row-headers td { border-right: 1px solid black; border-bottom: 1px solid black; height: 30px; font-size: 8px; font-weight: bold; text-align: center; vertical-align: top; padding-top: 2px; }
+        .row-sublabels td { font-size: 9px; font-weight: bold; text-align: center; padding: 2px 0; border-right: none; }
+        .row-inputs td { padding: 2px 5px; vertical-align: middle; border-right: none; height: 26px; }
+        .input-box { background-color: var(--blue-bg); border-bottom: 1px solid black; display: flex; align-items: center; padding: 0 3px; height: 18px; }
+        .input-box input { background: transparent; border: none; width: 100%; height: 100%; text-align: center; font-size: 10px; font-weight: bold; color: black;}
+        .flex-group { display: flex; align-items: center; gap: 4px; font-size: 9px; font-weight: bold; }
+        .last-col { border-right: none !important; }
+        .footer-grid { display: grid; grid-template-columns: 1fr 1fr 150px; align-items: end; margin-top: 5px; gap: 10px; }
+        .sig-box { width: 100%; text-align: center; }
+        .display-sig { border: none; border-bottom: 1px solid #000; background-color: var(--blue-bg); width: 100%; height: 45px; cursor: pointer; object-fit: contain; }
+        .sig-text { font-size: 10px; font-weight: bold; margin-top: 2px; }
+        .quote-num-box { text-align: right; padding-bottom: 5px; display: flex; justify-content: flex-end; align-items: flex-end; }
+        .red-quote-input { color: #dc3545; font-weight: bold; font-size: 18px; font-family: 'Courier New', Courier, monospace; text-align: right; border: none; background-color: var(--blue-bg); width: 100%; margin: 0; padding: 0 5px; }
+        #sig-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; justify-content: center; align-items: center; flex-direction: column; }
+        .modal-content { background: white; padding: 15px; border-radius: 8px; text-align: center; width: 90%; max-width: 800px; }
+        #modal-canvas { border: 2px dashed #444; background: #fff; width: 100%; height: 350px; touch-action: none; }
+        .modal-btns { margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .btn-ok { background: var(--btn-green); padding: 12px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer;}
+        .btn-clear { background: var(--btn-yellow); color: black; padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;}
+        .btn-cancel { background: var(--btn-red); padding: 12px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer;}
+        .zoom-controls { position: fixed; bottom: 20px; right: 20px; background: rgba(30, 31, 38, 0.95); padding: 5px 10px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2000; border: 1px solid #555; }
+        .zoom-controls button { background: var(--btn-yellow); border: none; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #1e1f26; }
+        .zoom-controls span { color: white; font-size: 12px; font-weight: bold; min-width: 45px; text-align: center; }
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; z-index: 4000; justify-content: center; align-items: center; }
+        .custom-modal-card { background: var(--card-bg); width: 350px; padding: 25px; border-radius: 12px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; }
+        .custom-modal-title { font-size: 20px; color: var(--btn-yellow); margin-bottom: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px;}
+        .custom-modal-msg { color: var(--text-light); margin-bottom: 25px; font-size: 15px; line-height: 1.4; }
+        .custom-modal-actions { display: flex; justify-content: center; gap: 10px; }
+        .btn-modal-cancel { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-modal-confirm { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight:bold;}
+        .btn-modal-ok { background: var(--btn-yellow); color: black; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
--- 1. Table : un user (user_id) a masqué un chat (chat_id)
-CREATE TABLE IF NOT EXISTS public.chats_caches (
-    user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    chat_id    TEXT NOT NULL,
-    hidden_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, chat_id)
-);
+        @media (max-width: 1024px) {
+            .top-bar { padding: 10px 85px 10px 10px; gap: 10px; height: 65px; overflow-x: auto; justify-content: flex-start; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+            .top-bar::-webkit-scrollbar { display: none; }
+            .top-bar .action-btn, .spacer-mobile { flex-shrink: 0; width: auto; margin-bottom: 0; }
+        }
 
--- 2. Index pour accélérer les requêtes côté client
-CREATE INDEX IF NOT EXISTS idx_chats_caches_user
-    ON public.chats_caches (user_id);
+        @media (max-width: 768px) {
+            #view-dashboard { padding: 15px; }
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; }
+            .dash-title { padding-right: 80px; width: 100%; }
+            .dash-header .action-btn { width: 100%; justify-content: center; font-size: 14px; }
+            .tabs-container { flex-direction: column; width: 100%; }
+            .btn-tab { width: 100%; justify-content: center; }
+            .toolbar { flex-direction: column; gap: 10px; width: 100%; }
+            .search-box, .search-box input { width: 100%; }
+            .zoom-controls { display: none !important; }
+            .quote-item { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "id id" "client client" "author author" "status date"; align-items: center; gap: 4px 12px; padding: 16px; border-radius: 12px; border: 1px solid #3a3b46; border-left: 1px solid #3a3b46; margin-bottom: 12px; position: relative; }
+            .quote-item:hover { transform: translateY(-2px); background-color: #30313c; border-color: #555; }
+            .inv-id { grid-area: id; font-size: 15px; font-weight: 800; width: auto; }
+            .inv-client { grid-area: client; font-size: 18px; font-weight: 700; margin-top: 0px; margin-bottom: 4px; white-space: normal; padding-right: 45px; width: auto; }
+            .inv-author { grid-area: author; font-size: 13px; margin-bottom: 4px; color: #aaa; width: auto; }
+            .inv-status { grid-area: status; justify-self: start; width: auto; margin-left: 0; padding-left: 0; align-self: center; }
+            .inv-date { grid-area: date; text-align: right; justify-self: end; font-size: 12px; color: #888; width: auto; }
+            .inv-actions { position: absolute; top: 16px; right: 16px; margin: 0; }
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
 
--- 3. Activer Row Level Security
-ALTER TABLE public.chats_caches ENABLE ROW LEVEL SECURITY;
+<div id="security-loader" style="position: fixed; inset: 0; background: #1e1f26; z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="color: #444; font-size: 12px;">Chargement du module...</div>
+</div>
 
--- 4. Politiques : chaque utilisateur ne peut voir/gérer que ses propres entrées
-DROP POLICY IF EXISTS "chats_caches_select" ON public.chats_caches;
-CREATE POLICY "chats_caches_select"
-    ON public.chats_caches
-    FOR SELECT
-    TO authenticated
-    USING (user_id = auth.uid());
+<svg style="display: none;">
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></symbol>
+    <symbol id="icon-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+    <symbol id="icon-archive" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></symbol>
+    <symbol id="icon-back" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></symbol>
+    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol>
+    <symbol id="icon-unlock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></symbol>
+    <symbol id="icon-print" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></symbol>
+    <symbol id="icon-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></symbol>
+    <symbol id="icon-file-minus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></symbol>
+    <symbol id="icon-eraser" viewBox="0 0 24 24"><path d="M20 20H7l-3-3a2.828 2.828 0 0 1 0-4l10-10a2.828 2.828 0 0 1 4 0l3 3a2.828 2.828 0 0 1 0 4l-7 7"></path><line x1="10" y1="10" x2="17" y2="17"></line></symbol>
+    <symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></symbol>
+    <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></symbol>
+</svg>
 
-DROP POLICY IF EXISTS "chats_caches_insert" ON public.chats_caches;
-CREATE POLICY "chats_caches_insert"
-    ON public.chats_caches
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (user_id = auth.uid());
+<div class="main-content">
+    <div id="view-dashboard">
+        <div class="dash-header">
+            <div class="dash-title">
+                <h1>Mes Soumissions</h1>
+                <p>Gérez vos estimations (Connecté à Supabase)</p>
+            </div>
+            <button class="action-btn" style="background-color: var(--btn-yellow);" onclick="openNewQuote()">
+                <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Soumission
+            </button>
+        </div>
+        
+        <div class="tabs-container" id="quote-tabs" style="display:none;">
+            <button id="tab-mine" class="btn-tab active" onclick="switchQuoteTab('mine')">
+                <svg class="svg-icon"><use href="#icon-user"></use></svg> Mes Soumissions
+            </button>
+            <button id="tab-all" class="btn-tab" onclick="switchQuoteTab('all')">
+                <svg class="svg-icon"><use href="#icon-inbox"></use></svg> Boîte de réception
+            </button>
+            <button id="tab-archives" class="btn-tab" onclick="switchQuoteTab('archives')">
+                <svg class="svg-icon"><use href="#icon-archive"></use></svg> Archives
+            </button>
+        </div>
 
-DROP POLICY IF EXISTS "chats_caches_delete" ON public.chats_caches;
-CREATE POLICY "chats_caches_delete"
-    ON public.chats_caches
-    FOR DELETE
-    TO authenticated
-    USING (user_id = auth.uid());
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
+                <input type="text" id="searchInput" placeholder="Rechercher (Client, N°...)" onkeyup="filterQuotes()">
+            </div>
+        </div>
+        <div id="quote-compteur" style="color:#888; font-size:12px; padding:5px 10px;"></div>
+        <div class="quote-list" id="quoteListContainer"></div>
+    </div>
 
--- ============================================================================
--- Vérification (à exécuter manuellement après) :
---
--- SELECT * FROM public.chats_caches LIMIT 5;
--- → Devrait être vide au début, ne montrer QUE vos propres masquages.
--- ============================================================================
+    <div id="view-editor">
+        <div class="top-bar">
+            <button class="action-btn btn-back" onclick="showDashboard()"><svg class="svg-icon"><use href="#icon-back"></use></svg> Retour</button>
+            <button class="action-btn btn-save" onclick="saveCurrentQuote(false)"><svg class="svg-icon"><use href="#icon-save"></use></svg> Sauvegarder</button>
+            <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()"><svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyer au bureau</button>
+            <button class="action-btn btn-convert" onclick="convertToInvoice()"><svg class="svg-icon"><use href="#icon-refresh"></use></svg> Convertir en facture</button>
+            <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockQuote()" style="display:none;"><svg class="svg-icon"><use href="#icon-unlock"></use></svg> Débloquer</button>
+            <div style="flex:1" class="spacer-mobile"></div>
+            <button class="action-btn" id="btn-print" style="background-color: var(--btn-yellow);" onclick="exporterPDF()"><svg class="svg-icon"><use href="#icon-print"></use></svg> PDF / Imprimer</button>
+            <button class="action-btn" id="btn-add-page" style="background-color: var(--btn-yellow);" onclick="addPage()"><svg class="svg-icon"><use href="#icon-file-plus"></use></svg> Page</button>
+            <button class="action-btn" id="btn-dup-page" style="background-color: var(--btn-yellow);" onclick="duplicatePage()"><svg class="svg-icon"><use href="#icon-copy"></use></svg> Dupliquer</button>
+            <button class="action-btn" id="btn-del-page" style="background-color: var(--btn-yellow);" onclick="deletePage()"><svg class="svg-icon"><use href="#icon-file-minus"></use></svg> Page</button>
+            <button class="action-btn" id="btn-clear" style="background-color: var(--btn-yellow);" onclick="askClearInputs()"><svg class="svg-icon"><use href="#icon-eraser"></use></svg> Effacer</button>
+        </div>
+        <div class="scroll-area"><div id="quote-container"></div></div>
+        <div class="zoom-controls">
+            <button onclick="adjustZoom(-0.1)">−</button><span id="zoom-level">100%</span><button onclick="adjustZoom(0.1)">+</button><button onclick="resetZoom()" style="font-size: 14px;">↺</button>
+        </div>
+    </div>
+</div>
+
+<div id="sig-modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0">Signez ici</h3>
+        <canvas id="modal-canvas"></canvas>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeModal()">ANNULER</button>
+            <button class="btn-clear" onclick="clearModalCanvas()">EFFACER</button>
+            <button class="btn-ok" onclick="saveSignature()">OK</button>
+        </div>
+    </div>
+</div>
+
+<div class="custom-modal-overlay" id="confirmModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title" id="confirmTitle">Confirmation</div>
+        <div class="custom-modal-msg" id="confirmMsg">...</div>
+        <div class="custom-modal-actions">
+            <button class="btn-modal-cancel" onclick="closeConfirmModal()">Non</button>
+            <button class="btn-modal-confirm" id="confirmYesBtn">Oui</button>
+        </div>
+    </div>
+</div>
+
+<div class="custom-modal-overlay" id="alertModal">
+    <div class="custom-modal-card">
+        <div class="custom-modal-title" style="color:var(--btn-yellow); display:flex; align-items:center; justify-content:center; gap:8px;">
+            <svg class="svg-icon"><use href="#icon-alert-triangle"></use></svg> Information
+        </div>
+        <div class="custom-modal-msg" id="alertMsg">...</div>
+        <div class="custom-modal-actions">
+            <button class="btn-modal-ok" onclick="closeAlertModal()">Compris</button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    let myRole = 'A3'; let myUserId = 'local-user'; let myUserName = 'Employé'; let currentQuoteTab = 'mine';
+    let quotesData = []; let currentQuoteId = null;
+    let autosave = null;       // Instance de sauvegarde automatique
+    let quotesPage = 0; const QUOTES_PAGE_SIZE = 25; let quotesHasMore = false;
+
+    const defaultRolesConfig = { 'A0': { perms: ['view_all_invoices', 'view_all_po'] }, 'A1': { perms: ['view_all_invoices'] }, 'A2': { perms: ['view_all_invoices'] }, 'A3': { perms: [] } };
+    let _cachedRoles = null;
+
+    async function loadRolesCache() {
+        if (_cachedRoles) return;
+        try {
+            const { data } = await supabaseClient
+                .from('parametres_globaux')
+                .select('valeur')
+                .eq('cle', 'roles_config')
+                .maybeSingle();
+            _cachedRoles = data?.valeur ? JSON.parse(data.valeur) : defaultRolesConfig;
+        } catch(e) { _cachedRoles = defaultRolesConfig; }
+    }
+
+    function hasPermission(role, permId) {
+        if (role === 'A0') return true;
+        const roles = _cachedRoles || defaultRolesConfig;
+        return roles[role] && roles[role].perms && roles[role].perms.includes(permId);
+    }
+
+    async function initAuth() {
+        await loadRolesCache();
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) { window.top.location.href = '../login.html'; return; }
+        myUserId = user.id;
+        const { data: profil } = await supabaseClient.from('profils').select('role, prenom_nom').eq('id', user.id).maybeSingle();
+        if (profil) {
+            myRole = profil.role; myUserName = profil.prenom_nom || user.email;
+            if (hasPermission(myRole, 'view_all_invoices')) { const tabs = document.getElementById('quote-tabs'); if(tabs) tabs.style.display = 'flex'; } else {
+                currentQuoteTab = 'mine';
+                // A3 doit pouvoir consulter ses propres archives
+                const tabs = document.getElementById('quote-tabs');
+                if (tabs) {
+                    tabs.style.display = 'flex';
+                    const tabAll = document.getElementById('tab-all');
+                    if (tabAll) tabAll.style.display = 'none';
+                }
+            }
+        }
+        await loadData();
+        document.getElementById('security-loader').style.display = 'none';
+        window.parent.postMessage({ type: 'module_ready', module: 'view-soumissions' }, '*');
+    }
+
+    async function loadData(reset = true) {
+        if (reset) { quotesPage = 0; quotesData = []; }
+
+        const from = quotesPage * QUOTES_PAGE_SIZE;
+        const to = from + QUOTES_PAGE_SIZE - 1;
+
+        let query = supabaseClient.from('soumissions').select('*');
+        if (currentQuoteTab === 'archives') {
+            query = query.eq('is_archived', true);
+            if (!hasPermission(myRole, 'view_all_invoices') ||
+                (window.ArchiveFD && !window.ArchiveFD.canSeeAllArchives(myRole))) {
+                query = query.eq('author_id', myUserId);
+            }
+        } else {
+            query = query.eq('is_archived', false);
+            if (currentQuoteTab === 'mine') query = query.eq('author_id', myUserId);
+            else query = query.neq('status', 'brouillon');
+        }
+
+        const { data, error } = await query
+            .order('created_at', { ascending: false })
+            .range(from, to + 1);
+
+        if (data) {
+            quotesHasMore = data.length > QUOTES_PAGE_SIZE;
+            const pageData = data.slice(0, QUOTES_PAGE_SIZE);
+            const mapped = pageData.map(db => ({
+                id: db.id, client: db.client, date: db.date, status: db.status,
+                inputValues: db.input_values || [], sigValues: db.sig_values || [],
+                pageCount: db.page_count || 1, authorId: db.author_id, authorName: db.author_name,
+                isArchived: db.is_archived === true,
+                archivedAt: db.archived_at,
+                archivedByName: db.archived_by_name
+            }));
+            quotesData = reset ? mapped : [...quotesData, ...mapped];
+        }
+        renderQuoteList();
+    }
+
+    async function chargerPlusSoumissions() {
+        const btn = document.getElementById('btn-charger-plus-soum');
+        if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
+        quotesPage++;
+        await loadData(false);
+    }
+
+    function switchQuoteTab(tab) {
+        currentQuoteTab = tab;
+        document.getElementById('tab-mine').classList.remove('active');
+        document.getElementById('tab-all').classList.remove('active');
+        const tabArch = document.getElementById('tab-archives');
+        if (tabArch) tabArch.classList.remove('active');
+        const target = document.getElementById('tab-' + tab);
+        if (target) target.classList.add('active');
+        loadData(true);
+    }
+
+    let confirmCallback = null;
+    function showConfirm(msg, callback, title="Confirmation", isConvert=false) { document.getElementById('confirmTitle').innerHTML = `<svg class="svg-icon" style="margin-right:8px;"><use href="#icon-alert-triangle"></use></svg>` + title; document.getElementById('confirmMsg').innerHTML = msg; confirmCallback = callback; const btnYes = document.getElementById('confirmYesBtn'); if(isConvert) { btnYes.style.background = "var(--btn-blue)"; btnYes.textContent = "Convertir"; } else { btnYes.style.background = "var(--btn-red)"; btnYes.textContent = "Oui"; } document.getElementById('confirmModal').style.display = 'flex'; }
+    function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; confirmCallback = null; }
+    document.getElementById('confirmYesBtn').onclick = function() { if (confirmCallback) confirmCallback(); closeConfirmModal(); };
+    function showAlert(msg) { document.getElementById('alertMsg').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; }
+    function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; }
+
+    const viewDashboard = document.getElementById('view-dashboard'); const viewEditor = document.getElementById('view-editor'); const listContainer = document.getElementById('quoteListContainer'); const containerInvoice = document.getElementById('quote-container');
+    function showDashboard() { stopAutosave(); viewDashboard.style.display = 'flex'; viewEditor.style.display = 'none'; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); loadData(); }
+    
+    function toggleInputs(canEdit) { const allInputs = containerInvoice.querySelectorAll('input'); const allSigs = containerInvoice.querySelectorAll('.display-sig'); allInputs.forEach(inp => { if (!canEdit) { inp.setAttribute('readonly', true); inp.style.pointerEvents = 'none'; } else { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; } }); allSigs.forEach(img => { img.style.pointerEvents = canEdit ? 'auto' : 'none'; }); }
+
+    function applyEditorSecurity(quoteObj) {
+        const isBureau = hasPermission(myRole, 'view_all_invoices');
+        const status = quoteObj ? (quoteObj.status || 'brouillon') : 'brouillon';
+        const isAuthor = quoteObj ? (quoteObj.authorId === myUserId || !quoteObj.authorId) : true;
+        const isArchived = quoteObj && quoteObj.isArchived === true;
+        let canEdit = false;
+        if (!isBureau) { if (status === 'brouillon') canEdit = true; } else { if (status === 'brouillon' && isAuthor) canEdit = true; }
+        // Override absolu : un document archivé est en lecture seule pour TOUT LE MONDE
+        if (isArchived) canEdit = false;
+        const btnSave = document.querySelector('.btn-save'); if(btnSave) btnSave.style.display = canEdit ? 'flex' : 'none';
+        const btnSend = document.getElementById('btn-send'); if(btnSend) btnSend.style.display = canEdit ? 'flex' : 'none';
+        const btnAdd = document.getElementById('btn-add-page'); if(btnAdd) btnAdd.style.display = canEdit ? 'flex' : 'none';
+        const btnDup = document.getElementById('btn-dup-page'); if(btnDup) btnDup.style.display = canEdit ? 'flex' : 'none';
+        const btnDel = document.getElementById('btn-del-page'); if(btnDel) btnDel.style.display = canEdit ? 'flex' : 'none';
+        const btnClear = document.getElementById('btn-clear'); if(btnClear) btnClear.style.display = canEdit ? 'flex' : 'none';
+        const btnConvert = document.querySelector('.btn-convert'); if (btnConvert) btnConvert.style.display = (status === 'En attente' && isBureau) ? 'flex' : 'none';
+        const btnUnlock = document.getElementById('btn-unlock'); if (isBureau && status !== 'brouillon' && status !== 'Convertie') { if(btnUnlock) btnUnlock.style.display = 'flex'; } else { if(btnUnlock) btnUnlock.style.display = 'none'; }
+        toggleInputs(canEdit);
+    }
+
+    function unlockQuote() { toggleInputs(true); const btnSave = document.querySelector('.btn-save'); if(btnSave) btnSave.style.display = 'flex'; document.getElementById('btn-unlock').style.display = 'none'; const btnAdd = document.getElementById('btn-add-page'); if(btnAdd) btnAdd.style.display = 'flex'; const btnDup = document.getElementById('btn-dup-page'); if(btnDup) btnDup.style.display = 'flex'; const btnDel = document.getElementById('btn-del-page'); if(btnDel) btnDel.style.display = 'flex'; const btnClear = document.getElementById('btn-clear'); if(btnClear) btnClear.style.display = 'flex'; showAlert("Soumission débloquée. N'oubliez pas de sauvegarder."); }
+
+    // ====================================================================
+    // SAUVEGARDE AUTOMATIQUE LOCALE
+    // ====================================================================
+    function startAutosave() {
+        // Si une instance est déjà active, on l'arrête proprement
+        if (autosave) { try { autosave.stop(); } catch(e){} }
+
+        autosave = window.AutosaveFD.create({
+            module: 'soumission',
+            containerSelector: '#quote-container',
+            draftIdGetter: () => currentQuoteId
+        });
+        autosave.start();
+
+        // Tente une restauration silencieuse si un brouillon existe pour cet ID
+        if (autosave.hasDraft()) {
+            autosave.restore();
+        }
+    }
+
+    function stopAutosave() {
+        if (autosave) {
+            try { autosave.stop(); } catch(e){}
+            autosave = null;
+        }
+    }
+
+    function clearAutosaveForCurrent() {
+        if (autosave) { try { autosave.clear(); } catch(e){} }
+    }
+
+    function openExistingQuote(id) {
+        const quote = quotesData.find(q => q.id === id); if (!quote) return;
+        currentQuoteId = id; viewDashboard.style.display = 'none'; viewEditor.style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+        containerInvoice.innerHTML = '';
+        const pageCount = quote.pageCount || 1; for(let i=0; i<pageCount; i++) { containerInvoice.appendChild(createQuotePageHTML()); }
+        const allInputs = containerInvoice.querySelectorAll('input'); if (quote.inputValues) { allInputs.forEach((input, index) => { if (quote.inputValues[index] !== undefined) input.value = quote.inputValues[index]; }); }
+        const allSigs = containerInvoice.querySelectorAll('.display-sig'); if (quote.sigValues) { allSigs.forEach((img, index) => { if (quote.sigValues[index]) img.src = quote.sigValues[index]; }); }
+        applyEditorSecurity(quote); fitToScreen(); if(window.SignatureFD) window.SignatureFD.refreshIndicators(containerInvoice);
+
+        // Démarrer l'autosave seulement si la soumission est encore modifiable
+        // Et JAMAIS sur un document archivé (lecture seule)
+        const editableStatuses = ['brouillon', 'corrige', 'corrigé'];
+        if (!quote.isArchived && (!quote.status || editableStatuses.includes(quote.status))) {
+            startAutosave();
+        }
+    }
+
+    function openNewQuote() {
+        // Effacer tout brouillon "_new" résiduel d'une soumission précédente
+        // (sinon l'autosave restaure les anciennes données)
+        try { localStorage.removeItem('fdussault_draft_soumission_new'); } catch(e) {}
+        currentQuoteId = null; viewDashboard.style.display = 'none'; viewEditor.style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+        containerInvoice.innerHTML = ''; containerInvoice.appendChild(createQuotePageHTML());
+        const numInput = containerInvoice.querySelector('.red-quote-input'); if(numInput) numInput.value = "S-" + Date.now().toString().slice(-4);
+        applyEditorSecurity(null); fitToScreen();
+        startAutosave();
+    }
+
+    function exporterPDF() {
+        const firstPage = containerInvoice.querySelector('.page');
+        if (!firstPage) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Aucune soumission à exporter', 'error');
+            }
+            return;
+        }
+        const inputs = firstPage.querySelectorAll('.top-section input');
+        const clientName = inputs[0] ? inputs[0].value.trim() : '';
+        let dateVal = inputs[4] ? inputs[4].value.trim() : '';
+        if (!dateVal) {
+            const today = new Date();
+            dateVal = today.getFullYear() + '-'
+                + String(today.getMonth() + 1).padStart(2, '0') + '-'
+                + String(today.getDate()).padStart(2, '0');
+        }
+        const numInput = firstPage.querySelector('.red-quote-input');
+        const quoteNum = currentQuoteId
+            || (numInput && numInput.value.trim() !== '' ? numInput.value.trim() : null);
+
+        if (!window.PDFExportFD) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Module PDF non chargé', 'error');
+            }
+            return;
+        }
+        window.PDFExportFD.openPreview({
+            container: containerInvoice,
+            docType: 'soumission',
+            docNumber: quoteNum,
+            clientName: clientName,
+            date: dateVal
+        });
+    }
+
+    function sendToOffice() { showConfirm("Une fois envoyée, cette soumission sera verrouillée. L'envoyer au bureau ?", function() { saveCurrentQuote(true); }); }
+
+    async function saveCurrentQuote(isSending = false) {
+        const firstPage = containerInvoice.querySelector('.page'); if (!firstPage) return false;
+
+        // Désactiver les boutons pendant la sauvegarde
+        const btnSave = document.querySelector('.btn-save');
+        const btnSend = document.getElementById('btn-send');
+        const originalSave = btnSave ? btnSave.innerHTML : '';
+        const originalSend = btnSend ? btnSend.innerHTML : '';
+        const loadingHTML = '<svg class="svg-icon" style="animation:spin 1s linear infinite;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="40" stroke-dashoffset="10"></circle></svg> Sauvegarde...';
+        if (btnSave) { btnSave.disabled = true; btnSave.innerHTML = loadingHTML; }
+        if (btnSend) { btnSend.disabled = true; }
+        const inputs = firstPage.querySelectorAll('.top-section input'); const clientName = inputs[0] ? inputs[0].value.trim() : "Client Inconnu";
+        let dateVal = inputs[4] ? inputs[4].value.trim() : new Date().toLocaleDateString();
+        const quoteNumInput = firstPage.querySelector('.red-quote-input'); let quoteNum = (quoteNumInput && quoteNumInput.value.trim() !== '') ? quoteNumInput.value.trim() : "S-Draft-" + Date.now().toString().slice(-4);
+        const inputValues = Array.from(containerInvoice.querySelectorAll('input')).map(input => input.value); const sigValues = Array.from(containerInvoice.querySelectorAll('.display-sig')).map(img => img.getAttribute('src')); const pageCount = containerInvoice.querySelectorAll('.page').length;
+        
+        let currentStatus = 'brouillon'; let existing = quotesData.find(q => q.id === currentQuoteId || q.id === quoteNum);
+        if (existing && existing.status) currentStatus = existing.status; if (isSending) currentStatus = 'En attente';
+
+        const payload = { id: quoteNum, client: clientName || "Client Inconnu", date: dateVal, status: currentStatus, input_values: inputValues, sig_values: sigValues, page_count: pageCount, author_id: existing ? existing.authorId : myUserId, author_name: existing ? existing.authorName : myUserName };
+        
+        // withRetry : retry auto en cas d'erreur transitoire (lock Supabase entre iframes, etc.)
+        const retry = window.SharedFD ? window.SharedFD.withRetry : (op) => op();
+        const { error } = await retry(() => supabaseClient.from('soumissions').upsert(payload));
+
+        // Réactiver les boutons dans tous les cas
+        if (btnSave) { btnSave.disabled = false; btnSave.innerHTML = originalSave; }
+        if (btnSend) { btnSend.disabled = false; btnSend.innerHTML = originalSend; }
+
+        if (error) {
+            // Message user-friendly selon le type d'erreur
+            const msg = (error.message || '').toLowerCase();
+            let userMsg;
+            if (msg.includes('lock broken') || error.name === 'AbortError') {
+                userMsg = "❌ Une autre opération est en cours. Attends 2 secondes et réessaie.";
+            } else if (msg.includes('failed to fetch') || msg.includes('network')) {
+                userMsg = "❌ Pas de connexion internet. Vérifie ta connexion et réessaie.";
+            } else if (msg.includes('row-level security') || error.code === '42501') {
+                userMsg = "❌ Tu n'as pas la permission de modifier cette soumission.";
+            } else {
+                userMsg = "❌ Erreur de sauvegarde : " + error.message;
+            }
+            showAlert(userMsg);
+            return false;
+        }
+
+        currentQuoteId = quoteNum;
+        // Effacer le brouillon local maintenant que la soumission est en base
+        clearAutosaveForCurrent();
+        // Effacer aussi l'ancien brouillon "_new" (cas où on vient de créer la soumission)
+        try { localStorage.removeItem('fdussault_draft_soumission_new'); } catch(e) {}
+        await loadData();
+        if (isSending) {
+            showAlert("✅ Soumission envoyée au bureau avec succès !");
+            showDashboard();
+        } else {
+            showAlert("✅ Brouillon sauvegardé avec succès !");
+            applyEditorSecurity(payload);
+        }
+        return true;
+    }
+
+    async function convertToInvoice() {
+        showConfirm("Convertir cette soumission en facture ? Elle sera copiée dans votre base de factures.", async function() {
+            await saveCurrentQuote(); const quote = quotesData.find(q => q.id === currentQuoteId); if(!quote) return;
+            
+            // On vérifie le max ID des factures pour créer le nouveau
+            const { data: invs } = await supabaseClient.from('factures').select('id');
+            let maxId = 1000;
+            if(invs) { invs.forEach(i => { const n = parseInt(i.id); if(!isNaN(n) && n > maxId) maxId = n; }); }
+            const nextInvNum = (maxId + 1).toString();
+
+            const newInvoice = { id: nextInvNum, client: quote.client, date: new Date().toLocaleDateString(), status: 'brouillon', input_values: quote.inputValues, sig_values: quote.sigValues, page_count: quote.pageCount, author_id: myUserId, author_name: myUserName };
+            const { error } = await supabaseClient.from('factures').insert([newInvoice]);
+            
+            if (!error) {
+                const { error: errUpdate } = await supabaseClient.from('soumissions').update({status: 'Convertie'}).eq('id', currentQuoteId);
+                if (errUpdate) { showAlert("⚠️ Facture créée mais erreur lors de la mise à jour de la soumission : " + errUpdate.message); }
+                else { showAlert(`✅ Succès ! La facture #${nextInvNum} a été générée.`); showDashboard(); }
+            } else {
+                showAlert("❌ Erreur de conversion : " + error.message);
+            }
+        }, "Convertir en Facture", true);
+    }
+
+    function deleteQuote(id, event) {
+        event.stopPropagation();
+        const item = quotesData.find(q => q.id === id);
+        if (!item) return;
+        window.ArchiveFD.confirmAndArchive({
+            table: 'soumissions',
+            id: id,
+            item: item,
+            role: myRole,
+            currentUserId: myUserId,
+            currentUserName: myUserName,
+            supabaseClient: supabaseClient,
+            onSuccess: () => loadData(true)
+        });
+    }
+
+    function restoreQuote(id, event) {
+        event.stopPropagation();
+        window.ArchiveFD.confirmAndRestore({
+            table: 'soumissions',
+            id: id,
+            role: myRole,
+            supabaseClient: supabaseClient,
+            onSuccess: () => loadData(true)
+        });
+    }
+
+    function renderQuoteList(filteredData = null) {
+        listContainer.innerHTML = ''; const isBureau = hasPermission(myRole, 'view_all_invoices');
+        let baseList = quotesData;
+        if (currentQuoteTab === 'archives') {
+            baseList = quotesData;
+        } else if (!isBureau || currentQuoteTab === 'mine') { baseList = quotesData.filter(q => q.authorId === myUserId || !q.authorId); } else { baseList = quotesData.filter(q => q.status !== 'brouillon'); }
+        let listToShow = filteredData ? filteredData : baseList;
+        // Mettre à jour le compteur
+        const compteur = document.getElementById('quote-compteur');
+        if (compteur) compteur.textContent = `${quotesData.length} soumission(s) chargée(s)${quotesHasMore ? ' — il y en a plus' : ''}`;
+        if(listToShow.length === 0) { listContainer.innerHTML = '<div style="color:#888; text-align:center; padding:20px; font-style:italic;">Aucune soumission trouvée.</div>'; return; }
+
+        listToShow.forEach(q => {
+            let statusHTML = '';
+            if(q.status === 'Convertie') { statusHTML = `<div class="inv-status status-convertie"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-check-circle"></use></svg> Convertie</div>`; }
+            else if (q.status === 'brouillon') { statusHTML = `<div class="inv-status status-brouillon"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-file-text"></use></svg> Brouillon</div>`; }
+            else { statusHTML = `<div class="inv-status status-attente"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-clock"></use></svg> ${!isBureau ? 'Envoyée' : 'En attente'}</div>`; }
+
+            // Override visuel si archivé
+            if (q.isArchived) {
+                statusHTML = `<div class="inv-status" style="background:#555; color:#fff; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">📦 Archivée</div>`;
+            }
+
+            const item = document.createElement('div'); item.className = 'quote-item'; item.onclick = function() { openExistingQuote(q.id); };
+
+            let actionsHTML = '<div class="btn-icon" style="background:transparent; pointer-events:none;"></div>';
+            if (q.isArchived) {
+                if (window.ArchiveFD && window.ArchiveFD.canRestore(myRole)) {
+                    actionsHTML = `<button class="btn-icon" style="background:rgba(40,167,69,0.15); color:#28a745; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="restoreQuote('${q.id}', event)" title="Restaurer">↺</button>`;
+                }
+            } else {
+                const verdict = window.ArchiveFD ? window.ArchiveFD.canArchive(q, myRole, myUserId) : { allowed: false };
+                if (verdict.allowed) {
+                    actionsHTML = `<button class="btn-icon btn-delete" onclick="deleteQuote('${q.id}', event)" title="Supprimer (archiver)"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>`;
+                }
+            }
+
+            item.innerHTML = `<div class="inv-id">${q.id}</div><div class="inv-client">${q.client}</div><div class="inv-author"><svg class="svg-icon"><use href="#icon-user"></use></svg> ${q.authorName || 'Inconnu'}</div><div class="inv-status">${statusHTML}</div><div class="inv-date">${q.date}</div><div class="inv-actions">${actionsHTML}</div>`;
+            listContainer.appendChild(item);
+         });
+        ajouterBoutonPlusSoum();
+    }
+
+    function ajouterBoutonPlusSoum() {
+        const container = document.getElementById('quoteListContainer');
+        const old = document.getElementById('btn-charger-plus-soum');
+        if (old) old.remove();
+        if (!quotesHasMore || !container) return;
+        const btn = document.createElement('button');
+        btn.id = 'btn-charger-plus-soum';
+        btn.textContent = `Charger ${QUOTES_PAGE_SIZE} soumissions de plus...`;
+        btn.style.cssText = 'width:100%; padding:14px; margin-top:10px; background:#2b2c36; color:#aaa; border:1px dashed #444; border-radius:10px; cursor:pointer; font-size:14px; font-weight:bold;';
+        btn.onclick = chargerPlusSoumissions;
+        container.appendChild(btn);
+    }
+
+    function filterQuotes() { const searchText = document.getElementById('searchInput').value.toLowerCase(); const isBureau = hasPermission(myRole, 'view_all_invoices'); let baseList = quotesData; if (currentQuoteTab === 'archives') { baseList = quotesData; } else if (!isBureau || currentQuoteTab === 'mine') { baseList = quotesData.filter(q => q.authorId === myUserId || !q.authorId); } else { baseList = quotesData.filter(q => q.status !== 'brouillon'); } const filtered = baseList.filter(q => { return (q.client.toLowerCase().includes(searchText) || String(q.id).toLowerCase().includes(searchText)); }); renderQuoteList(filtered); }
+
+    const inputAttrs = `type="text" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"`;
+    let quotePageCount = 0; let globalSigCount = 0;
+
+    function createQuotePageHTML() {
+        quotePageCount++; globalSigCount++; const page = document.createElement('div'); page.className = 'page quote-style';
+        let rows = ""; for(let i=0; i<20; i++) { rows += `<tr><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td></tr>`; }
+        page.innerHTML = `<div class="top-section"><div class="header-main"><img src="../assets/logo_dussault.png" alt="F. Dussault"><h2>SOUMISSION / ESTIMATION</h2></div><div class="info-section"><div class="info-column"><div class="field"><label>M.</label><input ${inputAttrs}></div><div class="field"><input ${inputAttrs}></div><div class="field" style="margin-top:2px;"><label>Po client:</label><input ${inputAttrs}></div><div class="field"><label>Tél:</label><input ${inputAttrs}></div></div><div class="info-column"><div class="field"><label>Date:</label><input ${inputAttrs}></div><div class="field"><label>Travail à:</label><input ${inputAttrs}></div><div class="field"><label>Adresse:</label><input ${inputAttrs}></div><div class="field"><label>Po:</label><input ${inputAttrs}></div></div></div><div class="banner-cmmtq"><img src="../assets/cmmtq_et_slogan.png" alt="CMMTQ"></div></div><table class="main-table"><thead><tr><th width="45">QUANT.</th><th>DESCRIPTION</th><th width="75">MONTANT<br>AMOUNT</th><th width="75">TOTAL</th></tr></thead><tbody>${rows}</tbody></table><div class="bottom-section"><table class="time-wrapper"><tr><td class="time-label-col"><span>Valide pour 30 jours<br>Valid for 30 days</span><h2># TEMPS</h2></td><td><table class="inner-table"><tr class="row-headers"><td style="width:25%">TARIF ESTIMÉ</td><td style="width:15%">CHARGE MIN.</td><td style="width:25%">TRANSPORT</td><td style="width:20%">HRE ARRIVÉE</td><td class="last-col" style="width:15%">INITIALE</td></tr><tr class="row-sublabels"><td>A.M.</td><td>INITIALE</td><td>P.M.</td><td></td><td class="last-col">INITIALE</td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr></table></td></tr></table><div class="footer-grid"><div class="sig-box"><img id="sig-p-${globalSigCount}" class="display-sig" onclick="openModal('sig-p-${globalSigCount}')"><div class="sig-text">Signature (Approbation)</div></div><div class="sig-box"><img id="sig-c-${globalSigCount}" class="display-sig" onclick="openModal('sig-c-${globalSigCount}')"><div class="sig-text">Signature du client (Acception)</div></div><div class="quote-num-box"><input type="text" class="red-quote-input" placeholder="No."></div></div></div>`;
+        return page;
+    }
+
+    function addPage() { containerInvoice.appendChild(createQuotePageHTML()); if(currentZoom !== 1.0) updateZoom(); }
+    function duplicatePage() { const pages = containerInvoice.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createQuotePageHTML(); containerInvoice.appendChild(newPage); const sourceTopInputs = sourcePage.querySelectorAll('.top-section input'); const newTopInputs = newPage.querySelectorAll('.top-section input'); sourceTopInputs.forEach((input, index) => { if(newTopInputs[index]) { newTopInputs[index].value = input.value; } }); if(currentZoom !== 1.0) updateZoom(); }
+    function deletePage() { if (containerInvoice.children.length > 1) { containerInvoice.removeChild(containerInvoice.lastElementChild); quotePageCount--; } else { showAlert("Impossible de supprimer la dernière page."); } }
+    function askClearInputs() { showConfirm("Effacer tout le contenu de la soumission ?", function() { containerInvoice.querySelectorAll('input').forEach(input => input.value = ''); containerInvoice.querySelectorAll('.display-sig').forEach(img => img.src = ''); }); }
+
+    const modal = document.getElementById('sig-modal'); const modalCanvas = document.getElementById('modal-canvas'); const ctx = modalCanvas.getContext('2d'); let currentTargetImgId = null, drawing = false;
+    function resizeCanvas() { const ratio = Math.max(window.devicePixelRatio || 1, 1); modalCanvas.width = modalCanvas.offsetWidth * ratio; modalCanvas.height = modalCanvas.offsetHeight * ratio; ctx.scale(ratio, ratio); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#000'; }
+    function openModal(id) { currentTargetImgId = id; modal.style.display = 'flex'; setTimeout(resizeCanvas, 10); }
+    function closeModal(id) { if(!id) { modal.style.display = 'none'; drawing = false; } }
+    function clearModalCanvas() { ctx.clearRect(0, 0, modalCanvas.width, modalCanvas.height); }
+    function saveSignature() { if(currentTargetImgId) document.getElementById(currentTargetImgId).src = modalCanvas.toDataURL(); closeModal(); }
+    function getPos(e) { const rect = modalCanvas.getBoundingClientRect(); return { x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top }; }
+    function startDrawing(e) { drawing = true; ctx.beginPath(); const pos = getPos(e); ctx.moveTo(pos.x, pos.y); if(e.type === 'touchstart') e.preventDefault(); }
+    function moveDrawing(e) { if (!drawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); if(e.type === 'touchmove') e.preventDefault(); }
+    modalCanvas.addEventListener('mousedown', startDrawing); window.addEventListener('mousemove', moveDrawing); window.addEventListener('mouseup', () => drawing = false); modalCanvas.addEventListener('touchstart', startDrawing, {passive: false}); modalCanvas.addEventListener('touchmove', moveDrawing, {passive: false}); modalCanvas.addEventListener('touchend', () => drawing = false);
+
+    let currentZoom = 1.0; const minZoom = 0.3; const maxZoom = 3.0; const zoomDisplay = document.getElementById('zoom-level');
+    function fitToScreen() {
+        const scrollArea = document.querySelector('.scroll-area');
+        if (!scrollArea) return;
+        const screenWidth = scrollArea.clientWidth;
+        // Si la vue n'est pas encore rendue (clientWidth=0), on réessaie au prochain frame
+        if (screenWidth === 0) {
+            requestAnimationFrame(fitToScreen);
+            return;
+        }
+        const pageWidth = 816;
+        if (screenWidth < pageWidth) {
+            currentZoom = (screenWidth / pageWidth) * 0.98;
+        } else {
+            currentZoom = 1.0;
+        }
+        currentZoom = Math.round(currentZoom * 100) / 100;
+        updateZoom();
+    }
+    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; containerInvoice.style.transform = `scale(${currentZoom})`; if(zoomDisplay) { zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; } const scrollArea = document.querySelector('.scroll-area'); if(scrollArea) { const screenWidth = scrollArea.clientWidth; const scaledWidth = 816 * currentZoom; if (scaledWidth < screenWidth) { containerInvoice.style.marginLeft = ((screenWidth - scaledWidth) / 2) + "px"; } else { containerInvoice.style.marginLeft = "0px"; } } const unscaledHeight = containerInvoice.offsetHeight; const scaledHeight = unscaledHeight * currentZoom; if (currentZoom < 1.0) { containerInvoice.style.marginBottom = (scaledHeight - unscaledHeight + 50) + "px"; } else if (currentZoom > 1.0) { containerInvoice.style.marginBottom = (currentZoom * 400) + "px"; } else { containerInvoice.style.marginBottom = "100px"; } }
+    function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
+    function resetZoom() { fitToScreen(); } 
+    window.addEventListener('resize', () => { if (document.getElementById('view-editor').style.display === 'flex') { fitToScreen(); } });
+
+    // --- SIGNATURE ÉLECTRONIQUE AMÉLIORÉE (Chantier 6) ---
+    if (window.SignatureFD) {
+        window.SignatureFD.watchContainer(containerInvoice);
+        window.SignatureFD.attachAll(containerInvoice);
+    }
+
+    initAuth();
+</script>
+</body>
+</html>

@@ -1,304 +1,263 @@
--- ============================================================================
--- PHASE 2 : Archivage (soft delete) — F.Dussault
--- ============================================================================
--- À exécuter dans Supabase SQL Editor APRÈS supabase-securite.sql et
--- supabase-phase1-numerotation.sql.
---
--- Ce script est IDEMPOTENT : tu peux le relancer sans problème.
---
--- Ce qu'il fait :
---   1. Ajoute 5 colonnes d'archivage à factures, soumissions, feuilles_de_temps
---   2. Crée un trigger qui logge automatiquement chaque archivage/restauration
---   3. Met à jour les policies RLS UPDATE pour bloquer la modif des archives
---      (sauf l'opération de restauration elle-même)
---   4. Crée 2 fonctions utilitaires : compter / supprimer les archives > 1 an
--- ============================================================================
+# 📜 Changelog — Chantier 7 (Audit Log complet)
 
+**Date :** 26 avril 2026
 
--- ============================================================================
--- ÉTAPE 1 : Colonnes d'archivage sur les 3 tables
--- ============================================================================
--- is_archived       : booléen, FALSE par défaut
--- archived_at       : timestamp de l'archivage
--- archived_by       : UUID de l'utilisateur qui a archivé
--- archived_by_name  : nom (snapshot) au moment de l'archivage
--- archive_reason    : raison libre (texte court, optionnel)
--- ----------------------------------------------------------------------------
+## En une phrase
 
-ALTER TABLE public.factures
-  ADD COLUMN IF NOT EXISTS is_archived       boolean   NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS archived_at       timestamptz,
-  ADD COLUMN IF NOT EXISTS archived_by       uuid,
-  ADD COLUMN IF NOT EXISTS archived_by_name  text,
-  ADD COLUMN IF NOT EXISTS archive_reason    text;
+Le journal technique devient un **vrai journal d'audit** : toute action
+sur les documents (création/modif/suppression), changement de rôle, et
+connexion est tracée automatiquement par PostgreSQL. Toi (A0) **et
+Tristan (A1)** y ont accès, avec filtres avancés et export CSV.
 
-ALTER TABLE public.soumissions
-  ADD COLUMN IF NOT EXISTS is_archived       boolean   NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS archived_at       timestamptz,
-  ADD COLUMN IF NOT EXISTS archived_by       uuid,
-  ADD COLUMN IF NOT EXISTS archived_by_name  text,
-  ADD COLUMN IF NOT EXISTS archive_reason    text;
+---
 
-ALTER TABLE public.feuilles_de_temps
-  ADD COLUMN IF NOT EXISTS is_archived       boolean   NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS archived_at       timestamptz,
-  ADD COLUMN IF NOT EXISTS archived_by       uuid,
-  ADD COLUMN IF NOT EXISTS archived_by_name  text,
-  ADD COLUMN IF NOT EXISTS archive_reason    text;
+## ⚠️ AVANT D'UTILISER : exécuter le SQL
 
--- Index pour accélérer les filtres "is_archived = false" (cas le plus fréquent)
-CREATE INDEX IF NOT EXISTS factures_is_archived_idx
-  ON public.factures(is_archived) WHERE is_archived = false;
-CREATE INDEX IF NOT EXISTS soumissions_is_archived_idx
-  ON public.soumissions(is_archived) WHERE is_archived = false;
-CREATE INDEX IF NOT EXISTS feuilles_de_temps_is_archived_idx
-  ON public.feuilles_de_temps(is_archived) WHERE is_archived = false;
+Va dans **Supabase Dashboard → SQL Editor** et exécute le fichier
+**`supabase-phase3-auditlog.sql`** (à la racine du projet).
 
+Script idempotent (relançable sans problème). Il fait :
+1. Ajoute 5 colonnes à `logs_systeme` : `table_name`, `doc_id`, `action`, `user_id`, `details_json`
+2. Crée 4 index pour accélérer les filtres
+3. Met à jour la policy RLS SELECT pour inclure A1 en lecture
+4. Crée la fonction `log_audit()` utilisée par tous les triggers
+5. Crée 6 triggers : 5 sur les tables docs (factures, soumissions, feuilles_de_temps, clients, bons_de_commande) + 1 sur profils (rôles)
+6. Crée 2 fonctions admin : `count_logs_expired()` et `delete_expired_logs()`
 
--- ============================================================================
--- ÉTAPE 2 : Trigger générique pour logger les archivages / restaurations
--- ============================================================================
--- Ce trigger s'attache aux 3 tables et écrit dans logs_systeme dès que
--- is_archived passe de false à true (archivage) ou de true à false (restauration).
--- ----------------------------------------------------------------------------
+---
 
-CREATE OR REPLACE FUNCTION public.log_archivage()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  table_name_str text := TG_TABLE_NAME;
-  doc_id_str     text := NEW.id::text;
-  user_name_str  text;
-  action_label   text;
-  msg            text;
-BEGIN
-  -- On ne réagit qu'aux changements is_archived
-  IF (OLD.is_archived IS DISTINCT FROM NEW.is_archived) THEN
+## 🎯 Ce qui change
 
-    -- Récupère le nom de l'utilisateur courant (snapshot)
-    SELECT COALESCE(prenom_nom, 'Utilisateur inconnu')
-      INTO user_name_str
-    FROM public.profils
-    WHERE id = auth.uid();
+### Pour Xavier (A0) et Tristan (A1)
+- Onglet **"Journal d'Audit"** dans Admin (au lieu de "Journal Technique")
+- **A1 a maintenant accès** au journal (avant : A0 seulement)
+- **Filtres** : recherche libre + action + table + utilisateur (4 filtres combinables)
+- **Export CSV** des logs filtrés (bouton ⬇ dans le header du panneau)
+- Affichage **enrichi** : Date | Action | Utilisateur | Détails (au lieu de juste Date | Action | Détails)
+- Couleurs par action (vert création, rouge suppression, orange archivage, etc.)
+- Compteur en bas : "X entrée(s) affichée(s) sur Y chargée(s)"
 
-    IF NEW.is_archived = true THEN
-      action_label := 'Archivage';
-      msg := 'Document ' || table_name_str || ' #' || doc_id_str || ' archivé';
-      IF NEW.archive_reason IS NOT NULL AND NEW.archive_reason <> '' THEN
-        msg := msg || ' — raison : ' || NEW.archive_reason;
-      END IF;
-    ELSE
-      action_label := 'Restauration';
-      msg := 'Document ' || table_name_str || ' #' || doc_id_str || ' restauré depuis les archives';
-    END IF;
+### Pour Xavier seul (A0)
+- Nouveau panneau **"Nettoyer Journal"** (mauve) à côté de "Nettoyer Archives"
+- Affiche le nb de logs > 1 an
+- Bouton "Nettoyer" → suppression définitive après confirmation
+- L'opération de nettoyage est elle-même loggée (méta-log)
 
-    INSERT INTO public.logs_systeme (type_erreur, message, utilisateur_nom, created_at)
-    VALUES (action_label, msg, COALESCE(user_name_str, 'Système'), now());
-  END IF;
+### Pour A2 et A3
+- Aucun changement — pas d'accès au journal
 
-  RETURN NEW;
-END;
-$$;
+### Tracé automatique (côté DB)
+À partir de maintenant, **chaque** action sur ces tables crée une entrée dans le journal :
+- **factures, soumissions, feuilles_de_temps, clients, bons_de_commande** : INSERT, UPDATE, DELETE
+- **profils** : changement de rôle (UPDATE OF role)
 
-GRANT EXECUTE ON FUNCTION public.log_archivage() TO authenticated;
+Un changement de **statut** (brouillon → envoyé → approuvé) génère un log
+spécifique avec l'ancien et le nouveau statut.
 
--- Attacher le trigger aux 3 tables (DROP IF EXISTS pour idempotence)
-DROP TRIGGER IF EXISTS trg_log_archivage_factures ON public.factures;
-CREATE TRIGGER trg_log_archivage_factures
-  AFTER UPDATE OF is_archived ON public.factures
-  FOR EACH ROW EXECUTE FUNCTION public.log_archivage();
+Les **archivages/restaurations** sont déjà loggés par le trigger
+Phase 2 (`log_archivage`) — pas de doublon.
 
-DROP TRIGGER IF EXISTS trg_log_archivage_soumissions ON public.soumissions;
-CREATE TRIGGER trg_log_archivage_soumissions
-  AFTER UPDATE OF is_archived ON public.soumissions
-  FOR EACH ROW EXECUTE FUNCTION public.log_archivage();
+### Tracé côté JS
+- **Connexion** : enregistrée 1× par session (sessionStorage évite le spam si on rafraîchit)
 
-DROP TRIGGER IF EXISTS trg_log_archivage_feuilles ON public.feuilles_de_temps;
-CREATE TRIGGER trg_log_archivage_feuilles
-  AFTER UPDATE OF is_archived ON public.feuilles_de_temps
-  FOR EACH ROW EXECUTE FUNCTION public.log_archivage();
+---
 
+## 📦 Fichiers modifiés
 
--- ============================================================================
--- ÉTAPE 3 : Mise à jour des policies RLS UPDATE
--- ============================================================================
--- Règle : un document archivé est en lecture seule.
--- La SEULE chose qu'on autorise sur un document archivé, c'est la
--- restauration (is_archived passant de true à false), réservée à A0.
---
--- L'archivage (passage à true) est autorisé via la policy normale, mais
--- côté code on contrôlera qui a le droit de le faire pour quel statut.
--- ----------------------------------------------------------------------------
+### Nouveaux fichiers
+- `supabase-phase3-auditlog.sql` — le SQL à exécuter
 
--- ----- factures -----
-DROP POLICY IF EXISTS "factures_update" ON public.factures;
-CREATE POLICY "factures_update"
-  ON public.factures FOR UPDATE
-  TO authenticated
-  USING (
-    -- On peut TENTER l'update si on a normalement le droit ET que
-    -- le doc n'est pas archivé, OU qu'on est A0 (peut tout faire).
-    (
-      (author_id = auth.uid() OR public.user_has_permission('view_all_invoices'))
-      AND is_archived = false
-    )
-    OR public.is_admin()
-  )
-  WITH CHECK (
-    -- Après l'update, on accepte si :
-    --  - le doc reste non-archivé et qu'on a les droits normaux, ou
-    --  - on archive (is_archived passant à true) avec les droits normaux, ou
-    --  - on est A0 (qui peut tout, y compris restaurer)
-    (
-      (author_id = auth.uid() OR public.user_has_permission('view_all_invoices'))
-    )
-    OR public.is_admin()
-  );
+### Modifiés
+- `index.html` :
+  - Logue la connexion 1× par session après identification
+- `code_admin/code_admin.html` :
+  - Section "Journal Technique" → "Journal d'Audit"
+  - Nouveaux filtres : action + table + utilisateur
+  - Nouveau bouton export CSV
+  - Tableau passe de 3 à 4 colonnes (ajout colonne Utilisateur)
+  - Limite passe de 100 → 500 logs chargés (avec compteur affiché)
+  - Couleurs par action
+  - Nouvelle icône `icon-download` ajoutée
+  - Nouveau panneau "Nettoyer Journal" (A0 seulement)
+  - Onglet "Journal" maintenant accessible à A1 (avec panneaux A0-only masqués)
 
--- ----- soumissions -----
-DROP POLICY IF EXISTS "soumissions_update" ON public.soumissions;
-CREATE POLICY "soumissions_update"
-  ON public.soumissions FOR UPDATE
-  TO authenticated
-  USING (
-    (
-      (author_id = auth.uid() OR public.user_has_permission('view_all_invoices'))
-      AND is_archived = false
-    )
-    OR public.is_admin()
-  )
-  WITH CHECK (
-    (author_id = auth.uid() OR public.user_has_permission('view_all_invoices'))
-    OR public.is_admin()
-  );
+---
 
--- ----- feuilles_de_temps -----
-DROP POLICY IF EXISTS "feuilles_de_temps_update" ON public.feuilles_de_temps;
-CREATE POLICY "feuilles_de_temps_update"
-  ON public.feuilles_de_temps FOR UPDATE
-  TO authenticated
-  USING (
-    (
-      (author_id = auth.uid() OR public.user_has_permission('approve_timesheets'))
-      AND is_archived = false
-    )
-    OR public.is_admin()
-  )
-  WITH CHECK (
-    (author_id = auth.uid() OR public.user_has_permission('approve_timesheets'))
-    OR public.is_admin()
-  );
+## 🛠 Détails techniques
 
+### Schéma de la table après MAJ
 
--- ============================================================================
--- ÉTAPE 4 : Fonctions utilitaires — compter / supprimer les archives > 1 an
--- ============================================================================
--- Pas de cron : c'est l'admin (A0) qui déclenche manuellement depuis le panneau.
--- ----------------------------------------------------------------------------
+```
+logs_systeme:
+  id              uuid PK         -- existant
+  type_erreur     text            -- existant (gardé pour compat)
+  message         text            -- existant
+  utilisateur_nom text            -- existant
+  created_at      timestamptz     -- existant
+  table_name      text            -- NOUVEAU
+  doc_id          text            -- NOUVEAU
+  action          text            -- NOUVEAU (creation/modification/...)
+  user_id         uuid            -- NOUVEAU (FK vers profils.id)
+  details_json    jsonb           -- NOUVEAU (payload structuré)
+```
 
-CREATE OR REPLACE FUNCTION public.count_archives_expired()
-RETURNS TABLE(table_name text, nb bigint)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Accès refusé : réservé aux administrateurs';
-  END IF;
+`type_erreur` est conservé pour ne pas casser les anciens logs déjà
+écrits, mais `action` est le nouveau champ canonique.
 
-  RETURN QUERY
-  SELECT 'factures'::text, count(*)::bigint
-    FROM public.factures
-    WHERE is_archived = true AND archived_at < (now() - interval '1 year')
-  UNION ALL
-  SELECT 'soumissions'::text, count(*)::bigint
-    FROM public.soumissions
-    WHERE is_archived = true AND archived_at < (now() - interval '1 year')
-  UNION ALL
-  SELECT 'feuilles_de_temps'::text, count(*)::bigint
-    FROM public.feuilles_de_temps
-    WHERE is_archived = true AND archived_at < (now() - interval '1 year');
-END;
-$$;
+### Détection du changement d'archivage (anti-doublon)
 
-GRANT EXECUTE ON FUNCTION public.count_archives_expired() TO authenticated;
+Le trigger Phase 2 `log_archivage` se déclenche quand `is_archived`
+change. Si on ne faisait rien, le **nouveau** trigger Phase 3
+`trg_audit_doc_changes` se déclencherait aussi sur le même UPDATE et
+créerait un log "modification" en double.
 
+Solution : dans `trg_audit_doc_changes`, on détecte si `is_archived` est
+le seul champ modifié, et on `RETURN NEW` sans logger.
 
-CREATE OR REPLACE FUNCTION public.delete_expired_archives()
-RETURNS TABLE(table_name text, nb_deleted bigint)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  n_fact bigint;
-  n_soum bigint;
-  n_feui bigint;
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Accès refusé : réservé aux administrateurs';
-  END IF;
+### Fonctions accessibles via RPC
 
-  WITH d AS (
-    DELETE FROM public.factures
-    WHERE is_archived = true AND archived_at < (now() - interval '1 year')
-    RETURNING 1
-  )
-  SELECT count(*) INTO n_fact FROM d;
+```sql
+-- Côté JS via supabaseClient.rpc(...)
+public.count_logs_expired()      -- A0 only, retourne bigint
+public.delete_expired_logs()     -- A0 only, supprime + retourne bigint
+```
 
-  WITH d AS (
-    DELETE FROM public.soumissions
-    WHERE is_archived = true AND archived_at < (now() - interval '1 year')
-    RETURNING 1
-  )
-  SELECT count(*) INTO n_soum FROM d;
+Ces 2 fonctions vérifient `is_admin()` au début et lèvent une exception
+si non-admin. Donc même si quelqu'un appelle l'RPC depuis la console,
+ça échoue.
 
-  WITH d AS (
-    DELETE FROM public.feuilles_de_temps
-    WHERE is_archived = true AND archived_at < (now() - interval '1 year')
-    RETURNING 1
-  )
-  SELECT count(*) INTO n_feui FROM d;
+### Format CSV exporté
 
-  -- Trace dans les logs
-  INSERT INTO public.logs_systeme (type_erreur, message, utilisateur_nom, created_at)
-  VALUES (
-    'Nettoyage Archives',
-    'Suppression définitive : ' || n_fact || ' facture(s), '
-      || n_soum || ' soumission(s), ' || n_feui || ' feuille(s) de temps.',
-    (SELECT COALESCE(prenom_nom, 'Admin') FROM public.profils WHERE id = auth.uid()),
-    now()
-  );
+Avec **BOM UTF-8** au début (`\uFEFF`) pour qu'Excel ouvre bien les
+accents. Colonnes : Date | Action | Utilisateur | Table | Doc ID | Message.
 
-  RETURN QUERY VALUES
-    ('factures'::text, n_fact),
-    ('soumissions'::text, n_soum),
-    ('feuilles_de_temps'::text, n_feui);
-END;
-$$;
+Toutes les valeurs sont entourées de guillemets et les guillemets
+internes sont doublés (échappement CSV standard).
 
-GRANT EXECUTE ON FUNCTION public.delete_expired_archives() TO authenticated;
+---
 
+## ✅ Comment tester (10 min)
 
--- ============================================================================
--- VÉRIFICATIONS — à exécuter individuellement après le script
--- ============================================================================
+### Test 1 — Logs de création
+1. Connecte-toi en **Jean (A3)**
+2. Crée une nouvelle facture brouillon, sauvegarde
+3. Connecte-toi en **Xavier (A0)** ou **Tristan (A1)**
+4. Va dans Admin → Journal d'Audit
+5. Tu devrais voir **2 logs** récents : "Connexion de Jean" + "Création de factures #..."
 
--- Vérifier que les colonnes existent bien sur les 3 tables :
--- SELECT table_name, column_name, data_type
--- FROM information_schema.columns
--- WHERE table_schema = 'public'
---   AND column_name IN ('is_archived','archived_at','archived_by','archived_by_name','archive_reason')
--- ORDER BY table_name, column_name;
+### Test 2 — Logs de modification + statut
+1. En Jean, modifie ta facture (change un input), sauvegarde
+2. Envoie-la au bureau
+3. En Xavier, recharge le journal
+4. Tu vois maintenant : "Modification de factures #..." + "Statut de factures #... : brouillon → envoye"
 
--- Compter les archives par table :
--- SELECT 'factures' AS t, count(*) FROM public.factures WHERE is_archived
--- UNION ALL SELECT 'soumissions', count(*) FROM public.soumissions WHERE is_archived
--- UNION ALL SELECT 'feuilles_de_temps', count(*) FROM public.feuilles_de_temps WHERE is_archived;
+### Test 3 — Logs d'archivage (anti-doublon)
+1. En Tristan, archive la facture
+2. En Xavier, recharge le journal
+3. Tu dois voir **UN seul log** "Document factures #... archivé" (pas deux entrées)
 
--- Tester la fonction de comptage :
--- SELECT * FROM public.count_archives_expired();
+### Test 4 — Logs de changement de rôle
+1. En Xavier, va dans Admin → Gestion du Personnel
+2. Édite un employé (pas A0), change son rôle de A3 → A2 (ou autre)
+3. Recharge le journal
+4. Tu vois "Rôle de [nom] : A3 → A2"
+
+### Test 5 — Logs de connexion
+1. Déconnecte-toi puis reconnecte-toi
+2. Va dans Journal d'Audit
+3. Tu vois "Connexion de [ton nom]"
+4. **Rafraîchir la page ne doit PAS créer un nouveau log de connexion** (sessionStorage)
+5. Ferme l'onglet, rouvre, reconnecte → là, nouveau log
+
+### Test 6 — Filtres
+1. Dans Journal d'Audit, sélectionne **Action = "Création"**
+2. Seuls les logs de création s'affichent
+3. Ajoute **Table = "factures"**
+4. Seuls les logs de création de factures
+5. Tape "Tremblay" dans la recherche
+6. Filtre cumulé
+7. Compteur en bas se met à jour : "X entrée(s) affichée(s) sur Y chargée(s)"
+
+### Test 7 — Export CSV
+1. Filtre les logs qui t'intéressent
+2. Clique le bouton ⬇ download dans le header
+3. Un fichier `journal_audit_2026-04-26.csv` se télécharge
+4. Ouvre-le dans Excel — les accents doivent être bien affichés
+
+### Test 8 — Accès A1 vs A0
+1. Connecte-toi en **Tristan (A1)**
+2. Va dans Admin → onglet **Journal**
+3. Tu vois le journal MAIS tu ne vois pas :
+   - Le panneau "Mode Maintenance"
+   - Le panneau "Rôles & Permissions"
+   - Le panneau "Nettoyer Archives"
+   - Le panneau "Nettoyer Journal"
+   - Le panneau "Tickets de Support"
+
+### Test 9 — Nettoyage des logs > 1 an
+1. En Xavier, va dans Admin
+2. Carte "Nettoyer Journal" doit afficher "✓ Aucun log expiré" (normal, rien n'a > 1 an)
+3. Le bouton "Nettoyer" doit être grisé tant qu'il n'y a rien à supprimer
+
+### Test 10 — Sécurité côté DB (anti-bypass)
+Si tu veux vraiment tester : ouvre la console JS sur le navigateur de
+Jean (A3) et tape :
+```js
+await supabaseClient.from('logs_systeme').select('*').limit(5)
+```
+Tu dois recevoir **un tableau vide** (pas une erreur). RLS bloque la
+lecture pour A3.
+
+---
+
+## 🚀 Si tu veux modifier plus tard
+
+### Logger une nouvelle action depuis le code JS
+```js
+await supabaseClient.from('logs_systeme').insert([{
+    action: 'mon_action',           // ex: 'export_pdf', 'login_failed'
+    type_erreur: 'mon_action',
+    message: 'Ce qui s\'est passé',
+    utilisateur_nom: 'Nom user',
+    user_id: userId,
+    table_name: 'factures',
+    doc_id: 'F-0001'
+}]);
+```
+
+### Ajouter une nouvelle table à logger automatiquement
+Dans Supabase SQL Editor :
+```sql
+CREATE TRIGGER trg_audit_ma_table
+  AFTER INSERT OR UPDATE OR DELETE ON public.ma_table
+  FOR EACH ROW EXECUTE FUNCTION public.trg_audit_doc_changes();
+```
+
+### Étendre le filtre Action avec une nouvelle valeur
+Dans `code_admin.html`, ajoute une `<option>` dans `#logActionFilter`,
+et un libellé dans la fonction `actionLabel()`.
+
+### Changer la durée de rétention (1 an → 2 ans)
+Dans `supabase-phase3-auditlog.sql`, remplace `interval '1 year'` par
+`interval '2 years'` dans `count_logs_expired()` et `delete_expired_logs()`,
+puis re-exécute le script.
+
+---
+
+## ⚠️ Limitations connues
+
+1. **Logs de connexion** : seulement la connexion réussie est tracée.
+   Les tentatives échouées ne le sont pas (Supabase Auth ne permet pas
+   d'intercepter ça facilement côté client).
+
+2. **Volume** : si l'app est utilisée intensivement, le journal peut
+   grossir vite (ex: 50 modifications/jour × 365 jours = 18 250 logs/an).
+   Le panneau "Nettoyer Journal" permet de gérer ça manuellement.
+
+3. **Utilisateur supprimé** : si un employé est supprimé, ses logs
+   conservent son `prenom_nom` mais le `user_id` passe à NULL (ON
+   DELETE SET NULL). Donc l'historique reste lisible.
+
+4. **Logs antérieurs au Chantier 7** : les anciens logs (avant
+   exécution du SQL) n'ont pas les nouveaux champs (action, table_name,
+   etc.). Ils restent affichés mais avec une action générique.
