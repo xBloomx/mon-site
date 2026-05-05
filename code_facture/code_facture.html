@@ -341,8 +341,8 @@
             <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()">
                 <svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyer au bureau
             </button>
-            <button class="action-btn" id="btn-paper" style="background-color: var(--btn-blue); color: white;" onclick="openPaperInvoiceModal()" title="Envoyer une facture déjà remplie sur papier (en photo)">
-                <svg class="svg-icon"><use href="#icon-camera"></use></svg> Facture papier
+            <button class="action-btn" id="btn-paper" style="background-color: var(--btn-blue); color: white;" onclick="togglePaperMode()" title="Basculer entre mode numérique et facture papier">
+                <svg class="svg-icon" id="btn-paper-icon"><use href="#icon-camera"></use></svg> <span id="btn-paper-label">Facture papier</span>
             </button>
             
             <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockInvoice()" style="display:none;">
@@ -423,79 +423,135 @@
 
 <!-- Styles pour le mode facture papier (intégré dans l'éditeur) -->
 <style>
-    /* Drop zone : remplace la page blanche du formulaire en mode papier */
+    /* === Page blanche qui contient tout (header + drop zone + bouton +) === */
+    .paper-mode-container {
+        background: #fff;
+        margin: 20px auto;
+        max-width: 800px;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Header CLIENT/DATE/NO. FACTURE collé en haut de la page */
+    .paper-mode-header {
+        display: flex; gap: 0;
+        background: #fff;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .paper-mode-header .pmh-field {
+        flex: 1; padding: 10px 14px;
+        border-right: 1px solid #e8e8e8;
+        min-width: 0;
+    }
+    .paper-mode-header .pmh-field:last-child { border-right: none; }
+    .paper-mode-header label {
+        display: block; font-size: 9px; color: #888;
+        font-weight: 700; letter-spacing: 0.8px;
+        margin-bottom: 4px; text-transform: uppercase;
+    }
+    .paper-mode-header input {
+        width: 100%; border: none; outline: none;
+        background: transparent; padding: 0;
+        font-size: 13px; color: #222; font-family: Arial, sans-serif;
+        box-sizing: border-box;
+    }
+    .paper-mode-header input.paper-numero-input {
+        color: #dc3545; font-weight: 700;
+    }
+    .paper-mode-header input::placeholder { color: #bbb; }
+
+    /* Zone "vide" au milieu : drop zone visible quand pas de pages */
+    .paper-mode-body {
+        padding: 30px 20px;
+        background: #fff;
+        min-height: 400px;
+    }
+
+    /* Drop zone (état vide) — petite carte centrée comme dans le modèle */
     .paper-drop-zone {
         background: #fff; color: #222;
-        border: 2px dashed #d8e3ec; border-radius: 18px;
-        padding: 30px 24px; text-align: center;
-        margin: 20px;
-        transition: border-color 0.2s, background 0.2s;
+        border: 1.5px dashed #c4d4dd; border-radius: 14px;
+        padding: 24px 20px; text-align: center;
+        max-width: 360px; margin: 60px auto;
+        transition: border-color 0.2s;
     }
     .paper-drop-zone:hover { border-color: var(--btn-blue, #5BC0EB); }
     .paper-drop-zone .pdz-text {
-        color: #333; font-weight: 600; font-size: 14px;
+        color: #333; font-weight: 600; font-size: 13px;
         margin-bottom: 18px; line-height: 1.4;
     }
     .paper-drop-zone .pdz-actions {
-        display: flex; align-items: center; justify-content: center; gap: 14px;
+        display: flex; align-items: center; justify-content: center; gap: 12px;
     }
     .paper-drop-zone .pdz-camera {
         background: #cfe6f5; color: #2a7da8;
-        width: 56px; height: 56px; border-radius: 14px;
+        width: 50px; height: 50px; border-radius: 12px;
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; border: none; transition: background 0.2s;
         flex-shrink: 0;
     }
     .paper-drop-zone .pdz-camera:hover { background: #b8dcef; }
-    .paper-drop-zone .pdz-camera svg { width: 28px; height: 28px; }
+    .paper-drop-zone .pdz-camera svg { width: 24px; height: 24px; }
     .paper-drop-zone .pdz-deposer {
         background: var(--btn-blue, #5BC0EB); color: white;
-        border: none; padding: 14px 28px; border-radius: 14px;
-        font-size: 15px; font-weight: 600; cursor: pointer;
-        transition: background 0.2s; min-width: 120px;
+        border: none; padding: 12px 22px; border-radius: 12px;
+        font-size: 14px; font-weight: 600; cursor: pointer;
+        transition: background 0.2s;
     }
     .paper-drop-zone .pdz-deposer:hover { background: #4ba8d1; }
 
-    /* Une page de facture papier (image affichée) */
+    /* Liste des pages photographiées */
+    .paper-pages-list {
+        padding: 16px 20px;
+        background: #f8f9fa;
+        border-top: 1px solid #e8e8e8;
+    }
     .paper-page-display {
         position: relative;
         background: #fff;
-        border-radius: 8px;
-        margin: 20px;
+        border-radius: 6px;
+        margin-bottom: 12px;
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        border: 1px solid #e0e0e0;
     }
+    .paper-page-display:last-child { margin-bottom: 0; }
     .paper-page-display img {
         width: 100%; height: auto; display: block;
     }
     .paper-page-display .ppd-num {
-        position: absolute; top: 10px; left: 10px;
+        position: absolute; top: 8px; left: 8px;
         background: rgba(0,0,0,0.7); color: white;
-        font-size: 12px; padding: 4px 10px; border-radius: 4px;
+        font-size: 11px; padding: 3px 8px; border-radius: 4px;
         font-weight: 600; pointer-events: none;
     }
     .paper-page-display .ppd-remove {
-        position: absolute; top: 10px; right: 10px;
+        position: absolute; top: 8px; right: 8px;
         background: var(--btn-red); color: white; border: none;
-        width: 30px; height: 30px; border-radius: 50%;
+        width: 28px; height: 28px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
         cursor: pointer; padding: 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
-    .paper-page-display .ppd-remove svg { width: 14px; height: 14px; }
+    .paper-page-display .ppd-remove svg { width: 12px; height: 12px; }
 
-    /* Bouton "+ Ajouter une page" en bas */
+    /* Bouton "+ Ajouter une page" — toujours visible en bas de la page blanche */
     .paper-add-page-btn {
         display: flex; align-items: center; justify-content: center; gap: 8px;
-        margin: 16px 20px 30px 20px; padding: 16px;
-        background: rgba(91, 192, 235, 0.1);
+        width: calc(100% - 40px);
+        margin: 16px 20px;
+        padding: 14px;
+        background: rgba(91, 192, 235, 0.08);
         border: 1.5px dashed var(--btn-blue, #5BC0EB);
-        border-radius: 12px;
-        color: var(--btn-blue, #5BC0EB); font-weight: 600; font-size: 15px;
+        border-radius: 10px;
+        color: var(--btn-blue, #5BC0EB); font-weight: 600; font-size: 14px;
         cursor: pointer; transition: all 0.2s;
+        font-family: inherit;
     }
-    .paper-add-page-btn:hover { background: rgba(91, 192, 235, 0.2); }
-    .paper-add-page-btn svg { width: 18px; height: 18px; }
+    .paper-add-page-btn:hover { background: rgba(91, 192, 235, 0.15); }
+    .paper-add-page-btn svg { width: 16px; height: 16px; }
 
     /* Indicateur de progression upload */
     #paper-progress {
@@ -774,10 +830,11 @@
         // === FACTURE PAPIER ===
         // En mode papier on peut éditer/envoyer comme une facture normale,
         // mais on cache les boutons qui n'ont pas de sens (ajouter/dupliquer page,
-        // effacer formulaire, basculer en mode papier — déjà en mode papier).
+        // effacer formulaire). Le bouton btn-paper RESTE visible — il sert de
+        // toggle pour revenir au mode numérique.
         if (isPaper) {
-            // Toujours cacher : boutons spécifiques au formulaire
-            ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear', 'btn-paper'].forEach(id => {
+            // Cacher les boutons spécifiques au formulaire numérique (mais PAS btn-paper)
+            ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
@@ -787,6 +844,13 @@
             if (!isBureau) { if (status === 'brouillon' || status === 'attente') canEditPaper = true; }
             else { if (isAuthor && (status === 'brouillon' || status === 'attente')) canEditPaper = true; }
             if (isArchived) canEditPaper = false;
+
+            // Le bouton toggle btn-paper : visible seulement si on peut éditer
+            const btnPaperEl = document.getElementById('btn-paper');
+            if (btnPaperEl) btnPaperEl.style.display = canEditPaper ? 'flex' : 'none';
+
+            // Mettre le label/icône à jour
+            updatePaperToggleButton();
 
             // Boutons Sauvegarder / Envoyer : visibles seulement si éditable
             const btnSave = document.getElementById('btn-save');
@@ -1438,33 +1502,122 @@
     let paperPages = []; // [{dataUrl: string, file?: File, url?: string, path?: string, uploaded: bool}, ...]
 
     // Bascule en mode papier (depuis le bouton "Facture papier")
-    function openPaperInvoiceModal() {
-        if (isPaperMode) return; // déjà en mode papier
-        // Si on a déjà saisi du contenu dans le formulaire, prévenir
-        const allInputs = containerInvoice.querySelectorAll('input:not(.red-invoice-input):not([type="date"])');
-        const hasContent = Array.from(allInputs).some(i => i.value && i.value.trim());
-        if (hasContent) {
-            if (!confirm("Passer en mode 'facture papier' va supprimer le contenu du formulaire actuel. Continuer ?")) return;
+    // Toggle entre mode papier et mode numérique (formulaire)
+    function togglePaperMode() {
+        if (isPaperMode) {
+            // On est en mode papier → revenir au mode numérique
+            switchToDigitalMode();
+        } else {
+            // On est en mode numérique → passer en mode papier
+            // Si on a déjà saisi du contenu dans le formulaire, prévenir
+            const allInputs = containerInvoice.querySelectorAll('input:not(.red-invoice-input):not([type="date"])');
+            const hasContent = Array.from(allInputs).some(i => i.value && i.value.trim());
+            if (hasContent) {
+                if (!confirm("Passer en mode 'facture papier' va supprimer le contenu du formulaire actuel. Continuer ?")) return;
+            }
+            switchToPaperMode();
         }
-        switchToPaperMode();
     }
+
+    // Garde l'ancien nom pour compatibilité (au cas où appelé ailleurs)
+    function openPaperInvoiceModal() { togglePaperMode(); }
 
     // Active visuellement le mode papier dans l'éditeur
     function switchToPaperMode() {
         isPaperMode = true;
         paperPages = [];
 
-        // Garder UNIQUEMENT le header de la première page (CLIENT/DATE/NO. FACTURE)
-        // et remplacer le reste par la drop zone
+        // Remplacer tout le contenu par la page blanche unique (header + drop zone + bouton +)
         renderPaperEditor();
 
         // Cacher les boutons qui n'ont pas de sens en mode papier
-        ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear', 'btn-paper'].forEach(id => {
+        // (le bouton btn-paper LUI-MÊME reste visible — c'est le toggle)
+        ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear'].forEach(id => {
             const el = document.getElementById(id); if (el) el.style.display = 'none';
         });
 
+        // Mettre à jour le label du bouton toggle
+        updatePaperToggleButton();
+
         // Relancer la sécurité de l'éditeur pour bien afficher btn-save/btn-send
         applyEditorSecurity({ isPaper: true, status: 'brouillon', authorId: myUserId });
+    }
+
+    // Met à jour le label/icône du bouton toggle selon l'état actuel
+    function updatePaperToggleButton() {
+        const btn = document.getElementById('btn-paper');
+        const label = document.getElementById('btn-paper-label');
+        const iconUse = document.querySelector('#btn-paper-icon use');
+        if (!btn) return;
+        if (isPaperMode) {
+            // Mode papier actif → bouton propose le retour numérique
+            if (label) label.textContent = 'Mode numérique';
+            if (iconUse) iconUse.setAttribute('href', '#icon-file-text');
+            btn.style.backgroundColor = 'var(--btn-yellow, #f0b400)';
+            btn.style.color = 'black';
+            btn.title = 'Revenir au formulaire de facture numérique';
+        } else {
+            // Mode numérique → bouton propose le passage papier
+            if (label) label.textContent = 'Facture papier';
+            if (iconUse) iconUse.setAttribute('href', '#icon-camera');
+            btn.style.backgroundColor = 'var(--btn-blue)';
+            btn.style.color = 'white';
+            btn.title = 'Envoyer une facture déjà remplie sur papier (en photo)';
+        }
+    }
+
+    // Bascule du mode papier vers le mode numérique
+    function switchToDigitalMode() {
+        // Demander confirmation si des photos ont été ajoutées
+        if (paperPages.length > 0) {
+            const msg = paperPages.length === 1
+                ? "Revenir au mode numérique va retirer la photo ajoutée. Continuer ?"
+                : `Revenir au mode numérique va retirer les ${paperPages.length} photos ajoutées. Continuer ?`;
+            if (!confirm(msg)) return;
+        }
+
+        // Récupérer les valeurs du header papier pour les conserver dans le formulaire
+        const meta = getPaperHeaderData();
+
+        isPaperMode = false;
+        paperPages = [];
+
+        // Reconstruire le formulaire numérique normal
+        containerInvoice.innerHTML = '';
+        containerInvoice.appendChild(createInvoicePageHTML());
+
+        // Restaurer les valeurs (client, date, numéro) dans le nouveau formulaire
+        const numInput = containerInvoice.querySelector('.red-invoice-input');
+        if (numInput && meta.numero) numInput.value = meta.numero;
+        const dateInput = containerInvoice.querySelector('input[type="date"]');
+        if (dateInput && meta.date) dateInput.value = meta.date;
+        // Le client : on prend le premier input texte du formulaire
+        if (meta.client) {
+            const allTextInputs = containerInvoice.querySelectorAll('input[type="text"]:not(.red-invoice-input)');
+            for (const inp of allTextInputs) {
+                inp.value = meta.client;
+                break;
+            }
+        }
+
+        // Réafficher les boutons du mode numérique
+        ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.style.display = 'flex';
+        });
+
+        // Mettre à jour le bouton toggle
+        updatePaperToggleButton();
+
+        // Relancer la sécurité de l'éditeur
+        applyEditorSecurity({ status: 'brouillon', authorId: myUserId });
+
+        // Réinitialiser le zoom comme un formulaire normal
+        if (typeof fitToScreen === 'function') fitToScreen();
+
+        // Activer la signature si dispo
+        if (window.SignatureFD) {
+            window.SignatureFD.attachAll(containerInvoice);
+        }
     }
 
     // Rendu de l'éditeur en mode papier
@@ -1480,86 +1633,92 @@
                 else if (!savedClient && inp.value) savedClient = inp.value;
             });
         }
-        // Si pas de numéro, en réserver un (auto-incrémenté, mais modifiable)
+        // Si pas de numéro, utiliser celui en cours (auto-incrémenté, mais modifiable)
         if (!savedNumero && currentInvoiceId) savedNumero = currentInvoiceId;
         if (!savedDate) savedDate = new Date().toISOString().split('T')[0];
 
         containerInvoice.innerHTML = '';
 
-        // Header simplifié (CLIENT / DATE / NO. FACTURE) — juste pour métadonnées
-        const header = document.createElement('div');
-        header.className = 'invoice-page paper-mode-header';
-        header.style.cssText = 'background:#fff; padding:14px; margin:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.2); padding-bottom: 14px;';
-        header.innerHTML = `
-            <div style="display:flex; gap:10px; flex-wrap:wrap; font-family:Arial,sans-serif;">
-                <div style="flex:1; min-width:140px;">
-                    <label style="display:block; font-size:10px; color:#666; font-weight:bold; letter-spacing:0.5px; margin-bottom:3px;">CLIENT</label>
-                    <input type="text" class="paper-client-input" placeholder="Nom du client"
-                           value="${savedClient.replace(/"/g, '&quot;')}"
-                           style="width:100%; border:1px solid #ccc; padding:6px 8px; border-radius:4px; font-size:13px; box-sizing:border-box;" />
+        // === UNE seule grosse page blanche qui contient tout ===
+        const container = document.createElement('div');
+        container.className = 'paper-mode-container';
+        container.innerHTML = `
+            <!-- Header CLIENT / DATE / NO. FACTURE -->
+            <div class="paper-mode-header">
+                <div class="pmh-field">
+                    <label>Client</label>
+                    <input type="text" class="paper-client-input"
+                           placeholder="Nom du client"
+                           value="${(savedClient || '').replace(/"/g, '&quot;')}" />
                 </div>
-                <div style="flex:1; min-width:140px;">
-                    <label style="display:block; font-size:10px; color:#666; font-weight:bold; letter-spacing:0.5px; margin-bottom:3px;">DATE</label>
+                <div class="pmh-field">
+                    <label>Date</label>
                     <input type="date" class="paper-date-input"
-                           value="${savedDate}"
-                           style="width:100%; border:1px solid #ccc; padding:6px 8px; border-radius:4px; font-size:13px; box-sizing:border-box;" />
+                           value="${savedDate}" />
                 </div>
-                <div style="flex:1; min-width:140px;">
-                    <label style="display:block; font-size:10px; color:#666; font-weight:bold; letter-spacing:0.5px; margin-bottom:3px;">NO. FACTURE</label>
+                <div class="pmh-field">
+                    <label>No. facture</label>
                     <input type="text" class="paper-numero-input red-invoice-input"
-                           value="${savedNumero}"
-                           style="width:100%; border:1px solid #ccc; padding:6px 8px; border-radius:4px; font-size:13px; color:#dc3545; font-weight:bold; box-sizing:border-box;" />
+                           value="${(savedNumero || '').replace(/"/g, '&quot;')}" />
                 </div>
             </div>
+            <!-- Zone du contenu (drop zone OU liste des pages) -->
+            <div class="paper-mode-body" id="paper-mode-body"></div>
+            <!-- Bouton "+ Ajouter une page" toujours visible -->
+            <button type="button" class="paper-add-page-btn" id="paper-add-page-btn">
+                <svg><use href="#icon-plus"></use></svg> Ajouter une page
+            </button>
         `;
-        containerInvoice.appendChild(header);
+        containerInvoice.appendChild(container);
 
-        // Zone d'upload ou pages déjà ajoutées
+        // Hook le bouton "+"
+        const addBtn = document.getElementById('paper-add-page-btn');
+        if (addBtn) {
+            addBtn.onclick = () => document.getElementById('pim-gallery-input').click();
+        }
+
+        // Remplir la zone body (drop zone si vide, sinon les pages)
         renderPaperPagesInEditor();
     }
 
-    // Rendu des pages dans l'éditeur (drop zone + images + bouton +)
+    // Rendu des pages dans la zone body
     function renderPaperPagesInEditor() {
-        // Supprimer toutes les pages existantes (sauf le header)
-        containerInvoice.querySelectorAll('.paper-drop-zone, .paper-page-display, .paper-add-page-btn').forEach(el => el.remove());
+        const body = document.getElementById('paper-mode-body');
+        if (!body) return;
+        body.innerHTML = '';
 
         if (paperPages.length === 0) {
-            // Aucune page : montrer la drop zone
-            const zone = document.createElement('div');
-            zone.className = 'paper-drop-zone';
-            zone.innerHTML = `
-                <div class="pdz-text">Déposer une image ou prendre une photo<br>ou déposer un fichier</div>
-                <div class="pdz-actions">
-                    <button class="pdz-camera" onclick="document.getElementById('pim-camera-input').click()" title="Prendre une photo">
-                        <svg><use href="#icon-camera"></use></svg>
-                    </button>
-                    <button class="pdz-deposer" onclick="document.getElementById('pim-gallery-input').click()">Déposer</button>
+            // Aucune page : drop zone centrée
+            body.innerHTML = `
+                <div class="paper-drop-zone">
+                    <div class="pdz-text">Déposer une image ou prendre une photo<br>ou déposer un fichier</div>
+                    <div class="pdz-actions">
+                        <button type="button" class="pdz-camera" onclick="document.getElementById('pim-camera-input').click()" title="Prendre une photo">
+                            <svg><use href="#icon-camera"></use></svg>
+                        </button>
+                        <button type="button" class="pdz-deposer" onclick="document.getElementById('pim-gallery-input').click()">Déposer</button>
+                    </div>
                 </div>
             `;
-            containerInvoice.appendChild(zone);
             return;
         }
 
         // Sinon : afficher chaque page comme une grosse image
+        const list = document.createElement('div');
+        list.className = 'paper-pages-list';
         paperPages.forEach((p, idx) => {
             const pageEl = document.createElement('div');
             pageEl.className = 'paper-page-display';
             pageEl.innerHTML = `
                 <span class="ppd-num">Page ${idx + 1} / ${paperPages.length}</span>
-                <button class="ppd-remove" onclick="removePaperPage(${idx})" title="Retirer cette page">
+                <button type="button" class="ppd-remove" onclick="removePaperPage(${idx})" title="Retirer cette page">
                     <svg><use href="#icon-x"></use></svg>
                 </button>
                 <img src="${p.dataUrl || p.url}" alt="Page ${idx + 1}" />
             `;
-            containerInvoice.appendChild(pageEl);
+            list.appendChild(pageEl);
         });
-
-        // Bouton "+ Ajouter une page" en bas
-        const addBtn = document.createElement('button');
-        addBtn.className = 'paper-add-page-btn';
-        addBtn.onclick = () => document.getElementById('pim-gallery-input').click();
-        addBtn.innerHTML = `<svg><use href="#icon-plus"></use></svg> Ajouter une page`;
-        containerInvoice.appendChild(addBtn);
+        body.appendChild(list);
     }
 
     // Réception des fichiers (camera ou galerie)
@@ -1644,15 +1803,19 @@
             url: p.url, name: p.name, path: p.path, uploaded: true
         }));
         renderPaperEditor();
-        ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear', 'btn-paper'].forEach(id => {
+        // Cacher les boutons du formulaire mais garder btn-paper (toggle)
+        ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear'].forEach(id => {
             const el = document.getElementById(id); if (el) el.style.display = 'none';
         });
+        updatePaperToggleButton();
     }
 
     // Réinitialiser à la sortie de l'éditeur
     function resetPaperMode() {
         isPaperMode = false;
         paperPages = [];
+        // Remettre le bouton toggle à son état initial ("Facture papier")
+        if (typeof updatePaperToggleButton === 'function') updatePaperToggleButton();
     }
 
     // Sauvegarde Supabase en mode papier (brouillon ou envoi au bureau)
