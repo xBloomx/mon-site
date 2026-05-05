@@ -403,6 +403,33 @@
 
         if (error) { console.error('Erreur chargement outils:', error); return; }
 
+        // === MIGRATION AUTO : outils "orphelins" ===
+        // Un outil avec status='active' mais sans assignee_nom est forcément
+        // un outil de l'inventaire mal créé (avant le fix admin → status='available').
+        // On le migre automatiquement vers 'available' pour qu'il disparaisse de
+        // la liste "EN COURS D'UTILISATION" et apparaisse correctement dans le dropdown.
+        if (reset && data && data.length > 0) {
+            const orphans = data.filter(t =>
+                t.status === 'active' &&
+                (!t.assignee_nom || !t.assignee_nom.trim()) &&
+                !t.date_transfert
+            );
+            if (orphans.length > 0) {
+                console.info(`[Outils] Migration de ${orphans.length} outil(s) orphelin(s) vers 'available'.`);
+                const ids = orphans.map(o => o.id);
+                const { error: migrateError } = await supabaseClient
+                    .from('outils')
+                    .update({ status: 'available' })
+                    .in('id', ids);
+                if (migrateError) {
+                    console.warn('[Outils] Migration échouée :', migrateError.message);
+                } else {
+                    // Mettre à jour les données en mémoire pour éviter un re-fetch
+                    data.forEach(t => { if (ids.includes(t.id)) t.status = 'available'; });
+                }
+            }
+        }
+
         toolsHasMore = (data || []).length > TOOLS_PAGE_SIZE;
         const pageData = (data || []).slice(0, TOOLS_PAGE_SIZE);
         toolsLog = reset ? pageData : [...toolsLog, ...pageData];
