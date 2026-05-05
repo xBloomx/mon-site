@@ -4,10 +4,17 @@
 //   - Images/assets statiques : cache-first (rapide, change rarement)
 //   - Supabase                : jamais touché (toujours réseau)
 
-const CACHE_NAME = 'fdussault-v34';
+const CACHE_NAME = 'fdussault-v42';
+
+// Détecter le sous-chemin de déploiement (ex: /mon-site/ ou /)
+const SW_SCOPE = self.registration.scope;
+const BASE_PATH = new URL(SW_SCOPE).pathname.replace(/\/$/, ''); // ex: "/mon-site" ou ""
+
+function toAbsolute(path) {
+    return BASE_PATH + path;
+}
 
 // Tous les fichiers nécessaires pour que l'app fonctionne hors ligne.
-// IMPORTANT : on inclut TOUS les modules pour que la nav fonctionne offline.
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -54,7 +61,7 @@ const ASSETS_TO_CACHE = [
     '/assets/logo_profil.png',
     '/assets/logo_dussault.png',
     '/assets/cmmtq_et_slogan.png'
-];
+].map(toAbsolute);
 
 // Installation — mise en cache initiale
 self.addEventListener('install', event => {

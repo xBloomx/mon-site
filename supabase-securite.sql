@@ -175,11 +175,15 @@ END $$;
 -- ============================================================================
 -- ÉTAPE 6 : POLICIES — TABLE profils
 -- ============================================================================
--- Lecture : chacun voit son propre profil + admin voit tout
+-- Lecture : tout utilisateur authentifié peut voir la liste des collègues
+-- (nécessaire pour collaboration : messagerie, calendriers partagés, transfert
+-- d'outils, partage d'événements). Les UPDATE/DELETE restent strictes.
+-- L'utilisateur ne peut MODIFIER que son propre profil (et le rôle reste
+-- protégé par un trigger anti-promotion).
 CREATE POLICY "profils_select_own_or_admin"
   ON public.profils FOR SELECT
   TO authenticated
-  USING (id = auth.uid() OR public.is_admin());
+  USING (true);
 
 -- Insertion : seul l'admin peut créer un profil (les profils sont créés via Auth normalement)
 CREATE POLICY "profils_insert_admin_only"
@@ -385,7 +389,7 @@ CREATE POLICY "outils_select"
 CREATE POLICY "outils_insert"
   ON public.outils FOR INSERT
   TO authenticated
-  WITH CHECK (public.user_has_permission('manage_tools'));
+  WITH CHECK (true);
 
 CREATE POLICY "outils_update"
   ON public.outils FOR UPDATE
