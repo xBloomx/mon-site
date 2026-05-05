@@ -71,35 +71,32 @@
             overflow: hidden; border-bottom: 1px solid #3a3b46;
         }
         .contact-wrapper:last-child { border-bottom: none; }
-        
+
+        /* Zone rouge derrière la conversation, révélée par swipe vers la gauche.
+           Tape dessus pour confirmer le masquage. */
         .delete-btn-bg {
             position: absolute; top: 0; right: 0; bottom: 0; width: 80px;
             display: flex; align-items: center; justify-content: center;
             color: white; z-index: 1; cursor: pointer;
+            background-color: var(--btn-red);
         }
         .delete-btn-bg svg { width: 24px; height: 24px; }
-
-        /* Bouton poubelle visible sur chaque conversation (sauf global).
-           Discret par défaut, plus visible au survol. */
-        .contact-delete-btn {
-            background: rgba(255, 77, 77, 0.1); color: var(--btn-red);
-            border: 1px solid transparent; border-radius: 6px;
-            width: 32px; height: 32px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; flex-shrink: 0; margin-left: 8px;
-            transition: all 0.2s; padding: 0;
-        }
-        .contact-delete-btn svg { width: 16px; height: 16px; }
-        .contact-delete-btn:hover {
-            background: var(--btn-red); color: white;
-            border-color: var(--btn-red);
-        }
+        .delete-btn-bg:active { background-color: #c93c3c; }
 
         .contact-item { 
             display: flex; align-items: center; padding: 15px 20px; cursor: pointer; 
             border-left: 4px solid transparent; background-color: var(--card-bg);
-            position: relative; z-index: 2; transition: background-color 0.2s, transform 0.3s ease;
+            position: relative; z-index: 2;
+            transition: background-color 0.2s, transform 0.3s ease;
+            /* Désactive la sélection de texte pendant le swipe */
+            user-select: none; -webkit-user-select: none;
+            /* Empêche le pull-to-refresh d'iOS d'interférer avec notre swipe horizontal */
+            touch-action: pan-y;
         }
+        /* Quand on swipe pendant le geste, on désactive la transition pour suivre le doigt */
+        .contact-item.swiping { transition: none; }
+        /* État "ouvert" : décalé de -80px pour révéler le bouton de suppression */
+        .contact-item.swiped { transform: translateX(-80px); }
         .contact-item:hover { background-color: #343542; }
         .contact-item.active { background-color: #3a3b46; border-left-color: var(--btn-yellow); }
         
@@ -428,7 +425,7 @@
         <h3 style="color:var(--btn-red); margin-top:0;">Masquer la conversation</h3>
         <p style="color:#e0e0e0; font-size:15px; margin: 20px 0;">Cette conversation sera retirée de votre liste, mais l'autre participant la conservera. Si un nouveau message arrive, elle réapparaîtra automatiquement.</p>
         <div class="modal-actions">
-            <button class="btn-modal-gray" style="flex:1;" onclick="closeModal('confirmDeleteModal')">Annuler</button>
+            <button class="btn-modal-gray" style="flex:1;" onclick="cancelDeleteChat()">Annuler</button>
             <button class="btn-modal-red" style="flex:1;" onclick="executeDeleteChat()">Masquer</button>
         </div>
     </div>
@@ -910,6 +907,16 @@
     // --- FONCTIONS UI ---
     function showAlert(msg) { document.getElementById('alertMessage').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
     function askDeleteChat(chatId) { if (chatId === 'global') return; currentChatIdToDelete = chatId; document.getElementById('confirmDeleteModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+
+    // Annulation : referme le modal ET le swipe ouvert
+    function cancelDeleteChat() {
+        closeModal('confirmDeleteModal');
+        if (_currentlySwipedItem) {
+            _currentlySwipedItem.classList.remove('swiped');
+            _currentlySwipedItem = null;
+        }
+        currentChatIdToDelete = null;
+    }
     async function executeDeleteChat() {
         if (!currentChatIdToDelete || currentChatIdToDelete === 'global') return;
 
@@ -946,6 +953,151 @@
     function toggleRowSelection(cb, rowId) { const row = document.getElementById(rowId); if (cb.checked) { row.classList.add('selected'); } else { row.classList.remove('selected'); } checkNewChatSelection(); }
     function checkNewChatSelection() { const selected = document.querySelectorAll('.new-chat-cb:checked'); const groupGroup = document.getElementById('groupNameGroup'); if (selected.length > 1) { groupGroup.classList.add('show'); } else { groupGroup.classList.remove('show'); } }
     
+    // ================================================================
+    // SWIPE TO DELETE (style iOS Mail / iMessage / WhatsApp)
+    // ================================================================
+    // Comportement attendu :
+    //   - Swipe gauche court (>40px) : la conversation se "fige" décalée,
+    //     révélant le bouton rouge de suppression. Tap dessus = confirmation.
+    //   - Swipe gauche fort (>140px) : déclenche directement la confirmation.
+    //   - Swipe droit ou tap ailleurs : referme la conversation (revient à 0).
+    //   - Si on tape la conversation pendant qu'elle est ouverte : on la referme
+    //     au lieu d'ouvrir le chat (anti-fausse-manip).
+
+    const SWIPE_THRESHOLD_OPEN = 40;    // Distance min pour "ouvrir" l'item
+    const SWIPE_THRESHOLD_DELETE = 140; // Distance pour déclencher direct
+    const SWIPE_MAX = 80;               // Décalage final (= largeur du bouton rouge)
+    const SWIPE_LOCK_RATIO = 1.5;       // Si vertical > 1.5x horizontal, on annule (scroll)
+
+    let _swipeState = null;
+    let _currentlySwipedItem = null;
+
+    function attachSwipeListeners() {
+        const items = document.querySelectorAll('.contact-item.swipable');
+        items.forEach(item => {
+            // Évite d'attacher 2x si renderContactList est rappelé
+            if (item.dataset.swipeBound === '1') return;
+            item.dataset.swipeBound = '1';
+            item.addEventListener('touchstart', onSwipeStart, { passive: true });
+            item.addEventListener('touchmove', onSwipeMove, { passive: false });
+            item.addEventListener('touchend', onSwipeEnd, { passive: true });
+            item.addEventListener('touchcancel', onSwipeEnd, { passive: true });
+            // Si l'utilisateur tape un item ouvert, on le referme au lieu d'ouvrir le chat
+            item.addEventListener('click', onSwipeClick, true);
+        });
+    }
+
+    function onSwipeStart(e) {
+        if (!e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        _swipeState = {
+            item: e.currentTarget,
+            startX: t.clientX,
+            startY: t.clientY,
+            currentDelta: 0,
+            isHorizontal: null, // null = pas encore décidé, true/false = verrouillé
+            wasSwiped: e.currentTarget.classList.contains('swiped')
+        };
+        e.currentTarget.classList.add('swiping');
+    }
+
+    function onSwipeMove(e) {
+        if (!_swipeState || !e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        const dx = t.clientX - _swipeState.startX;
+        const dy = t.clientY - _swipeState.startY;
+
+        // Premier décollement : on décide si c'est un swipe horizontal ou un scroll vertical
+        if (_swipeState.isHorizontal === null) {
+            const absX = Math.abs(dx), absY = Math.abs(dy);
+            if (absX < 8 && absY < 8) return; // Trop tôt, on attend
+            _swipeState.isHorizontal = absX > absY * 0.8 && absY < absX * SWIPE_LOCK_RATIO;
+            if (!_swipeState.isHorizontal) {
+                // C'est un scroll vertical, on lâche le swipe
+                _swipeState.item.classList.remove('swiping');
+                _swipeState = null;
+                return;
+            }
+        }
+
+        // C'est bien un swipe horizontal : on bloque le scroll vertical du navigateur
+        e.preventDefault();
+
+        // Calcul du décalage à appliquer (négatif = vers la gauche)
+        let offset = dx;
+        // Si l'item était déjà ouvert (-80px), on part de cette position
+        if (_swipeState.wasSwiped) offset = -SWIPE_MAX + dx;
+        // Limites : on n'autorise QUE le décalage gauche (0 à -SWIPE_MAX)
+        if (offset > 0) offset = 0;
+        if (offset < -SWIPE_MAX - 30) offset = -SWIPE_MAX - 30; // Petite résistance au-delà
+
+        _swipeState.currentDelta = offset;
+        _swipeState.item.style.transform = `translateX(${offset}px)`;
+    }
+
+    function onSwipeEnd(e) {
+        if (!_swipeState) return;
+        const item = _swipeState.item;
+        const delta = _swipeState.currentDelta;
+        const absDelta = Math.abs(delta);
+        item.classList.remove('swiping');
+        item.style.transform = ''; // Laisse le CSS reprendre la main (avec transition)
+
+        // Décision finale
+        if (absDelta >= SWIPE_THRESHOLD_DELETE) {
+            // Swipe fort → on déclenche direct la confirmation
+            item.classList.remove('swiped');
+            const chatId = item.dataset.chatId;
+            if (chatId && typeof askDeleteChat === 'function') askDeleteChat(chatId);
+        } else if (absDelta >= SWIPE_THRESHOLD_OPEN) {
+            // Swipe modéré → on "fige" l'item ouvert, l'utilisateur peut tap sur le bouton
+            closeAnyOtherSwipe(item);
+            item.classList.add('swiped');
+            _currentlySwipedItem = item;
+        } else {
+            // Swipe insuffisant → on referme
+            item.classList.remove('swiped');
+            if (_currentlySwipedItem === item) _currentlySwipedItem = null;
+        }
+
+        _swipeState = null;
+    }
+
+    // Quand on tape un item, si un autre est ouvert on le referme (au lieu d'ouvrir le chat)
+    function onSwipeClick(e) {
+        const item = e.currentTarget;
+        if (item.classList.contains('swiped')) {
+            // L'item lui-même est ouvert → on le referme et on bloque le clic
+            e.preventDefault();
+            e.stopPropagation();
+            item.classList.remove('swiped');
+            if (_currentlySwipedItem === item) _currentlySwipedItem = null;
+            return;
+        }
+        // Sinon, si un AUTRE est ouvert, on le referme avant d'ouvrir le chat
+        if (_currentlySwipedItem && _currentlySwipedItem !== item) {
+            _currentlySwipedItem.classList.remove('swiped');
+            _currentlySwipedItem = null;
+        }
+    }
+
+    // Helper : ferme tous les autres items ouverts (un seul à la fois, comme iOS)
+    function closeAnyOtherSwipe(except) {
+        document.querySelectorAll('.contact-item.swiped').forEach(el => {
+            if (el !== except) el.classList.remove('swiped');
+        });
+    }
+
+    // Si l'utilisateur clique ailleurs sur la page, on referme le swipe ouvert
+    document.addEventListener('click', (e) => {
+        if (!_currentlySwipedItem) return;
+        // Ne pas refermer si on clique dans le bouton de suppression (ça appelle askDeleteChat)
+        if (e.target.closest('.delete-btn-bg')) return;
+        if (e.target.closest('.contact-item.swiped')) return;
+        _currentlySwipedItem.classList.remove('swiped');
+        _currentlySwipedItem = null;
+    }, true);
+
     function renderContactList() {
         const list = document.getElementById('contactListContainer');
         if(!list) return; list.innerHTML = '';
@@ -958,24 +1110,27 @@
             const avatarClass = chat.isGroup ? 'avatar-group' : '';
             let lastMsg = 'Nouvelle discussion'; let lastTime = '';
             if (chat.messages && chat.messages.length > 0) { const lastM = chat.messages[chat.messages.length - 1]; lastMsg = lastM.type === 'text' ? lastM.text : (lastM.type === 'image' ? '📷 Image' : '📎 Fichier'); lastTime = lastM.time; }
-            // Bouton poubelle visible directement (pas de swipe). Stop propagation pour
-            // ne pas ouvrir la conversation au clic sur la poubelle.
-            const deleteBtn = id !== 'global'
-                ? `<button class="contact-delete-btn" onclick="event.stopPropagation(); askDeleteChat('${id}')" title="Masquer cette conversation"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>`
+            // Bouton de suppression révélé par swipe vers la gauche (style iOS).
+            // Le 'global' (Équipe) ne peut pas être masqué donc pas de swipe.
+            const deleteBg = id !== 'global'
+                ? `<div class="delete-btn-bg" onclick="askDeleteChat('${id}')" title="Masquer cette conversation"><svg class="svg-icon"><use href="#icon-trash"></use></svg></div>`
                 : '';
+            const swipableClass = id !== 'global' ? 'swipable' : '';
             list.insertAdjacentHTML('beforeend', `
                 <div class="contact-wrapper" id="wrapper-${id}">
-                    <div class="contact-item ${isActive}" id="contact-${id}" onclick="openChat('${id}', event)">
+                    ${deleteBg}
+                    <div class="contact-item ${isActive} ${swipableClass}" id="contact-${id}" data-chat-id="${id}" onclick="openChat('${id}', event)">
                         <div class="avatar ${avatarClass}">${avatarLet}</div>
                         <div class="contact-info">
                             <div class="contact-name"><span>${chat.name}</span> <span class="contact-time">${lastTime}</span></div>
                             <div class="contact-last-msg">${chat.messages && chat.messages.length > 0 && chat.messages[chat.messages.length-1].isMine ? 'Vous: ' : ''}${lastMsg}</div>
                         </div>
-                        ${deleteBtn}
                     </div>
                 </div>
             `);
         });
+        // Attacher les listeners de swipe sur les nouveaux éléments
+        attachSwipeListeners();
     }
 
     function filterContacts() { const searchTerm = document.getElementById('searchContactInput').value.toLowerCase(); document.querySelectorAll('#contactListContainer .contact-wrapper').forEach(wrapper => { wrapper.style.display = wrapper.textContent.toLowerCase().includes(searchTerm) ? 'block' : 'none'; }); }
