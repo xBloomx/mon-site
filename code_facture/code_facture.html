@@ -49,6 +49,44 @@
         .b-traite { background: var(--btn-purple); } 
         .b-paye { background: #28a745; }
         .b-renvoye { background: #fd7e14; }
+        .b-paper {
+            background: rgba(91, 192, 235, 0.15);
+            color: var(--btn-blue, #5BC0EB);
+            border: 1px solid rgba(91, 192, 235, 0.4);
+        }
+
+        /* === Vue galerie facture papier === */
+        .paper-invoice-view {
+            max-width: 800px; margin: 20px auto; padding: 20px;
+            background: #1f2027; border-radius: 12px; color: #ddd;
+        }
+        .paper-header { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #333; }
+        .paper-meta {
+            display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px;
+            color: #aaa; font-size: 13px;
+        }
+        .paper-meta strong { color: #fff; }
+        .paper-notes {
+            background: #15161c; border-left: 3px solid var(--btn-yellow);
+            padding: 12px 14px; border-radius: 6px; margin: 14px 0;
+            color: #ddd; font-size: 14px; line-height: 1.5;
+        }
+        .paper-pages-list {
+            display: flex; flex-direction: column; gap: 14px; margin-top: 16px;
+        }
+        .paper-page-wrap {
+            background: #15161c; padding: 12px; border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .paper-page-num {
+            color: var(--btn-blue); font-size: 13px; font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .paper-page-img {
+            width: 100%; max-width: 100%; height: auto; display: block;
+            border-radius: 6px; border: 1px solid #444;
+            background: #fff; cursor: zoom-in;
+        }
 
         #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
         
@@ -242,6 +280,9 @@
     <symbol id="icon-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></symbol>
     <symbol id="icon-return" viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></symbol>
     <symbol id="icon-print" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></symbol>
+    <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></symbol>
+    <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></symbol>
+    <symbol id="icon-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></symbol>
     <symbol id="icon-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></symbol>
     <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></symbol>
     <symbol id="icon-file-minus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></symbol>
@@ -261,9 +302,14 @@
                 <h1>Facturation</h1>
                 <p>Création et suivi comptable</p>
             </div>
-            <button class="action-btn" style="background-color: var(--btn-yellow);" onclick="openNewInvoice()">
-                <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Facture
-            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="action-btn" style="background-color: var(--btn-yellow);" onclick="openNewInvoice()">
+                    <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Facture
+                </button>
+                <button class="action-btn" style="background-color: var(--btn-blue); color: white;" onclick="openPaperInvoiceModal()" title="Envoyer une facture déjà remplie sur papier en photo">
+                    <svg class="svg-icon"><use href="#icon-camera"></use></svg> Facture papier
+                </button>
+            </div>
         </div>
         
         <div class="tabs-container" id="invoice-tabs" style="display:none;">
@@ -369,6 +415,144 @@
             <button class="btn-cancel" onclick="closeModal('sig-modal')">ANNULER</button>
             <button class="btn-clear" onclick="clearModalCanvas()">EFFACER</button>
             <button class="btn-ok" onclick="saveSignature()">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour envoyer une facture papier (photos scannées) -->
+<style>
+    #paperInvoiceModal {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+        z-index: 4000; justify-content: center; align-items: center;
+        padding: 20px; padding-top: calc(20px + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+    #paperInvoiceModal.show { display: flex; }
+    #paperInvoiceModal .pim-card {
+        background: var(--card-bg, #1f2027); color: white;
+        border-radius: 14px; padding: 24px; max-width: 600px; width: 100%;
+        max-height: 95vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+    }
+    #paperInvoiceModal h2 {
+        margin: 0 0 6px 0; color: var(--btn-blue, #5BC0EB); display: flex;
+        align-items: center; gap: 8px; font-size: 20px;
+    }
+    #paperInvoiceModal h2 svg { width: 22px; height: 22px; }
+    #paperInvoiceModal .pim-sub {
+        color: #aaa; font-size: 13px; margin-bottom: 18px; line-height: 1.4;
+    }
+    #paperInvoiceModal .pim-pages {
+        display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
+        padding: 12px; background: #15161c; border-radius: 8px;
+        border: 1px dashed #444; min-height: 90px; align-items: center;
+    }
+    #paperInvoiceModal .pim-page {
+        position: relative; width: 90px; height: 90px;
+        border-radius: 6px; overflow: hidden; border: 2px solid #444;
+        background: #000; flex-shrink: 0;
+    }
+    #paperInvoiceModal .pim-page img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    #paperInvoiceModal .pim-page .pim-page-num {
+        position: absolute; top: 4px; left: 4px;
+        background: rgba(0,0,0,0.7); color: white;
+        font-size: 11px; padding: 2px 6px; border-radius: 4px;
+        font-weight: bold;
+    }
+    #paperInvoiceModal .pim-page .pim-page-remove {
+        position: absolute; top: 4px; right: 4px;
+        background: var(--btn-red); color: white; border: none;
+        width: 22px; height: 22px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; padding: 0;
+    }
+    #paperInvoiceModal .pim-page .pim-page-remove svg {
+        width: 12px; height: 12px;
+    }
+    #paperInvoiceModal .pim-empty {
+        color: #888; font-style: italic; font-size: 13px; text-align: center;
+        width: 100%;
+    }
+    #paperInvoiceModal .pim-add-buttons {
+        display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    #paperInvoiceModal .pim-add-btn {
+        flex: 1; min-width: 130px;
+        background: #2b2c36; border: 1px solid #555; color: white;
+        padding: 12px; border-radius: 8px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        font-size: 14px; transition: all 0.2s;
+    }
+    #paperInvoiceModal .pim-add-btn:hover { background: #3a3b46; border-color: #777; }
+    #paperInvoiceModal .pim-add-btn svg { width: 18px; height: 18px; }
+    #paperInvoiceModal label {
+        display: block; color: #ccc; font-size: 13px;
+        margin: 12px 0 6px 0; font-weight: 500;
+    }
+    #paperInvoiceModal input[type="text"], #paperInvoiceModal textarea {
+        width: 100%; background: #15161c; border: 1px solid #444;
+        color: white; padding: 10px; border-radius: 6px;
+        font-size: 14px; font-family: inherit; box-sizing: border-box;
+    }
+    #paperInvoiceModal textarea { resize: vertical; min-height: 70px; }
+    #paperInvoiceModal .pim-actions {
+        display: flex; gap: 10px; margin-top: 20px;
+    }
+    #paperInvoiceModal .pim-btn {
+        flex: 1; padding: 14px; border-radius: 8px; border: none;
+        font-weight: bold; font-size: 15px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        transition: all 0.2s;
+    }
+    #paperInvoiceModal .pim-btn-cancel { background: #444; color: white; }
+    #paperInvoiceModal .pim-btn-cancel:hover { background: #555; }
+    #paperInvoiceModal .pim-btn-send { background: var(--btn-green, #28a745); color: white; }
+    #paperInvoiceModal .pim-btn-send:hover { background: #2cbb50; }
+    #paperInvoiceModal .pim-btn-send:disabled { background: #555; cursor: not-allowed; opacity: 0.6; }
+    #paperInvoiceModal .pim-progress {
+        margin-top: 12px; padding: 10px; background: #15161c;
+        border-radius: 6px; font-size: 13px; color: #5BC0EB;
+        text-align: center; display: none;
+    }
+    #paperInvoiceModal .pim-progress.show { display: block; }
+</style>
+<div id="paperInvoiceModal">
+    <div class="pim-card">
+        <h2><svg><use href="#icon-camera"></use></svg> Facture papier</h2>
+        <p class="pim-sub">Prends une photo par page de ta facture papier (recto, verso, etc.). Elle sera envoyée au bureau pour traitement.</p>
+
+        <label>Pages de la facture <span style="color:var(--btn-red);">*</span></label>
+        <div class="pim-pages" id="pim-pages-container">
+            <span class="pim-empty">Aucune page ajoutée. Utilise les boutons ci-dessous.</span>
+        </div>
+
+        <div class="pim-add-buttons">
+            <button class="pim-add-btn" onclick="document.getElementById('pim-camera-input').click()">
+                <svg><use href="#icon-camera"></use></svg> Prendre une photo
+            </button>
+            <button class="pim-add-btn" onclick="document.getElementById('pim-gallery-input').click()">
+                <svg><use href="#icon-image"></use></svg> Choisir dans galerie
+            </button>
+        </div>
+
+        <!-- Inputs cachés : "capture=environment" force la caméra arrière du téléphone -->
+        <input type="file" id="pim-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="addPaperPages(this.files); this.value='';" />
+        <input type="file" id="pim-gallery-input" accept="image/*" multiple style="display:none;" onchange="addPaperPages(this.files); this.value='';" />
+
+        <label>Client (optionnel)</label>
+        <input type="text" id="pim-client" placeholder="Ex: Jean Tremblay, Plomberie ABC..." />
+
+        <label>Notes pour le bureau (optionnel)</label>
+        <textarea id="pim-notes" placeholder="Ex: Facture #2345 du fournisseur X, à payer avant le 15..."></textarea>
+
+        <div class="pim-progress" id="pim-progress">Téléversement en cours...</div>
+
+        <div class="pim-actions">
+            <button class="pim-btn pim-btn-cancel" onclick="closePaperInvoiceModal()">Annuler</button>
+            <button class="pim-btn pim-btn-send" id="pim-send-btn" onclick="sendPaperInvoice()" disabled>
+                <svg style="width:16px;height:16px;"><use href="#icon-send"></use></svg> Envoyer au bureau
+            </button>
         </div>
     </div>
 </div>
@@ -549,6 +733,8 @@
                     isArchived: dbInv.is_archived === true,
                     archivedAt: dbInv.archived_at,
                     archivedByName: dbInv.archived_by_name,
+                    isPaper: dbInv.is_paper === true,
+                    paperPages: dbInv.paper_pages || null,
                     timestamp: new Date(dbInv.created_at).getTime()
                 }));
 
@@ -618,6 +804,49 @@
         const status = invoiceObj ? (invoiceObj.status || 'brouillon') : 'brouillon';
         const isAuthor = invoiceObj ? (invoiceObj.authorId === myUserId || !invoiceObj.authorId) : true;
         const isArchived = invoiceObj && invoiceObj.isArchived === true;
+        const isPaper = invoiceObj && invoiceObj.isPaper === true;
+
+        // === FACTURE PAPIER : pas d'édition possible, mais on garde les
+        // boutons "Marquer traité / payé / renvoyer" côté bureau ===
+        if (isPaper) {
+            // Cacher tous les boutons d'édition du formulaire (n'ont pas de sens
+            // sur une galerie de photos)
+            ['btn-save', 'btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear', 'btn-send'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            const btnUnlock = document.getElementById('btn-unlock');
+            const btnReturn = document.getElementById('btn-return');
+            // Le bureau peut traiter / renvoyer / payer la facture papier comme une normale
+            if (isBureau && status !== 'brouillon' && status !== 'attente' && !isArchived) {
+                if (btnUnlock) btnUnlock.style.display = 'flex';
+                if (btnReturn) btnReturn.style.display = 'flex';
+            } else {
+                if (btnUnlock) btnUnlock.style.display = 'none';
+                if (btnReturn) btnReturn.style.display = 'none';
+            }
+
+            const statusDiv = document.getElementById('office-status-div');
+            if (statusDiv) {
+                if (isBureau && status !== 'brouillon' && status !== 'attente') {
+                    statusDiv.style.display = 'flex';
+                    const statusMap = { 'envoye': 'Reçu (À traiter)', 'traite': 'Traité', 'attente': 'À corriger', 'paye': 'Facture payée', 'brouillon': 'Brouillon' };
+                    const statusText = document.getElementById('current-status-text');
+                    if (statusText) statusText.textContent = statusMap[status] || status;
+                } else { statusDiv.style.display = 'none'; }
+            }
+
+            // Bannière de correction (si le bureau a renvoyé) — affichage seul
+            const banner = document.getElementById('correction-banner');
+            if (status === 'attente' && invoiceObj && invoiceObj.returnNote) {
+                if (banner) banner.style.display = 'flex';
+                const noteText = document.getElementById('correction-note-text');
+                if (noteText) noteText.textContent = invoiceObj.returnNote;
+            } else { if (banner) banner.style.display = 'none'; }
+
+            return;
+        }
 
         let canEdit = false;
         if (!isBureau) { if (status === 'brouillon' || status === 'attente') canEdit = true; } 
@@ -747,7 +976,14 @@
         viewDashboard.style.display = 'none'; viewEditor.style.display = 'flex'; 
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
         containerInvoice.innerHTML = '';
-        
+
+        // === FACTURE PAPIER : afficher les photos au lieu du formulaire ===
+        if (invoice.isPaper && invoice.paperPages && invoice.paperPages.length > 0) {
+            renderPaperInvoiceView(invoice);
+            applyEditorSecurity(invoice);
+            return;
+        }
+
         const pageCount = invoice.pageCount || 1;
         for(let i=0; i<pageCount; i++) { containerInvoice.appendChild(createInvoicePageHTML()); }
         
@@ -767,6 +1003,46 @@
         if (!invoice.isArchived && (invoice.status === 'brouillon' || invoice.status === 'corrige')) {
             startAutosave();
         }
+    }
+
+    // Affichage spécial pour les factures papier : galerie de photos
+    function renderPaperInvoiceView(invoice) {
+        const numLabel = invoice.id ? `Facture #${invoice.id}` : 'Facture papier';
+        const clientLabel = invoice.client && invoice.client !== 'Facture papier' ? invoice.client : '—';
+        const dateLabel = invoice.timestamp ? new Date(invoice.timestamp).toLocaleDateString('fr-CA') : '—';
+        const authorLabel = invoice.authorName || 'Inconnu';
+        const notesHTML = invoice.content
+            ? `<div class="paper-notes"><strong>Notes du terrain :</strong><br>${(invoice.content || '').replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>`
+            : '';
+
+        const pagesHTML = invoice.paperPages.map((p, idx) => `
+            <div class="paper-page-wrap">
+                <div class="paper-page-num">Page ${idx + 1} / ${invoice.paperPages.length}</div>
+                <a href="${p.url}" target="_blank" rel="noopener">
+                    <img src="${p.url}" alt="Page ${idx + 1}" class="paper-page-img" />
+                </a>
+            </div>
+        `).join('');
+
+        containerInvoice.innerHTML = `
+            <div class="paper-invoice-view">
+                <div class="paper-header">
+                    <h2 style="margin:0 0 4px 0; color:#fff;">📄 ${numLabel} <span style="color:var(--btn-blue); font-size:14px; margin-left:8px;">(Facture papier)</span></h2>
+                    <div class="paper-meta">
+                        <span><strong>Client :</strong> ${clientLabel}</span>
+                        <span><strong>Auteur :</strong> ${authorLabel}</span>
+                        <span><strong>Reçue le :</strong> ${dateLabel}</span>
+                    </div>
+                </div>
+                ${notesHTML}
+                <div class="paper-pages-list">
+                    ${pagesHTML}
+                </div>
+                <p style="color:#888; font-size:12px; text-align:center; margin-top:20px;">
+                    Touchez une image pour l'agrandir dans un nouvel onglet.
+                </p>
+            </div>
+        `;
     }
 
     async function duplicateInvoice(id, e) {
@@ -1055,6 +1331,11 @@
                 if(st === 'paye') badgeHTML = `<span class="badge-status b-paye">Facture payée</span>`;
             }
 
+            // Badge supplémentaire : facture papier (photos scannées)
+            if (inv.isPaper) {
+                badgeHTML += ` <span class="badge-status b-paper" title="Facture remplie sur papier puis envoyée en photo">📄 Papier</span>`;
+            }
+
             // Si archivé : remplacer le badge par "Archivé"
             if (inv.isArchived) {
                 badgeHTML = `<span class="badge-status" style="background:#555; color:#fff;">📦 Archivé</span>`;
@@ -1186,6 +1467,162 @@
     function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
     function resetZoom() { fitToScreen(); } 
     window.addEventListener('resize', () => { if (document.getElementById('view-editor').style.display === 'flex') { fitToScreen(); } });
+
+    // ============================================
+    // FACTURE PAPIER (photos scannées)
+    // ============================================
+    let paperPages = []; // [{file: File, dataUrl: string}, ...]
+
+    function openPaperInvoiceModal() {
+        paperPages = [];
+        document.getElementById('pim-client').value = '';
+        document.getElementById('pim-notes').value = '';
+        renderPaperPages();
+        document.getElementById('paperInvoiceModal').classList.add('show');
+        // Cacher le hamburger pour pas qu'il bloque le modal
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+
+    function closePaperInvoiceModal() {
+        document.getElementById('paperInvoiceModal').classList.remove('show');
+        paperPages = [];
+        // Reset progress
+        const prog = document.getElementById('pim-progress');
+        if (prog) { prog.classList.remove('show'); prog.textContent = ''; }
+        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
+    }
+
+    // Ajout d'images à la liste des pages
+    async function addPaperPages(fileList) {
+        if (!fileList || fileList.length === 0) return;
+        const files = Array.from(fileList);
+        for (const file of files) {
+            if (!file.type.startsWith('image/')) continue;
+            // Refuser fichier > 10 Mo (les photos iPhone font ~3-5 Mo, on garde une marge)
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert(`L'image "${file.name}" est trop grosse (max 10 Mo).`);
+                continue;
+            }
+            // Lire en dataURL pour l'aperçu
+            const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            paperPages.push({ file, dataUrl });
+        }
+        renderPaperPages();
+    }
+
+    function renderPaperPages() {
+        const container = document.getElementById('pim-pages-container');
+        const sendBtn = document.getElementById('pim-send-btn');
+        if (paperPages.length === 0) {
+            container.innerHTML = '<span class="pim-empty">Aucune page ajoutée. Utilise les boutons ci-dessous.</span>';
+            sendBtn.disabled = true;
+            return;
+        }
+        container.innerHTML = paperPages.map((p, idx) => `
+            <div class="pim-page">
+                <span class="pim-page-num">${idx + 1}</span>
+                <img src="${p.dataUrl}" alt="Page ${idx + 1}" />
+                <button class="pim-page-remove" onclick="removePaperPage(${idx})" title="Retirer cette page">
+                    <svg><use href="#icon-x"></use></svg>
+                </button>
+            </div>
+        `).join('');
+        sendBtn.disabled = false;
+    }
+
+    function removePaperPage(idx) {
+        paperPages.splice(idx, 1);
+        renderPaperPages();
+    }
+
+    // Téléverse les photos sur Supabase Storage et crée la facture
+    async function sendPaperInvoice() {
+        if (paperPages.length === 0) {
+            showAlert("Veuillez ajouter au moins une photo.");
+            return;
+        }
+        const sendBtn = document.getElementById('pim-send-btn');
+        const progress = document.getElementById('pim-progress');
+        sendBtn.disabled = true;
+        progress.classList.add('show');
+
+        const clientName = document.getElementById('pim-client').value.trim();
+        const notes = document.getElementById('pim-notes').value.trim();
+
+        // 1. Téléverser chaque image dans le bucket pieces_jointes
+        const uploadedPages = [];
+        try {
+            for (let i = 0; i < paperPages.length; i++) {
+                progress.textContent = `Téléversement page ${i + 1} sur ${paperPages.length}...`;
+                const page = paperPages[i];
+                const ext = (page.file.name.split('.').pop() || 'jpg').toLowerCase();
+                const safeExt = /^[a-z0-9]+$/.test(ext) ? ext : 'jpg';
+                const uniqueName = `paper_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 8)}.${safeExt}`;
+                const filePath = `factures-papier/${myUserId}/${uniqueName}`;
+
+                const { error: uploadError } = await supabaseClient
+                    .storage.from('pieces_jointes')
+                    .upload(filePath, page.file, { contentType: page.file.type });
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabaseClient
+                    .storage.from('pieces_jointes')
+                    .getPublicUrl(filePath);
+
+                uploadedPages.push({ url: publicUrl, name: page.file.name, path: filePath });
+            }
+        } catch (e) {
+            progress.textContent = '';
+            progress.classList.remove('show');
+            sendBtn.disabled = false;
+            showAlert("Erreur de téléversement : " + e.message);
+            return;
+        }
+
+        // 2. Réserver un numéro de facture (RPC) puis créer l'enregistrement Supabase
+        progress.textContent = 'Enregistrement de la facture...';
+        try {
+            // Réserver un numéro F-XXXX comme pour les factures normales
+            let invoiceNumber = null;
+            try {
+                const { data: numData, error: numError } = await supabaseClient.rpc('next_facture_number');
+                if (!numError && numData) invoiceNumber = numData;
+            } catch (e) { /* fallback sans numéro */ }
+
+            const facturePayload = {
+                author_id: myUserId,
+                author_name: myUserName,
+                client: clientName || 'Facture papier',
+                status: 'envoyee',
+                is_paper: true,
+                paper_pages: uploadedPages,
+                content: notes || null,
+                date_creation: new Date().toISOString().split('T')[0]
+            };
+            if (invoiceNumber) facturePayload.numero = invoiceNumber;
+
+            const { error: insertError } = await supabaseClient
+                .from('factures')
+                .insert([facturePayload]);
+            if (insertError) throw insertError;
+
+            progress.textContent = '';
+            progress.classList.remove('show');
+            closePaperInvoiceModal();
+            showAlert("✅ Facture papier envoyée au bureau" + (invoiceNumber ? ` (#${invoiceNumber})` : '') + " !");
+            // Rafraîchir la liste
+            if (typeof loadData === 'function') await loadData();
+        } catch (e) {
+            progress.classList.remove('show');
+            sendBtn.disabled = false;
+            showAlert("Erreur d'enregistrement : " + e.message);
+        }
+    }
 
     // --- SIGNATURE ÉLECTRONIQUE AMÉLIORÉE (Chantier 6) ---
     // Le module SignatureFD intercepte les clics sur .display-sig et ouvre le nouveau

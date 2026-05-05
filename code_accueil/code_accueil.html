@@ -363,6 +363,34 @@
     let currentUserName = "Employé"; 
     let currentUserId = "local";
 
+    // === Système de permissions (synchronisé avec admin et autres modules) ===
+    const defaultRolesConfig = {
+        'A1': { perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers', 'view_archives_all', 'delete_documents'] },
+        'A2': { perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news'] },
+        'A3': { perms: ['transfer_tools', 'access_po_tab', 'access_soumissions_tab', 'create_clients'] }
+    };
+    let _cachedRoles = null;
+
+    async function loadRolesCache() {
+        if (_cachedRoles) return;
+        try {
+            const { data } = await supabaseClient
+                .from('parametres_globaux')
+                .select('valeur')
+                .eq('cle', 'roles_config')
+                .maybeSingle();
+            _cachedRoles = data?.valeur ? JSON.parse(data.valeur) : defaultRolesConfig;
+        } catch(e) { _cachedRoles = defaultRolesConfig; }
+    }
+
+    function hasPermission(role, permId) {
+        if (role === 'A0') return true;
+        const roles = _cachedRoles || defaultRolesConfig;
+        const roleData = roles[role] || defaultRolesConfig[role];
+        if (!roleData || !roleData.perms) return false;
+        return roleData.perms.includes(permId);
+    }
+
     function goToTab(targetId) {
         window.parent.postMessage({ type: 'navigate', target: targetId }, '*');
     }
@@ -382,7 +410,10 @@
         
         currentUserId = user.id;
         const { data: profil } = await supabaseClient.from('profils').select('role, prenom_nom').eq('id', user.id).maybeSingle();
-        
+
+        // Charger la configuration des permissions depuis Supabase
+        await loadRolesCache();
+
         if (profil) {
             currentUserRole = profil.role;
             currentUserName = profil.prenom_nom || user.email.split('@')[0] || "Utilisateur";
@@ -400,7 +431,13 @@
             currentUserName = user.email.split('@')[0] || "Utilisateur";
             document.getElementById('greeting').textContent = "Bonjour, " + currentUserName + " !";
         }
-        
+
+        // Cacher le bouton "Publier une annonce" si pas la permission manage_news
+        if (!hasPermission(currentUserRole, 'manage_news')) {
+            const btnNews = document.getElementById('btn-add-news');
+            if (btnNews) btnNews.style.display = 'none';
+        }
+
         loadNews();
         checkCertifications();
         loadDashboardStats(); 
@@ -496,7 +533,8 @@
             
             let actionBtnsHTML = '';
             
-            if (currentUserRole === 'A0' || currentUserRole === 'A1' || currentUserRole === 'A2') {
+            // Afficher les actions (épingler / supprimer) seulement si l'utilisateur a la perm manage_news
+            if (hasPermission(currentUserRole, 'manage_news')) {
                 const pinClass = news.isPinned ? 'pin-active' : '';
                 const pinTitle = news.isPinned ? 'Désépingler' : 'Épingler en haut';
                 actionBtnsHTML = `
@@ -539,6 +577,12 @@
     }
 
     function openNewsModal() {
+        // Sécurité : refuser si l'utilisateur n'a pas la perm (au cas où le bouton aurait
+        // été montré par un bug, ou appelé via la console)
+        if (!hasPermission(currentUserRole, 'manage_news')) {
+            showAlert("Vous n'avez pas la permission de publier une annonce.");
+            return;
+        }
         document.getElementById('newsTitle').value = '';
         document.getElementById('newsBody').value = '';
         document.getElementById('newsType').value = 'info';
@@ -555,6 +599,11 @@
     }
 
     async function saveNews() {
+        // Double check de sécurité côté client (le serveur a aussi son RLS)
+        if (!hasPermission(currentUserRole, 'manage_news')) {
+            showAlert("Vous n'avez pas la permission de publier une annonce.");
+            return;
+        }
         const title = document.getElementById('newsTitle').value.trim();
         const body = document.getElementById('newsBody').value.trim();
         const type = document.getElementById('newsType').value;

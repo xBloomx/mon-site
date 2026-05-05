@@ -531,6 +531,12 @@
         let hasActive = false, hasHistory = false;
 
         list.forEach(t => {
+            // Les outils avec status 'available' sont dans l'inventaire (ajoutés par
+            // l'admin) mais pas encore empruntés. On ne les affiche ni dans "En cours
+            // d'utilisation" ni dans "Historique" — ils sont juste là pour peupler
+            // la liste déroulante du formulaire d'emprunt.
+            if (t.status === 'available') return;
+
             const card = document.createElement('div');
             card.className = `tool-item ${t.status === 'returned' ? 'returned' : ''}`;
 

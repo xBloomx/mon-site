@@ -79,6 +79,22 @@
         }
         .delete-btn-bg svg { width: 24px; height: 24px; }
 
+        /* Bouton poubelle visible sur chaque conversation (sauf global).
+           Discret par défaut, plus visible au survol. */
+        .contact-delete-btn {
+            background: rgba(255, 77, 77, 0.1); color: var(--btn-red);
+            border: 1px solid transparent; border-radius: 6px;
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0; margin-left: 8px;
+            transition: all 0.2s; padding: 0;
+        }
+        .contact-delete-btn svg { width: 16px; height: 16px; }
+        .contact-delete-btn:hover {
+            background: var(--btn-red); color: white;
+            border-color: var(--btn-red);
+        }
+
         .contact-item { 
             display: flex; align-items: center; padding: 15px 20px; cursor: pointer; 
             border-left: 4px solid transparent; background-color: var(--card-bg);
@@ -409,11 +425,11 @@
 
 <div class="modal-overlay" id="confirmDeleteModal" style="z-index: 6000;">
     <div class="modal-card-basic" style="text-align: center;">
-        <h3 style="color:var(--btn-red); margin-top:0;">Supprimer la discussion</h3>
-        <p style="color:#e0e0e0; font-size:15px; margin: 20px 0;">Voulez-vous vraiment supprimer cette conversation ? Cette action est irréversible.</p>
+        <h3 style="color:var(--btn-red); margin-top:0;">Masquer la conversation</h3>
+        <p style="color:#e0e0e0; font-size:15px; margin: 20px 0;">Cette conversation sera retirée de votre liste, mais l'autre participant la conservera. Si un nouveau message arrive, elle réapparaîtra automatiquement.</p>
         <div class="modal-actions">
             <button class="btn-modal-gray" style="flex:1;" onclick="closeModal('confirmDeleteModal')">Annuler</button>
-            <button class="btn-modal-red" style="flex:1;" onclick="executeDeleteChat()">Supprimer</button>
+            <button class="btn-modal-red" style="flex:1;" onclick="executeDeleteChat()">Masquer</button>
         </div>
     </div>
 </div>
@@ -519,6 +535,22 @@
 
     let myUserId = 'local-user';
     let myUserName = 'Moi';
+    let hiddenChatIds = new Set(); // Chats que CET utilisateur a masqués
+
+    // Charger la liste des chats masqués pour cet utilisateur
+    async function chargerChatsMasques() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('chats_caches')
+                .select('chat_id')
+                .eq('user_id', myUserId);
+            if (error) throw error;
+            hiddenChatIds = new Set((data || []).map(r => r.chat_id));
+        } catch (e) {
+            console.warn('[Messagerie] Impossible de charger les chats masqués:', e.message);
+            hiddenChatIds = new Set();
+        }
+    }
 
     // 1. INITIALISATION
     async function initAuth() {
@@ -555,8 +587,10 @@
         }
     }
 
-    function initApp() {
+    async function initApp() {
         renderQuickReactions();
+        // Charger d'abord les chats masqués (avant de rendre la liste)
+        await chargerChatsMasques();
         renderContactList();
         chargerMessagesSupabase();
 
@@ -667,6 +701,21 @@
                     type: decodage.type, text: decodage.text, url: decodage.url,
                     fileName: decodage.fileName, fileSize: decodage.fileSize
                 });
+
+                // Si ce chat était masqué pour cet utilisateur, le démasquer
+                // automatiquement (un nouveau message arrive → la conversation revient)
+                if (hiddenChatIds.has(cId)) {
+                    hiddenChatIds.delete(cId);
+                    try {
+                        await supabaseClient
+                            .from('chats_caches')
+                            .delete()
+                            .eq('user_id', myUserId)
+                            .eq('chat_id', cId);
+                    } catch (e) {
+                        console.warn('[Messagerie] Erreur démasquage auto:', e.message);
+                    }
+                }
 
                 // Mettre à jour l'affichage si on est dans ce chat
                 if (currentChatId === cId) {
@@ -820,7 +869,7 @@
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
 
-    function createNewChat() {
+    async function createNewChat() {
         const selected = document.querySelectorAll('.new-chat-cb:checked');
         if (selected.length === 0) return showAlert("Veuillez sélectionner au moins une personne.");
         
@@ -839,6 +888,20 @@
         
         if (!conversationsData[newChatId]) { conversationsData[newChatId] = newChat; }
 
+        // Si l'utilisateur avait masqué cette conversation auparavant, on la démasque
+        if (hiddenChatIds.has(newChatId)) {
+            hiddenChatIds.delete(newChatId);
+            try {
+                await supabaseClient
+                    .from('chats_caches')
+                    .delete()
+                    .eq('user_id', myUserId)
+                    .eq('chat_id', newChatId);
+            } catch (e) {
+                console.warn('[Messagerie] Erreur démasquage manuel:', e.message);
+            }
+        }
+
         closeModal('newChatModal');
         renderContactList();
         openChat(newChatId);
@@ -847,7 +910,39 @@
     // --- FONCTIONS UI ---
     function showAlert(msg) { document.getElementById('alertMessage').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
     function askDeleteChat(chatId) { if (chatId === 'global') return; currentChatIdToDelete = chatId; document.getElementById('confirmDeleteModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
-    function executeDeleteChat() { if (currentChatIdToDelete && currentChatIdToDelete !== 'global') { delete conversationsData[currentChatIdToDelete]; closeModal('confirmDeleteModal'); if (currentChatId === currentChatIdToDelete) { currentChatId = null; document.getElementById('chatHeaderName').textContent = "Sélectionnez une discussion"; document.getElementById('chatHeaderAvatar').innerHTML = ""; document.getElementById('chatHeaderAvatar').className = "avatar"; document.getElementById('chatMessages').innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Aucune conversation sélectionnée.</div>'; closeChat(); } renderContactList(); currentChatIdToDelete = null; } }
+    async function executeDeleteChat() {
+        if (!currentChatIdToDelete || currentChatIdToDelete === 'global') return;
+
+        const chatIdToHide = currentChatIdToDelete;
+
+        // Persister le masquage dans Supabase pour CET utilisateur uniquement.
+        // Les messages ne sont PAS supprimés — l'autre participant garde l'historique.
+        try {
+            const { error } = await supabaseClient
+                .from('chats_caches')
+                .upsert({ user_id: myUserId, chat_id: chatIdToHide }, { onConflict: 'user_id,chat_id' });
+            if (error) throw error;
+        } catch (e) {
+            console.error('Erreur masquage chat:', e);
+            showAlert("❌ Impossible de masquer la conversation : " + e.message);
+            return;
+        }
+
+        // Mise à jour locale
+        hiddenChatIds.add(chatIdToHide);
+        closeModal('confirmDeleteModal');
+
+        if (currentChatId === chatIdToHide) {
+            currentChatId = null;
+            document.getElementById('chatHeaderName').textContent = "Sélectionnez une discussion";
+            document.getElementById('chatHeaderAvatar').innerHTML = "";
+            document.getElementById('chatHeaderAvatar').className = "avatar";
+            document.getElementById('chatMessages').innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Aucune conversation sélectionnée.</div>';
+            closeChat();
+        }
+        renderContactList();
+        currentChatIdToDelete = null;
+    }
     function toggleRowSelection(cb, rowId) { const row = document.getElementById(rowId); if (cb.checked) { row.classList.add('selected'); } else { row.classList.remove('selected'); } checkNewChatSelection(); }
     function checkNewChatSelection() { const selected = document.querySelectorAll('.new-chat-cb:checked'); const groupGroup = document.getElementById('groupNameGroup'); if (selected.length > 1) { groupGroup.classList.add('show'); } else { groupGroup.classList.remove('show'); } }
     
@@ -855,21 +950,28 @@
         const list = document.getElementById('contactListContainer');
         if(!list) return; list.innerHTML = '';
         Object.entries(conversationsData).reverse().forEach(([id, chat]) => {
+            // Filtrer les chats masqués par l'utilisateur (sauf 'global' qui ne se masque pas)
+            if (id !== 'global' && hiddenChatIds.has(id)) return;
+
             const isActive = id === currentChatId ? 'active' : '';
             const avatarLet = chat.isGroup ? `<svg class="svg-icon"><use href="#icon-users"></use></svg>` : (chat.name ? chat.name.charAt(0).toUpperCase() : '?');
             const avatarClass = chat.isGroup ? 'avatar-group' : '';
             let lastMsg = 'Nouvelle discussion'; let lastTime = '';
             if (chat.messages && chat.messages.length > 0) { const lastM = chat.messages[chat.messages.length - 1]; lastMsg = lastM.type === 'text' ? lastM.text : (lastM.type === 'image' ? '📷 Image' : '📎 Fichier'); lastTime = lastM.time; }
-            const deleteBg = id !== 'global' ? `<div class="delete-btn-bg" onclick="askDeleteChat('${id}')"><svg class="svg-icon"><use href="#icon-trash"></use></svg></div>` : '';
+            // Bouton poubelle visible directement (pas de swipe). Stop propagation pour
+            // ne pas ouvrir la conversation au clic sur la poubelle.
+            const deleteBtn = id !== 'global'
+                ? `<button class="contact-delete-btn" onclick="event.stopPropagation(); askDeleteChat('${id}')" title="Masquer cette conversation"><svg class="svg-icon"><use href="#icon-trash"></use></svg></button>`
+                : '';
             list.insertAdjacentHTML('beforeend', `
                 <div class="contact-wrapper" id="wrapper-${id}">
-                    ${deleteBg}
                     <div class="contact-item ${isActive}" id="contact-${id}" onclick="openChat('${id}', event)">
                         <div class="avatar ${avatarClass}">${avatarLet}</div>
                         <div class="contact-info">
                             <div class="contact-name"><span>${chat.name}</span> <span class="contact-time">${lastTime}</span></div>
                             <div class="contact-last-msg">${chat.messages && chat.messages.length > 0 && chat.messages[chat.messages.length-1].isMine ? 'Vous: ' : ''}${lastMsg}</div>
                         </div>
+                        ${deleteBtn}
                     </div>
                 </div>
             `);

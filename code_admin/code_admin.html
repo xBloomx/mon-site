@@ -1109,15 +1109,46 @@
             list.innerHTML = '<div style="color:#888; font-style:italic; text-align:center; padding:20px;">Aucun outil enregistré. Ajoutez-en un ci-dessus.</div>';
             return;
         }
-        list.innerHTML = toolsListData.map(t => {
-            const assigneeText = t.assignee_nom
-                ? `<span style="color:var(--btn-yellow); font-size:12px;">→ ${sanitize(t.assignee_nom)}</span>`
-                : `<span style="color:#888; font-size:12px; font-style:italic;">Non assigné</span>`;
+
+        // Dédupliquer par nom : la table 'outils' contient une ligne par
+        // emprunt + une ligne 'available' pour l'inventaire. Ici on veut
+        // afficher chaque outil une seule fois, en priorisant l'état le
+        // plus pertinent (active > available > returned).
+        const byName = new Map();
+        const priority = { 'active': 3, 'available': 2, 'returned': 1 };
+        toolsListData.forEach(t => {
+            const key = (t.nom || '').toLowerCase().trim();
+            if (!key) return;
+            const existing = byName.get(key);
+            if (!existing || (priority[t.status] || 0) > (priority[existing.status] || 0)) {
+                byName.set(key, t);
+            }
+        });
+        const uniqueTools = Array.from(byName.values()).sort((a, b) =>
+            (a.nom || '').localeCompare(b.nom || '', 'fr')
+        );
+
+        if (uniqueTools.length === 0) {
+            list.innerHTML = '<div style="color:#888; font-style:italic; text-align:center; padding:20px;">Aucun outil enregistré. Ajoutez-en un ci-dessus.</div>';
+            return;
+        }
+
+        list.innerHTML = uniqueTools.map(t => {
+            // Affichage selon l'état :
+            // - active   = emprunté par quelqu'un
+            // - available = dans l'inventaire, disponible
+            // - returned  = retourné (dernier emprunt fini)
+            let statusText;
+            if (t.status === 'active' && t.assignee_nom) {
+                statusText = `<span style="color:var(--btn-yellow); font-size:12px;">→ ${sanitize(t.assignee_nom)}</span>`;
+            } else {
+                statusText = `<span style="color:#888; font-size:12px; font-style:italic;">Disponible</span>`;
+            }
             return `
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px;">
                     <div style="display:flex; flex-direction:column; gap:4px;">
                         <span style="color:#ddd; font-size:14px; font-weight:bold;">${sanitize(t.nom || 'Sans nom')}</span>
-                        ${assigneeText}
+                        ${statusText}
                     </div>
                     <button class="btn-del-emp" onclick="removeTool('${sanitize(t.id)}', '${sanitize(t.nom || '').replace(/'/g, '&apos;')}')" title="Retirer de la liste">
                         <svg class="svg-icon"><use href="#icon-trash"></use></svg>
@@ -1142,8 +1173,9 @@
         }
         const { error } = await supabaseClient.from('outils').insert([{
             nom: name,
-            status: 'active'
-            // assignee_nom, notes, date_transfert restent null (l'outil est en inventaire)
+            status: 'available'
+            // L'outil est dans l'inventaire, disponible à l'emprunt.
+            // Quand quelqu'un l'emprunte, une nouvelle ligne avec status='active' est créée.
         }]);
         if (error) {
             showAlert('Erreur : ' + error.message);
@@ -1154,8 +1186,10 @@
     }
 
     async function removeTool(id, name) {
-        showConfirmAdmin(`Retirer définitivement "${name}" de l'inventaire ? Cette action est irréversible.`, async () => {
-            const { error } = await supabaseClient.from('outils').delete().eq('id', id);
+        showConfirmAdmin(`Retirer définitivement "${name}" de l'inventaire ? Cette action supprimera aussi son historique d'emprunts.`, async () => {
+            // Supprimer toutes les lignes ayant ce nom (inventaire + tous les emprunts/retours)
+            // pour éviter qu'un fantôme reste dans le dropdown
+            const { error } = await supabaseClient.from('outils').delete().eq('nom', name);
             if (error) {
                 showAlert('Erreur : ' + error.message);
                 return;
