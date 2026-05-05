@@ -302,14 +302,9 @@
                 <h1>Facturation</h1>
                 <p>Création et suivi comptable</p>
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="action-btn" style="background-color: var(--btn-yellow);" onclick="openNewInvoice()">
-                    <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Facture
-                </button>
-                <button class="action-btn" style="background-color: var(--btn-blue); color: white;" onclick="openPaperInvoiceModal()" title="Envoyer une facture déjà remplie sur papier en photo">
-                    <svg class="svg-icon"><use href="#icon-camera"></use></svg> Facture papier
-                </button>
-            </div>
+            <button class="action-btn" style="background-color: var(--btn-yellow);" onclick="openNewInvoice()">
+                <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Facture
+            </button>
         </div>
         
         <div class="tabs-container" id="invoice-tabs" style="display:none;">
@@ -345,6 +340,9 @@
             </button>
             <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()">
                 <svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyer au bureau
+            </button>
+            <button class="action-btn" id="btn-paper" style="background-color: var(--btn-blue); color: white;" onclick="openPaperInvoiceModal()" title="Envoyer une facture déjà remplie sur papier (en photo)">
+                <svg class="svg-icon"><use href="#icon-camera"></use></svg> Facture papier
             </button>
             
             <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockInvoice()" style="display:none;">
@@ -475,17 +473,45 @@
         width: 100%;
     }
     #paperInvoiceModal .pim-add-buttons {
-        display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+        margin-bottom: 18px;
     }
-    #paperInvoiceModal .pim-add-btn {
-        flex: 1; min-width: 130px;
-        background: #2b2c36; border: 1px solid #555; color: white;
-        padding: 12px; border-radius: 8px; cursor: pointer;
-        display: flex; align-items: center; justify-content: center; gap: 8px;
-        font-size: 14px; transition: all 0.2s;
+    /* Zone "drop" inspirée des modèles : un cadre arrondi avec bordure
+       pointillée, texte centré, icône caméra à gauche et bouton "Déposer"
+       à droite. Sur mobile, taper l'icône ouvre la caméra; taper "Déposer"
+       ouvre la galerie/sélecteur de fichiers. */
+    #paperInvoiceModal .pim-drop-zone {
+        background: #fff; color: #222;
+        border: 2px dashed #d8e3ec; border-radius: 18px;
+        padding: 24px 18px; text-align: center;
+        transition: border-color 0.2s, background 0.2s;
     }
-    #paperInvoiceModal .pim-add-btn:hover { background: #3a3b46; border-color: #777; }
-    #paperInvoiceModal .pim-add-btn svg { width: 18px; height: 18px; }
+    #paperInvoiceModal .pim-drop-zone:hover {
+        border-color: var(--btn-blue, #5BC0EB);
+    }
+    #paperInvoiceModal .pim-drop-text {
+        color: #333; font-weight: 600; font-size: 14px;
+        margin-bottom: 18px; line-height: 1.4;
+    }
+    #paperInvoiceModal .pim-drop-actions {
+        display: flex; align-items: center; justify-content: center;
+        gap: 14px;
+    }
+    #paperInvoiceModal .pim-camera-icon {
+        background: #cfe6f5; color: #2a7da8;
+        width: 56px; height: 56px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; border: none; transition: background 0.2s;
+        flex-shrink: 0;
+    }
+    #paperInvoiceModal .pim-camera-icon:hover { background: #b8dcef; }
+    #paperInvoiceModal .pim-camera-icon svg { width: 28px; height: 28px; }
+    #paperInvoiceModal .pim-deposer-btn {
+        background: var(--btn-blue, #5BC0EB); color: white;
+        border: none; padding: 14px 28px; border-radius: 14px;
+        font-size: 15px; font-weight: 600; cursor: pointer;
+        transition: background 0.2s; min-width: 120px;
+    }
+    #paperInvoiceModal .pim-deposer-btn:hover { background: #4ba8d1; }
     #paperInvoiceModal label {
         display: block; color: #ccc; font-size: 13px;
         margin: 12px 0 6px 0; font-weight: 500;
@@ -524,16 +550,19 @@
 
         <label>Pages de la facture <span style="color:var(--btn-red);">*</span></label>
         <div class="pim-pages" id="pim-pages-container">
-            <span class="pim-empty">Aucune page ajoutée. Utilise les boutons ci-dessous.</span>
+            <span class="pim-empty">Aucune page ajoutée. Utilise la zone ci-dessous.</span>
         </div>
 
         <div class="pim-add-buttons">
-            <button class="pim-add-btn" onclick="document.getElementById('pim-camera-input').click()">
-                <svg><use href="#icon-camera"></use></svg> Prendre une photo
-            </button>
-            <button class="pim-add-btn" onclick="document.getElementById('pim-gallery-input').click()">
-                <svg><use href="#icon-image"></use></svg> Choisir dans galerie
-            </button>
+            <div class="pim-drop-zone">
+                <div class="pim-drop-text">Déposer une image ou prendre une photo<br>ou déposer un fichier</div>
+                <div class="pim-drop-actions">
+                    <button class="pim-camera-icon" onclick="document.getElementById('pim-camera-input').click()" title="Prendre une photo">
+                        <svg><use href="#icon-camera"></use></svg>
+                    </button>
+                    <button class="pim-deposer-btn" onclick="document.getElementById('pim-gallery-input').click()">Déposer</button>
+                </div>
+            </div>
         </div>
 
         <!-- Inputs cachés : "capture=environment" force la caméra arrière du téléphone -->
@@ -811,7 +840,7 @@
         if (isPaper) {
             // Cacher tous les boutons d'édition du formulaire (n'ont pas de sens
             // sur une galerie de photos)
-            ['btn-save', 'btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear', 'btn-send'].forEach(id => {
+            ['btn-save', 'btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear', 'btn-send', 'btn-paper'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
@@ -861,6 +890,7 @@
         document.getElementById('btn-clear').style.display = canEdit ? 'flex' : 'none';
         
         const btnSend = document.getElementById('btn-send'); if(btnSend) btnSend.style.display = canEdit ? 'flex' : 'none';
+        const btnPaper = document.getElementById('btn-paper'); if(btnPaper) btnPaper.style.display = canEdit ? 'flex' : 'none';
         const btnUnlock = document.getElementById('btn-unlock'); const btnReturn = document.getElementById('btn-return');
         
         if (isBureau && status !== 'brouillon' && status !== 'attente') {
@@ -1519,7 +1549,7 @@
         const container = document.getElementById('pim-pages-container');
         const sendBtn = document.getElementById('pim-send-btn');
         if (paperPages.length === 0) {
-            container.innerHTML = '<span class="pim-empty">Aucune page ajoutée. Utilise les boutons ci-dessous.</span>';
+            container.innerHTML = '<span class="pim-empty">Aucune page ajoutée. Utilise la zone ci-dessous.</span>';
             sendBtn.disabled = true;
             return;
         }
