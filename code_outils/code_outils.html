@@ -57,7 +57,7 @@
         .custom-form-card { background: #252631; width: 90%; max-width: 400px; padding: 30px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); position: relative; border: 1px solid #444; max-height: 90vh; overflow-y: auto; }
         .modal-header-custom { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; color: white; font-size: 22px; font-weight: bold; }
         .modal-header-custom svg { width: 35px; height: 35px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-        .custom-group { margin-bottom: 18px; text-align: left; }
+        .custom-group { margin-bottom: 22px; text-align: left; }
         .custom-group label { display: block; color: white; margin-bottom: 7px; font-size: 15px; font-weight: bold;}
         .custom-group input, .custom-group select { width: 100%; padding: 12px 15px; background: #323443; border: 1px solid #444; color: white; border-radius: 8px; font-size: 16px; outline: none; }
         .custom-group input:focus, .custom-group select:focus { border-color: var(--btn-yellow); }
@@ -140,10 +140,15 @@
         </div>
         <div class="custom-group">
             <label>Outil</label>
-            <select id="inpOutil">
+            <select id="inpOutil" onchange="toggleOutilAutre()">
                 <option value="" disabled selected hidden>Sélectionner une machine...</option>
                 <option value="Autre...">Autre (Préciser en note)</option>
             </select>
+        </div>
+        <!-- Champ qui apparaît seulement si "Autre..." est sélectionné -->
+        <div class="custom-group" id="grpOutilAutre" style="display:none;">
+            <label>Préciser l'outil <span style="color:var(--btn-red);">*</span></label>
+            <input type="text" id="inpOutilAutre" placeholder="Ex: Perceuse, Caméra d'inspection..." />
         </div>
         <div class="custom-group">
             <label>Adresse / Lieu</label>
@@ -448,14 +453,22 @@
     // =============================================
     async function saveBorrow() {
         const plumber = document.getElementById('inpPlombier').value.trim();
-        const tool = document.getElementById('inpOutil').value;
+        const toolSelected = document.getElementById('inpOutil').value;
         const address = document.getElementById('inpAdresse').value.trim();
         const dateOut = document.getElementById('inpDate').value;
 
-        if (!plumber || !tool || !address || !dateOut) return showAlert("Merci de remplir tous les champs.");
+        if (!plumber || !toolSelected || !address || !dateOut) return showAlert("Merci de remplir tous les champs.");
+
+        // Si "Autre..." est choisi, prendre le nom personnalisé saisi par l'utilisateur
+        let tool = toolSelected;
+        if (toolSelected === "Autre...") {
+            const customName = document.getElementById('inpOutilAutre').value.trim();
+            if (!customName) return showAlert("Veuillez préciser le nom de l'outil.");
+            tool = customName;
+        }
 
         const activeTools = toolsLog.filter(t => t.status === 'active').map(t => t.nom);
-        if (tool !== "Autre..." && activeTools.includes(tool)) {
+        if (toolSelected !== "Autre..." && activeTools.includes(tool)) {
             return showAlert("Cet outil est déjà emprunté et n'a pas encore été retourné.");
         }
 
@@ -470,6 +483,21 @@
         if (error) { showAlert('Erreur : ' + error.message); return; }
         await loadTools();
         closeModal('borrowModal');
+    }
+
+    // Affiche/cache le champ "Préciser l'outil" selon le choix dans le dropdown
+    function toggleOutilAutre() {
+        const sel = document.getElementById('inpOutil');
+        const grp = document.getElementById('grpOutilAutre');
+        const inp = document.getElementById('inpOutilAutre');
+        if (!sel || !grp) return;
+        if (sel.value === "Autre...") {
+            grp.style.display = '';
+            if (inp) { inp.focus(); }
+        } else {
+            grp.style.display = 'none';
+            if (inp) inp.value = '';
+        }
     }
 
     // =============================================
@@ -682,6 +710,11 @@
         document.getElementById('inpOutil').value = '';
         document.getElementById('inpAdresse').value = '';
         document.getElementById('inpDate').value = new Date().toISOString().split('T')[0];
+        // Reset du champ "Autre" et masquage
+        const inpAutre = document.getElementById('inpOutilAutre');
+        const grpAutre = document.getElementById('grpOutilAutre');
+        if (inpAutre) inpAutre.value = '';
+        if (grpAutre) grpAutre.style.display = 'none';
         document.getElementById('borrowModal').style.display = 'flex';
         window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
     }
