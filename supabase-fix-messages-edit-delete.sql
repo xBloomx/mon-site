@@ -15,15 +15,15 @@
 -- ============================================================================
 
 -- 1. Ajouter les colonnes nécessaires à la table messages
-ALTER TABLE public.messages
+ALTER TABLE public.message
     ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 -- 2. Politique RLS : permettre à un utilisateur de modifier/supprimer ses propres messages
 -- (en vérifiant que c'est bien lui l'expéditeur)
-DROP POLICY IF EXISTS "messages_update_own" ON public.messages;
+DROP POLICY IF EXISTS "messages_update_own" ON public.message;
 CREATE POLICY "messages_update_own"
-    ON public.messages FOR UPDATE
+    ON public.message FOR UPDATE
     TO authenticated
     USING (expediteur_id = auth.uid())
     WITH CHECK (expediteur_id = auth.uid());
@@ -77,7 +77,7 @@ BEGIN
     -- Si OUI : supprimer définitivement les messages de cette conversation
     -- (et les caches eux-mêmes pour nettoyer)
     IF v_other_hidden THEN
-        DELETE FROM public.messages WHERE chat_id = v_chat_id;
+        DELETE FROM public.message WHERE chat_id = v_chat_id;
         DELETE FROM public.chats_caches WHERE chat_id = v_chat_id;
         RAISE NOTICE 'Messages de chat % supprimés définitivement (caché par les 2 users)', v_chat_id;
     END IF;
@@ -98,7 +98,7 @@ CREATE TRIGGER trigger_cleanup_hidden_messages
 --
 -- SELECT column_name, data_type
 -- FROM information_schema.columns
--- WHERE table_name = 'messages'
+-- WHERE table_name = 'message'
 --   AND column_name IN ('edited_at', 'deleted_at');
 --
 -- Doit retourner les 2 colonnes avec type "timestamp with time zone".
