@@ -267,7 +267,7 @@
     let autosave = null;       // Instance de sauvegarde automatique
     let quotesPage = 0; const QUOTES_PAGE_SIZE = 25; let quotesHasMore = false;
 
-    const defaultRolesConfig = { 'A0': { perms: ['view_all_invoices', 'view_all_po'] }, 'A1': { perms: ['view_all_invoices'] }, 'A2': { perms: ['view_all_invoices'] }, 'A3': { perms: [] } };
+    const defaultRolesConfig = { 'A0': { perms: ['view_all_invoices', 'view_all_quotes', 'view_all_timesheets', 'view_all_po'] }, 'A1': { perms: ['view_all_invoices', 'view_all_quotes', 'view_all_timesheets'] }, 'A2': { perms: ['view_all_invoices', 'view_all_quotes', 'view_all_timesheets'] }, 'A3': { perms: [] } };
     let _cachedRoles = null;
 
     async function loadRolesCache() {
@@ -296,7 +296,7 @@
         const { data: profil } = await supabaseClient.from('profils').select('role, prenom_nom').eq('id', user.id).maybeSingle();
         if (profil) {
             myRole = profil.role; myUserName = profil.prenom_nom || user.email;
-            if (hasPermission(myRole, 'view_all_invoices')) { const tabs = document.getElementById('quote-tabs'); if(tabs) tabs.style.display = 'flex'; } else {
+            if (hasPermission(myRole, 'view_all_quotes')) { const tabs = document.getElementById('quote-tabs'); if(tabs) tabs.style.display = 'flex'; } else {
                 currentQuoteTab = 'mine';
                 // A3 doit pouvoir consulter ses propres archives
                 const tabs = document.getElementById('quote-tabs');
@@ -321,7 +321,7 @@
         let query = supabaseClient.from('soumissions').select('*');
         if (currentQuoteTab === 'archives') {
             query = query.eq('is_archived', true);
-            if (!hasPermission(myRole, 'view_all_invoices') ||
+            if (!hasPermission(myRole, 'view_all_quotes') ||
                 (window.ArchiveFD && !window.ArchiveFD.canSeeAllArchives(myRole))) {
                 query = query.eq('author_id', myUserId);
             }
@@ -382,7 +382,7 @@
     function toggleInputs(canEdit) { const allInputs = containerInvoice.querySelectorAll('input'); const allSigs = containerInvoice.querySelectorAll('.display-sig'); allInputs.forEach(inp => { if (!canEdit) { inp.setAttribute('readonly', true); inp.style.pointerEvents = 'none'; } else { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; } }); allSigs.forEach(img => { img.style.pointerEvents = canEdit ? 'auto' : 'none'; }); }
 
     function applyEditorSecurity(quoteObj) {
-        const isBureau = hasPermission(myRole, 'view_all_invoices');
+        const isBureau = hasPermission(myRole, 'view_all_quotes');
         const status = quoteObj ? (quoteObj.status || 'brouillon') : 'brouillon';
         const isAuthor = quoteObj ? (quoteObj.authorId === myUserId || !quoteObj.authorId) : true;
         const isArchived = quoteObj && quoteObj.isArchived === true;
@@ -613,7 +613,7 @@
     }
 
     function renderQuoteList(filteredData = null) {
-        listContainer.innerHTML = ''; const isBureau = hasPermission(myRole, 'view_all_invoices');
+        listContainer.innerHTML = ''; const isBureau = hasPermission(myRole, 'view_all_quotes');
         let baseList = quotesData;
         if (currentQuoteTab === 'archives') {
             baseList = quotesData;
@@ -668,7 +668,7 @@
         container.appendChild(btn);
     }
 
-    function filterQuotes() { const searchText = document.getElementById('searchInput').value.toLowerCase(); const isBureau = hasPermission(myRole, 'view_all_invoices'); let baseList = quotesData; if (currentQuoteTab === 'archives') { baseList = quotesData; } else if (!isBureau || currentQuoteTab === 'mine') { baseList = quotesData.filter(q => q.authorId === myUserId || !q.authorId); } else { baseList = quotesData.filter(q => q.status !== 'brouillon'); } const filtered = baseList.filter(q => { return (q.client.toLowerCase().includes(searchText) || String(q.id).toLowerCase().includes(searchText)); }); renderQuoteList(filtered); }
+    function filterQuotes() { const searchText = document.getElementById('searchInput').value.toLowerCase(); const isBureau = hasPermission(myRole, 'view_all_quotes'); let baseList = quotesData; if (currentQuoteTab === 'archives') { baseList = quotesData; } else if (!isBureau || currentQuoteTab === 'mine') { baseList = quotesData.filter(q => q.authorId === myUserId || !q.authorId); } else { baseList = quotesData.filter(q => q.status !== 'brouillon'); } const filtered = baseList.filter(q => { return (q.client.toLowerCase().includes(searchText) || String(q.id).toLowerCase().includes(searchText)); }); renderQuoteList(filtered); }
 
     const inputAttrs = `type="text" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"`;
     let quotePageCount = 0; let globalSigCount = 0;

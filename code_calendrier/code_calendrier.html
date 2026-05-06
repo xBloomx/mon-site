@@ -678,7 +678,8 @@
         if (isUrgence) {
             modalTitle.textContent = "Service d'urgence";
             grpCat.style.display = 'none'; grpGuests.style.display = 'none'; grpCal.style.display = 'none';
-            document.getElementById('evtTitle').value = myUserName;
+            // Champ titre laissé libre — l'utilisateur saisit ce qu'il veut
+            document.getElementById('evtTitle').value = '';
         } else {
             modalTitle.textContent = evtToEdit ? "Modifier l'événement" : "Nouvel Événement";
             grpCat.style.display = 'block'; grpGuests.style.display = 'block'; grpCal.style.display = 'block';

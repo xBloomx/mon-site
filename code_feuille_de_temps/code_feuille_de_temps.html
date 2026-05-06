@@ -252,7 +252,7 @@
     let autosave = null;       // Instance de sauvegarde automatique
     let tsPage = 0; const TS_PAGE_SIZE = 25; let tsHasMore = false;
 
-    const defaultRolesConfig = { 'A0': { perms: ['approve_timesheets'] }, 'A1': { perms: ['approve_timesheets'] }, 'A2': { perms: ['approve_timesheets'] }, 'A3': { perms: [] } };
+    const defaultRolesConfig = { 'A0': { perms: ['approve_timesheets', 'view_all_timesheets'] }, 'A1': { perms: ['approve_timesheets', 'view_all_timesheets'] }, 'A2': { perms: ['approve_timesheets', 'view_all_timesheets'] }, 'A3': { perms: [] } };
     let _cachedRoles = null;
 
     async function loadRolesCache() {
@@ -273,6 +273,13 @@
         return roles[role] && roles[role].perms && roles[role].perms.includes(permId);
     }
 
+    // Helper : peut voir TOUTES les feuilles de temps (lecture).
+    // Couvre 2 cas : (1) avoir explicitement view_all_timesheets, ou (2) être
+    // approbateur (approve_timesheets implique forcément le droit de voir).
+    function canViewAllTimesheets(role) {
+        return hasPermission(role, 'view_all_timesheets') || hasPermission(role, 'approve_timesheets');
+    }
+
     async function initAuth() {
         await loadRolesCache();
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -281,7 +288,7 @@
         const { data: profil } = await supabaseClient.from('profils').select('role, prenom_nom').eq('id', user.id).maybeSingle();
         if (profil) {
             myRole = profil.role; myUserName = profil.prenom_nom || user.email;
-            if (hasPermission(myRole, 'approve_timesheets')) { document.getElementById('timesheet-tabs').style.display = 'flex'; } else {
+            if (canViewAllTimesheets(myRole)) { document.getElementById('timesheet-tabs').style.display = 'flex'; } else {
                 currentInvTab = 'mine';
                 // A3 doit pouvoir consulter ses propres archives
                 const tabs = document.getElementById('timesheet-tabs');
@@ -306,7 +313,7 @@
         let query = supabaseClient.from('feuilles_de_temps').select('*');
         if (currentInvTab === 'archives') {
             query = query.eq('is_archived', true);
-            if (!hasPermission(myRole, 'approve_timesheets') ||
+            if (!canViewAllTimesheets(myRole) ||
                 (window.ArchiveFD && !window.ArchiveFD.canSeeAllArchives(myRole))) {
                 query = query.eq('author_id', myUserId);
             }
@@ -366,13 +373,14 @@
     function askGoBack() { showDashboard(); }
 
     function applyEditorSecurity(sheetObj) {
-        const isBureau = hasPermission(myRole, 'approve_timesheets');
+        const isBureau = canViewAllTimesheets(myRole); // peut voir
+        const isApprover = hasPermission(myRole, 'approve_timesheets'); // peut agir
         const status = sheetObj ? (sheetObj.status || 'brouillon') : 'brouillon';
         const isAuthor = sheetObj ? (sheetObj.authorId === myUserId || !sheetObj.authorId) : true;
         const isArchived = sheetObj && sheetObj.isArchived === true;
         let canEdit = false;
         if (isAuthor && (status === 'brouillon' || status === 'renvoye' || status === 'attente')) canEdit = true;
-        if (isBureau && (status === 'brouillon' || status === 'renvoye' || status === 'attente') && isAuthor) canEdit = true;
+        if (isApprover && (status === 'brouillon' || status === 'renvoye' || status === 'attente') && isAuthor) canEdit = true;
         // Override absolu : un document archivé est en lecture seule pour TOUT LE MONDE
         if (isArchived) canEdit = false;
 
@@ -384,13 +392,13 @@
         document.getElementById('btn-clear').style.display = canEdit ? 'flex' : 'none';
         
         const btnUnlock = document.getElementById('btn-unlock');
-        if (isBureau && status !== 'brouillon' && status !== 'renvoye' && status !== 'attente') btnUnlock.style.display = 'flex'; else btnUnlock.style.display = 'none';
+        if (isApprover && status !== 'brouillon' && status !== 'renvoye' && status !== 'attente') btnUnlock.style.display = 'flex'; else btnUnlock.style.display = 'none';
 
         // Boutons Approuver / Renvoyer pour le bureau
         const btnApprove = document.getElementById('btn-approve');
         const btnReturn = document.getElementById('btn-return-ts');
         if (btnApprove && btnReturn) {
-            if (!isArchived && isBureau && (status === 'envoye' || status === 'attente')) {
+            if (!isArchived && isApprover && (status === 'envoye' || status === 'attente')) {
                 btnApprove.style.display = 'flex';
                 btnReturn.style.display = 'flex';
             } else {
@@ -674,7 +682,7 @@
     }
 
     function renderTimesheetList(filteredData = null) {
-        listContainer.innerHTML = ''; const isBureau = hasPermission(myRole, 'approve_timesheets');
+        listContainer.innerHTML = ''; const isBureau = canViewAllTimesheets(myRole);
         let baseList = timesheetsData;
         if (currentInvTab === 'archives') {
             baseList = timesheetsData;
@@ -728,7 +736,7 @@
         container.appendChild(btn);
     }
 
-    function filterTimesheets() { const searchText = document.getElementById('searchInput').value.toLowerCase(); const isBureau = hasPermission(myRole, 'approve_timesheets'); let baseList = timesheetsData; if (currentInvTab === 'archives') { baseList = timesheetsData; } else if (!isBureau || currentInvTab === 'mine') { baseList = timesheetsData.filter(s => s.authorId === myUserId || !s.authorId); } else { baseList = timesheetsData.filter(s => s.status !== 'brouillon'); } const filtered = baseList.filter(sheet => { const cName = sheet.employe || sheet.authorName || ""; const pName = sheet.periode || ""; return (cName.toLowerCase().includes(searchText) || pName.toLowerCase().includes(searchText)); }); renderTimesheetList(filtered); }
+    function filterTimesheets() { const searchText = document.getElementById('searchInput').value.toLowerCase(); const isBureau = canViewAllTimesheets(myRole); let baseList = timesheetsData; if (currentInvTab === 'archives') { baseList = timesheetsData; } else if (!isBureau || currentInvTab === 'mine') { baseList = timesheetsData.filter(s => s.authorId === myUserId || !s.authorId); } else { baseList = timesheetsData.filter(s => s.status !== 'brouillon'); } const filtered = baseList.filter(sheet => { const cName = sheet.employe || sheet.authorName || ""; const pName = sheet.periode || ""; return (cName.toLowerCase().includes(searchText) || pName.toLowerCase().includes(searchText)); }); renderTimesheetList(filtered); }
 
     function createTimePageHTML() {
         const page = document.createElement('div'); page.className = 'page';

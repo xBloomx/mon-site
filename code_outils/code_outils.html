@@ -674,18 +674,28 @@
         const select = document.getElementById('inpOutil');
         if (!select) return;
 
-        // Récupérer la liste unique des outils depuis la table 'outils'
-        // On prend les noms distincts (un outil peut avoir plusieurs lignes : 1 par emprunt)
+        // Récupérer la liste unique des outils, triée par 'position' (ordre admin)
+        // Un outil peut avoir plusieurs lignes (1 par emprunt) — on prend la position
+        // la plus basse pour chaque nom unique.
         let toolNames = [];
         try {
             const { data, error } = await supabaseClient
                 .from('outils')
-                .select('nom')
+                .select('nom, position')
+                .order('position', { ascending: true, nullsFirst: false })
                 .order('nom', { ascending: true });
             if (error) throw error;
-            // Dédupliquer et trier
-            const uniqueNames = [...new Set((data || []).map(t => t.nom).filter(Boolean))];
-            toolNames = uniqueNames.sort((a, b) => a.localeCompare(b, 'fr'));
+            // Dédupliquer en gardant la première occurrence (= position la plus basse)
+            const seen = new Set();
+            const ordered = [];
+            (data || []).forEach(t => {
+                if (!t.nom) return;
+                const key = t.nom.toLowerCase().trim();
+                if (seen.has(key)) return;
+                seen.add(key);
+                ordered.push(t.nom);
+            });
+            toolNames = ordered;
         } catch (e) {
             console.warn('Erreur chargement liste outils:', e);
         }

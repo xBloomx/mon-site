@@ -438,7 +438,9 @@
     }
 
     const allPermissions = [
-        { id: 'view_all_invoices', label: 'Voir toutes les factures/soumissions', desc: 'Accès à la boîte de réception générale.' },
+        { id: 'view_all_invoices', label: 'Voir toutes les factures', desc: 'Accès à la boîte de réception des factures (toutes équipes).' },
+        { id: 'view_all_quotes', label: 'Voir toutes les soumissions', desc: 'Accès à toutes les soumissions de l\'entreprise.' },
+        { id: 'view_all_timesheets', label: 'Voir toutes les feuilles de temps', desc: 'Accès à toutes les feuilles de temps des employés.' },
         { id: 'view_all_po', label: 'Voir tous les bons de commande', desc: 'Accès à tous les PO de l\'entreprise.' },
         { id: 'access_po_tab', label: 'Accès à l\'onglet PO', desc: 'Affiche ou masque le bouton "Bons de commande" dans le menu.' },
         { id: 'access_soumissions_tab', label: 'Accès à l\'onglet Soumissions', desc: 'Affiche ou masque le bouton "Soumissions" dans le menu.' },
@@ -457,9 +459,9 @@
     ];
 
     const defaultRolesConfig = {
-        'A0': { name: 'A0 - Développeur', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers', 'view_archives_all', 'delete_documents'] },
-        'A1': { name: 'A1 - Administrateur', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers', 'view_archives_all', 'delete_documents'] },
-        'A2': { name: 'A2 - Bureau', isSystem: true, perms: ['view_all_invoices', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news'] },
+        'A0': { name: 'A0 - Développeur', isSystem: true, perms: ['view_all_invoices', 'view_all_quotes', 'view_all_timesheets', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers', 'view_archives_all', 'delete_documents'] },
+        'A1': { name: 'A1 - Administrateur', isSystem: true, perms: ['view_all_invoices', 'view_all_quotes', 'view_all_timesheets', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'transfer_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news', 'view_admin', 'manage_suppliers', 'view_archives_all', 'delete_documents'] },
+        'A2': { name: 'A2 - Bureau', isSystem: true, perms: ['view_all_invoices', 'view_all_quotes', 'view_all_timesheets', 'view_all_po', 'access_po_tab', 'access_soumissions_tab', 'access_courriel_tab', 'approve_timesheets', 'manage_tools', 'create_clients', 'delete_clients', 'manage_calendar', 'manage_news'] },
         'A3': { name: 'A3 - Employé Terrain', isSystem: true, perms: ['transfer_tools', 'access_po_tab', 'access_soumissions_tab', 'create_clients'] }
     };
 
@@ -531,16 +533,9 @@
             if (myRole === 'A0') {
                 document.getElementById('tab-dev').style.display = 'flex';
                 loadTechnicalLogs(); loadRolePermissions(); initAliasUI(); loadMaintenanceState(); loadArchivesExpiredCount(); loadLogsExpiredCount();
-            } else if (myRole === 'A1') {
-                // A1 (patron) a accès au journal d'audit, mais pas aux panneaux admin sensibles
-                document.getElementById('tab-dev').style.display = 'flex';
-                loadTechnicalLogs();
-                // Masquer les panneaux réservés A0 (Support n'est plus dans tab-dev, plus besoin de le masquer)
-                ['a0PermissionsPanel', 'a0MaintenancePanel', 'a0ArchivesPanel', 'a0LogsCleanupPanel'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.style.display = 'none';
-                });
             }
+            // L'onglet 'Permissions & Système' est réservé EXCLUSIVEMENT à A0.
+            // A1 et A2 n'y ont pas accès (même s'ils ont view_admin).
         }
         document.getElementById('security-loader').style.display = 'none';
         window.parent.postMessage({ type: 'module_ready', module: 'view-admin' }, '*');
@@ -550,6 +545,20 @@
         const list = document.getElementById('employeeList');
         const { data: profils, error } = await supabaseClient.from('profils').select('*').order('role');
         if (error) { list.innerHTML = `<div style="color:var(--btn-red);">Erreur BD</div>`; return; }
+
+        // Diagnostic : si le user n'est pas A0 et qu'il ne voit qu'un seul profil
+        // (le sien), c'est probablement la RLS qui bloque (fichier
+        // supabase-fix-profils-visibles.sql non exécuté dans Supabase).
+        if (myRole !== 'A0' && profils && profils.length === 1) {
+            list.innerHTML = `
+                <div style="background:#3a2424; border:1px solid var(--btn-red); border-radius:8px; padding:14px; color:#ffb3b3; font-size:13px; line-height:1.5;">
+                    <strong style="color:var(--btn-red);">⚠ Liste incomplète</strong><br>
+                    La politique de sécurité Supabase t'empêche de voir les autres collègues.
+                    Demande à ton administrateur (A0) d'exécuter le fichier <code style="background:#2a1414; padding:2px 5px; border-radius:3px; color:#ffd5d5;">supabase-fix-profils-visibles.sql</code> dans Supabase SQL Editor.
+                </div>`;
+            return;
+        }
+
         list.innerHTML = '';
         profils.forEach(emp => {
             const item = document.createElement('div'); item.className = 'formation-item';
@@ -725,7 +734,23 @@
         if (error) { showAlert('❌ Erreur : ' + error.message); return; }
         initSupportUI();
     }
-    function updateRoleSelects() { const selects = ['roleSelect', 'newUserRole', 'editUserRole']; selects.forEach(sid => { const el = document.getElementById(sid); el.innerHTML = ''; for (const [id, data] of Object.entries(roleDefinitions)) { el.innerHTML += `<option value="${sanitize(id)}">${sanitize(data.name)}</option>`; } }); }
+    function updateRoleSelects() {
+        const selects = ['roleSelect', 'newUserRole', 'editUserRole'];
+        const isCurrentUserA0 = (myRole === 'A0');
+        selects.forEach(sid => {
+            const el = document.getElementById(sid);
+            if (!el) return;
+            el.innerHTML = '';
+            for (const [id, data] of Object.entries(roleDefinitions)) {
+                // Cacher A0 dans les dropdowns d'attribution si l'utilisateur courant
+                // n'est pas A0 lui-même. Le rôle A0 ne peut être attribué que par
+                // un autre A0 (ou directement via Supabase) — pour empêcher un A1
+                // de promouvoir quelqu'un en A0.
+                if (id === 'A0' && !isCurrentUserA0) continue;
+                el.innerHTML += `<option value="${sanitize(id)}">${sanitize(data.name)}</option>`;
+            }
+        });
+    }
     function loadRolePermissions() { const roleId = document.getElementById('roleSelect').value; const currentPerms = roleDefinitions[roleId]?.perms || []; document.getElementById('editRoleName').value = roleDefinitions[roleId]?.name || roleId; const list = document.getElementById('permissionsList'); list.innerHTML = ''; allPermissions.forEach(p => { const isChecked = currentPerms.includes(p.id) ? 'checked' : ''; list.innerHTML += `<label style="display:flex; align-items:flex-start; gap:12px;"><input type="checkbox" class="perm-cb" value="${p.id}" ${isChecked} style="width:20px;height:20px; accent-color:var(--btn-yellow);"><div style="flex:1;"><span style="font-weight:bold; color:var(--btn-yellow);">${p.label}</span><div style="color:#aaa; font-size:12px;">${p.desc}</div></div></label>`; }); }
     async function saveRolePermissions() {
         const roleId = document.getElementById('roleSelect').value;
@@ -782,7 +807,26 @@
         });
     });
     function openNewUserModal() { document.getElementById('newUserName').value = ''; document.getElementById('newUserEmail').value = ''; document.getElementById('newUserPassword').value = ''; document.getElementById('newUserModal').style.display = 'flex'; }
-    function openEditUserModal(id, name, role) { document.getElementById('editUserId').value = id; document.getElementById('editUserName').value = name; const select = document.getElementById('editUserRole'); select.value = role; select.disabled = (role === 'A0'); document.getElementById('editUserModal').style.display = 'flex'; }
+    function openEditUserModal(id, name, role) {
+        document.getElementById('editUserId').value = id;
+        document.getElementById('editUserName').value = name;
+        const select = document.getElementById('editUserRole');
+
+        // Cas spécial : si on édite un A0 (toi) et qu'on n'est pas A0 soi-même,
+        // updateRoleSelects() a retiré l'option A0 du dropdown. Il faut quand même
+        // l'afficher (en désactivant le dropdown) pour pas que ça retombe sur A1.
+        const hasA0Option = Array.from(select.options).some(o => o.value === 'A0');
+        if (role === 'A0' && !hasA0Option && roleDefinitions['A0']) {
+            const opt = document.createElement('option');
+            opt.value = 'A0';
+            opt.textContent = roleDefinitions['A0'].name || 'A0 - Développeur';
+            select.insertBefore(opt, select.firstChild);
+        }
+
+        select.value = role;
+        select.disabled = (role === 'A0');
+        document.getElementById('editUserModal').style.display = 'flex';
+    }
     async function updateEmploye() { const id = document.getElementById('editUserId').value; const name = document.getElementById('editUserName').value.trim(); const role = document.getElementById('editUserRole').value; if (!name) return; let updateData = { prenom_nom: name }; if (role !== 'A0') updateData.role = role; const { error } = await supabaseClient.from('profils').update(updateData).eq('id', id); if(error) { showAlert(error.message); } else { closeModal('editUserModal'); chargerListeEmployes(); } }
     async function creerEmploye() { const nom = document.getElementById('newUserName').value.trim(); const role = document.getElementById('newUserRole').value; const email = document.getElementById('newUserEmail').value.trim(); const password = document.getElementById('newUserPassword').value; if (!nom || !email || !password || !role) return; if (role === 'A0') return; const tempSup = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } }); const { data: authData, error: authError } = await tempSup.auth.signUp({ email, password }); if (authError) { showAlert(authError.message); return; } const { error: profileError } = await supabaseClient.from('profils').insert([{ id: authData.user.id, role, prenom_nom: nom }]); if (profileError) { showAlert(profileError.message); } closeModal('newUserModal'); chargerListeEmployes(); }
     function toggleLogsExpand() {
@@ -1092,7 +1136,8 @@
         try {
             const { data, error } = await supabaseClient
                 .from('outils')
-                .select('id, nom, assignee_nom, status, created_at')
+                .select('id, nom, assignee_nom, status, created_at, position')
+                .order('position', { ascending: true, nullsFirst: false })
                 .order('created_at', { ascending: false });
             if (error) throw error;
             toolsListData = data || [];
@@ -1124,20 +1169,24 @@
                 byName.set(key, t);
             }
         });
-        const uniqueTools = Array.from(byName.values()).sort((a, b) =>
-            (a.nom || '').localeCompare(b.nom || '', 'fr')
-        );
+
+        // Trier par position (ordre manuel) puis nom en fallback
+        const uniqueTools = Array.from(byName.values()).sort((a, b) => {
+            const pa = (a.position == null) ? 999999 : a.position;
+            const pb = (b.position == null) ? 999999 : b.position;
+            if (pa !== pb) return pa - pb;
+            return (a.nom || '').localeCompare(b.nom || '', 'fr');
+        });
 
         if (uniqueTools.length === 0) {
             list.innerHTML = '<div style="color:#888; font-style:italic; text-align:center; padding:20px;">Aucun outil enregistré. Ajoutez-en un ci-dessus.</div>';
             return;
         }
 
-        list.innerHTML = uniqueTools.map(t => {
-            // Affichage selon l'état :
-            // - active   = emprunté par quelqu'un
-            // - available = dans l'inventaire, disponible
-            // - returned  = retourné (dernier emprunt fini)
+        // Garder en mémoire l'ordre actuel (utilisé par drag&drop)
+        window._currentToolsOrder = uniqueTools.map(t => t.id);
+
+        list.innerHTML = uniqueTools.map((t, idx) => {
             let statusText;
             if (t.status === 'active' && t.assignee_nom) {
                 statusText = `<span style="color:var(--btn-yellow); font-size:12px;">→ ${sanitize(t.assignee_nom)}</span>`;
@@ -1145,18 +1194,200 @@
                 statusText = `<span style="color:#888; font-size:12px; font-style:italic;">Disponible</span>`;
             }
             return `
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px;">
-                    <div style="display:flex; flex-direction:column; gap:4px;">
-                        <span style="color:#ddd; font-size:14px; font-weight:bold;">${sanitize(t.nom || 'Sans nom')}</span>
+                <div class="tool-item" draggable="true" data-tool-id="${sanitize(t.id)}" data-tool-name="${sanitize(t.nom || '')}"
+                     style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px; cursor:default; transition: opacity 0.2s, border-color 0.2s;">
+                    <div class="tool-drag-handle" title="Glisser pour réorganiser"
+                         style="cursor:grab; color:#666; padding:4px 6px; font-size:18px; user-select:none; touch-action:none; flex-shrink:0;">⋮⋮</div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px; min-width:0;">
+                        <span style="color:#ddd; font-size:14px; font-weight:bold; word-break:break-word;">${sanitize(t.nom || 'Sans nom')}</span>
                         ${statusText}
                     </div>
-                    <button class="btn-del-emp" onclick="removeTool('${sanitize(t.id)}', '${sanitize(t.nom || '').replace(/'/g, '&apos;')}')" title="Retirer de la liste">
+                    <button class="btn-del-emp" onclick="removeTool('${sanitize(t.id)}', '${sanitize(t.nom || '').replace(/'/g, '&apos;')}')" title="Retirer de la liste" style="flex-shrink:0;">
                         <svg class="svg-icon"><use href="#icon-trash"></use></svg>
                     </button>
                 </div>
             `;
         }).join('');
+
+        // Activer le drag and drop après le rendu
+        attachToolsDragDrop();
     }
+
+    // ============================================================================
+    // DRAG AND DROP pour réorganiser les outils
+    // ============================================================================
+    // Supporte à la fois la souris (HTML5 drag&drop) et le tactile (touch events)
+
+    let _draggedToolItem = null;
+    let _touchDragData = null; // { item, ghost, startY, currentY }
+
+    function attachToolsDragDrop() {
+        const list = document.getElementById('toolsList');
+        if (!list) return;
+
+        // === DESKTOP : HTML5 drag & drop ===
+        list.querySelectorAll('.tool-item').forEach(item => {
+            item.addEventListener('dragstart', onToolDragStart);
+            item.addEventListener('dragover', onToolDragOver);
+            item.addEventListener('drop', onToolDrop);
+            item.addEventListener('dragend', onToolDragEnd);
+        });
+
+        // === MOBILE : Touch events (sur la poignée seulement) ===
+        list.querySelectorAll('.tool-drag-handle').forEach(handle => {
+            handle.addEventListener('touchstart', onToolTouchStart, { passive: false });
+        });
+    }
+
+    // --- Desktop drag & drop ---
+    function onToolDragStart(e) {
+        _draggedToolItem = e.currentTarget;
+        e.currentTarget.style.opacity = '0.4';
+        e.dataTransfer.effectAllowed = 'move';
+        // Hack Firefox : il faut setData
+        try { e.dataTransfer.setData('text/plain', e.currentTarget.dataset.toolId); } catch(_) {}
+    }
+
+    function onToolDragOver(e) {
+        if (!_draggedToolItem) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const target = e.currentTarget;
+        if (target === _draggedToolItem) return;
+        const rect = target.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (e.clientY < midY) {
+            target.parentNode.insertBefore(_draggedToolItem, target);
+        } else {
+            target.parentNode.insertBefore(_draggedToolItem, target.nextSibling);
+        }
+    }
+
+    function onToolDrop(e) {
+        e.preventDefault();
+    }
+
+    function onToolDragEnd(e) {
+        if (e.currentTarget) e.currentTarget.style.opacity = '';
+        _draggedToolItem = null;
+        saveToolsOrder();
+    }
+
+    // --- Mobile touch drag ---
+    function onToolTouchStart(e) {
+        const handle = e.currentTarget;
+        const item = handle.closest('.tool-item');
+        if (!item) return;
+        e.preventDefault(); // empêche le scroll pendant le drag
+
+        const rect = item.getBoundingClientRect();
+        const touch = e.touches[0];
+
+        // Créer un "fantôme" qui suit le doigt
+        const ghost = item.cloneNode(true);
+        ghost.style.position = 'fixed';
+        ghost.style.top = rect.top + 'px';
+        ghost.style.left = rect.left + 'px';
+        ghost.style.width = rect.width + 'px';
+        ghost.style.zIndex = '9999';
+        ghost.style.opacity = '0.85';
+        ghost.style.pointerEvents = 'none';
+        ghost.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
+        ghost.style.transform = 'scale(1.02)';
+        document.body.appendChild(ghost);
+
+        item.style.opacity = '0.3';
+        item.style.borderColor = 'var(--btn-yellow)';
+
+        _touchDragData = {
+            item,
+            ghost,
+            startY: touch.clientY,
+            offsetY: touch.clientY - rect.top
+        };
+
+        document.addEventListener('touchmove', onToolTouchMove, { passive: false });
+        document.addEventListener('touchend', onToolTouchEnd);
+        document.addEventListener('touchcancel', onToolTouchEnd);
+    }
+
+    function onToolTouchMove(e) {
+        if (!_touchDragData) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const { ghost, offsetY, item } = _touchDragData;
+
+        // Déplacer le fantôme
+        ghost.style.top = (touch.clientY - offsetY) + 'px';
+
+        // Détecter par-dessus quel item on survole
+        ghost.style.display = 'none';
+        const elBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        ghost.style.display = '';
+        if (!elBelow) return;
+        const target = elBelow.closest('.tool-item');
+        if (!target || target === item) return;
+
+        const rect = target.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (touch.clientY < midY) {
+            target.parentNode.insertBefore(item, target);
+        } else {
+            target.parentNode.insertBefore(item, target.nextSibling);
+        }
+    }
+
+    function onToolTouchEnd() {
+        if (!_touchDragData) return;
+        const { ghost, item } = _touchDragData;
+        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+        if (item) {
+            item.style.opacity = '';
+            item.style.borderColor = '';
+        }
+        _touchDragData = null;
+        document.removeEventListener('touchmove', onToolTouchMove);
+        document.removeEventListener('touchend', onToolTouchEnd);
+        document.removeEventListener('touchcancel', onToolTouchEnd);
+        saveToolsOrder();
+    }
+
+    // Sauvegarde le nouvel ordre dans Supabase (positions: 10, 20, 30...)
+    async function saveToolsOrder() {
+        const list = document.getElementById('toolsList');
+        if (!list) return;
+        const items = Array.from(list.querySelectorAll('.tool-item'));
+        if (items.length === 0) return;
+
+        // Construire l'ordre : nom (lowercased) → nouvelle position
+        const orderedNames = items.map(it => (it.dataset.toolName || '').toLowerCase().trim());
+
+        try {
+            // On met à jour TOUTES les lignes 'outils' qui ont ce nom (peu importe leur status)
+            // pour garder la cohérence si l'outil a plusieurs lignes (emprunts + inventaire).
+            // Note : on update par 'nom' pour toucher toutes les variantes.
+            for (let i = 0; i < orderedNames.length; i++) {
+                const name = orderedNames[i];
+                if (!name) continue;
+                const newPos = (i + 1) * 10;
+                await supabaseClient
+                    .from('outils')
+                    .update({ position: newPos })
+                    .ilike('nom', name);
+            }
+            // Re-charger pour synchroniser les données locales (sans re-render visuel
+            // pour ne pas casser l'animation tactile)
+            const { data } = await supabaseClient
+                .from('outils')
+                .select('id, nom, assignee_nom, status, created_at, position')
+                .order('position', { ascending: true, nullsFirst: false })
+                .order('created_at', { ascending: false });
+            if (data) toolsListData = data;
+        } catch (e) {
+            console.warn('Erreur sauvegarde ordre outils :', e);
+        }
+    }
+
 
     async function addTool() {
         const inp = document.getElementById('newToolInput');
@@ -1171,9 +1402,17 @@
             showAlert("Un outil avec ce nom existe déjà.");
             return;
         }
+        // Calculer la prochaine position (dernière + 10)
+        const maxPos = toolsListData.reduce((max, t) => {
+            const p = (t.position == null) ? 0 : t.position;
+            return p > max ? p : max;
+        }, 0);
+        const newPos = maxPos + 10;
+
         const { error } = await supabaseClient.from('outils').insert([{
             nom: name,
-            status: 'available'
+            status: 'available',
+            position: newPos
             // L'outil est dans l'inventaire, disponible à l'emprunt.
             // Quand quelqu'un l'emprunte, une nouvelle ligne avec status='active' est créée.
         }]);
