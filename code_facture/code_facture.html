@@ -341,7 +341,7 @@
             <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()">
                 <svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyer au bureau
             </button>
-            <button class="action-btn" id="btn-paper" style="background-color: var(--btn-blue); color: white;" onclick="togglePaperMode()" title="Basculer entre mode numérique et facture papier">
+            <button class="action-btn" id="btn-paper" style="background-color: #e8730a; color: white;" onclick="togglePaperMode()" title="Basculer entre mode numérique et facture papier">
                 <svg class="svg-icon" id="btn-paper-icon"><use href="#icon-camera"></use></svg> <span id="btn-paper-label">Facture papier</span>
             </button>
             
@@ -1549,19 +1549,16 @@
         const label = document.getElementById('btn-paper-label');
         const iconUse = document.querySelector('#btn-paper-icon use');
         if (!btn) return;
+        // Les 2 états ont la même couleur orange, texte blanc
+        btn.style.backgroundColor = '#e8730a';
+        btn.style.color = 'white';
         if (isPaperMode) {
-            // Mode papier actif → bouton propose le retour numérique
             if (label) label.textContent = 'Mode numérique';
             if (iconUse) iconUse.setAttribute('href', '#icon-file-text');
-            btn.style.backgroundColor = 'var(--btn-yellow, #f0b400)';
-            btn.style.color = 'black';
             btn.title = 'Revenir au formulaire de facture numérique';
         } else {
-            // Mode numérique → bouton propose le passage papier
             if (label) label.textContent = 'Facture papier';
             if (iconUse) iconUse.setAttribute('href', '#icon-camera');
-            btn.style.backgroundColor = 'var(--btn-blue)';
-            btn.style.color = 'white';
             btn.title = 'Envoyer une facture déjà remplie sur papier (en photo)';
         }
     }
