@@ -823,10 +823,10 @@
     function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
     function resetZoom() { fitToScreen(); } 
     window.addEventListener('resize', () => { if (document.getElementById('view-editor').style.display === 'flex') { fitToScreen(); } });
-    
-    let initialDistance = 0; let initialZoomState = 1.0; const scrollArea = document.getElementById('scrollArea');
-    scrollArea.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); initialZoomState = currentZoom; } }, { passive: false });
-    scrollArea.addEventListener('touchmove', function(e) { if (e.touches.length === 2) { e.preventDefault(); const currentDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); if (initialDistance > 0) { const diff = currentDistance / initialDistance; currentZoom = initialZoomState * diff; updateZoom(); } } }, { passive: false });
+
+    // Note : on n'a PAS de handler de pinch zoom maison. Le zoom des doigts
+    // est géré nativement par le navigateur (comme dans Facture et Soumissions),
+    // ce qui donne un comportement plus fluide et naturel.
 
     initAuth();
 </script>
