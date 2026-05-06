@@ -1573,29 +1573,15 @@
             if (!confirm(msg)) return;
         }
 
-        // Récupérer les valeurs du header papier pour les conserver dans le formulaire
-        const meta = getPaperHeaderData();
-
         isPaperMode = false;
         paperPages = [];
 
-        // Reconstruire le formulaire numérique normal
+        // Reconstruire le formulaire numérique normal — on laisse les champs
+        // VIDES. L'utilisateur les remplira lui-même. Tenter de "transférer"
+        // les valeurs du header papier causait des bugs (date dans le mauvais
+        // champ, numéro de facture mal placé, etc.).
         containerInvoice.innerHTML = '';
         containerInvoice.appendChild(createInvoicePageHTML());
-
-        // Restaurer les valeurs (client, date, numéro) dans le nouveau formulaire
-        const numInput = containerInvoice.querySelector('.red-invoice-input');
-        if (numInput && meta.numero) numInput.value = meta.numero;
-        const dateInput = containerInvoice.querySelector('input[type="date"]');
-        if (dateInput && meta.date) dateInput.value = meta.date;
-        // Le client : on prend le premier input texte du formulaire
-        if (meta.client) {
-            const allTextInputs = containerInvoice.querySelectorAll('input[type="text"]:not(.red-invoice-input)');
-            for (const inp of allTextInputs) {
-                inp.value = meta.client;
-                break;
-            }
-        }
 
         // Réafficher les boutons du mode numérique
         ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear'].forEach(id => {
