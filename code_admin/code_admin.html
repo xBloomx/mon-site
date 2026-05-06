@@ -1193,11 +1193,21 @@
             } else {
                 statusText = `<span style="color:#888; font-size:12px; font-style:italic;">Disponible</span>`;
             }
+            const isFirst = (idx === 0);
+            const isLast = (idx === uniqueTools.length - 1);
             return `
-                <div class="tool-item" draggable="true" data-tool-id="${sanitize(t.id)}" data-tool-name="${sanitize(t.nom || '')}"
-                     style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px; cursor:default; transition: opacity 0.2s, border-color 0.2s;">
-                    <div class="tool-drag-handle" title="Glisser pour réorganiser"
-                         style="cursor:grab; color:#666; padding:4px 6px; font-size:18px; user-select:none; touch-action:none; flex-shrink:0;">⋮⋮</div>
+                <div class="tool-item" data-tool-id="${sanitize(t.id)}" data-tool-name="${sanitize(t.nom || '')}"
+                     style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px;">
+                    <div style="display:flex; flex-direction:column; gap:2px; flex-shrink:0;">
+                        <button class="tool-arrow-btn" onclick="moveToolUp(${idx})" ${isFirst ? 'disabled' : ''} title="Monter"
+                                style="background:${isFirst ? '#222' : '#333'}; color:${isFirst ? '#444' : '#bbb'}; border:none; border-radius:4px; width:28px; height:22px; display:flex; align-items:center; justify-content:center; cursor:${isFirst ? 'default' : 'pointer'}; padding:0;">
+                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M7 14l5-5 5 5z"/></svg>
+                        </button>
+                        <button class="tool-arrow-btn" onclick="moveToolDown(${idx})" ${isLast ? 'disabled' : ''} title="Descendre"
+                                style="background:${isLast ? '#222' : '#333'}; color:${isLast ? '#444' : '#bbb'}; border:none; border-radius:4px; width:28px; height:22px; display:flex; align-items:center; justify-content:center; cursor:${isLast ? 'default' : 'pointer'}; padding:0;">
+                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M7 10l5 5 5-5z"/></svg>
+                        </button>
+                    </div>
                     <div style="flex:1; display:flex; flex-direction:column; gap:4px; min-width:0;">
                         <span style="color:#ddd; font-size:14px; font-weight:bold; word-break:break-word;">${sanitize(t.nom || 'Sans nom')}</span>
                         ${statusText}
@@ -1209,148 +1219,39 @@
             `;
         }).join('');
 
-        // Activer le drag and drop après le rendu
-        attachToolsDragDrop();
+        // Plus besoin de drag and drop — les flèches s'occupent du tri
     }
 
-    // ============================================================================
-    // DRAG AND DROP pour réorganiser les outils
-    // ============================================================================
-    // Supporte à la fois la souris (HTML5 drag&drop) et le tactile (touch events)
+    // Mémoriser l'ordre courant des outils pour permettre le réagencement par flèches
+    let _orderedToolIds = [];
 
-    let _draggedToolItem = null;
-    let _touchDragData = null; // { item, ghost, startY, currentY }
-
-    function attachToolsDragDrop() {
+    // Monte un outil d'une position
+    async function moveToolUp(idx) {
+        if (idx <= 0) return;
         const list = document.getElementById('toolsList');
         if (!list) return;
-
-        // === DESKTOP : HTML5 drag & drop ===
-        list.querySelectorAll('.tool-item').forEach(item => {
-            item.addEventListener('dragstart', onToolDragStart);
-            item.addEventListener('dragover', onToolDragOver);
-            item.addEventListener('drop', onToolDrop);
-            item.addEventListener('dragend', onToolDragEnd);
-        });
-
-        // === MOBILE : Touch events (sur la poignée seulement) ===
-        list.querySelectorAll('.tool-drag-handle').forEach(handle => {
-            handle.addEventListener('touchstart', onToolTouchStart, { passive: false });
-        });
+        const items = Array.from(list.querySelectorAll('.tool-item'));
+        if (idx >= items.length) return;
+        const item = items[idx];
+        const prev = items[idx - 1];
+        list.insertBefore(item, prev);
+        await saveToolsOrder();
+        renderTools();
     }
 
-    // --- Desktop drag & drop ---
-    function onToolDragStart(e) {
-        _draggedToolItem = e.currentTarget;
-        e.currentTarget.style.opacity = '0.4';
-        e.dataTransfer.effectAllowed = 'move';
-        // Hack Firefox : il faut setData
-        try { e.dataTransfer.setData('text/plain', e.currentTarget.dataset.toolId); } catch(_) {}
+    // Descend un outil d'une position
+    async function moveToolDown(idx) {
+        const list = document.getElementById('toolsList');
+        if (!list) return;
+        const items = Array.from(list.querySelectorAll('.tool-item'));
+        if (idx >= items.length - 1) return;
+        const item = items[idx];
+        const next = items[idx + 1];
+        list.insertBefore(next, item);
+        await saveToolsOrder();
+        renderTools();
     }
 
-    function onToolDragOver(e) {
-        if (!_draggedToolItem) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const target = e.currentTarget;
-        if (target === _draggedToolItem) return;
-        const rect = target.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        if (e.clientY < midY) {
-            target.parentNode.insertBefore(_draggedToolItem, target);
-        } else {
-            target.parentNode.insertBefore(_draggedToolItem, target.nextSibling);
-        }
-    }
-
-    function onToolDrop(e) {
-        e.preventDefault();
-    }
-
-    function onToolDragEnd(e) {
-        if (e.currentTarget) e.currentTarget.style.opacity = '';
-        _draggedToolItem = null;
-        saveToolsOrder();
-    }
-
-    // --- Mobile touch drag ---
-    function onToolTouchStart(e) {
-        const handle = e.currentTarget;
-        const item = handle.closest('.tool-item');
-        if (!item) return;
-        e.preventDefault(); // empêche le scroll pendant le drag
-
-        const rect = item.getBoundingClientRect();
-        const touch = e.touches[0];
-
-        // Créer un "fantôme" qui suit le doigt
-        const ghost = item.cloneNode(true);
-        ghost.style.position = 'fixed';
-        ghost.style.top = rect.top + 'px';
-        ghost.style.left = rect.left + 'px';
-        ghost.style.width = rect.width + 'px';
-        ghost.style.zIndex = '9999';
-        ghost.style.opacity = '0.85';
-        ghost.style.pointerEvents = 'none';
-        ghost.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
-        ghost.style.transform = 'scale(1.02)';
-        document.body.appendChild(ghost);
-
-        item.style.opacity = '0.3';
-        item.style.borderColor = 'var(--btn-yellow)';
-
-        _touchDragData = {
-            item,
-            ghost,
-            startY: touch.clientY,
-            offsetY: touch.clientY - rect.top
-        };
-
-        document.addEventListener('touchmove', onToolTouchMove, { passive: false });
-        document.addEventListener('touchend', onToolTouchEnd);
-        document.addEventListener('touchcancel', onToolTouchEnd);
-    }
-
-    function onToolTouchMove(e) {
-        if (!_touchDragData) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        const { ghost, offsetY, item } = _touchDragData;
-
-        // Déplacer le fantôme
-        ghost.style.top = (touch.clientY - offsetY) + 'px';
-
-        // Détecter par-dessus quel item on survole
-        ghost.style.display = 'none';
-        const elBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        ghost.style.display = '';
-        if (!elBelow) return;
-        const target = elBelow.closest('.tool-item');
-        if (!target || target === item) return;
-
-        const rect = target.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        if (touch.clientY < midY) {
-            target.parentNode.insertBefore(item, target);
-        } else {
-            target.parentNode.insertBefore(item, target.nextSibling);
-        }
-    }
-
-    function onToolTouchEnd() {
-        if (!_touchDragData) return;
-        const { ghost, item } = _touchDragData;
-        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        if (item) {
-            item.style.opacity = '';
-            item.style.borderColor = '';
-        }
-        _touchDragData = null;
-        document.removeEventListener('touchmove', onToolTouchMove);
-        document.removeEventListener('touchend', onToolTouchEnd);
-        document.removeEventListener('touchcancel', onToolTouchEnd);
-        saveToolsOrder();
-    }
 
     // Sauvegarde le nouvel ordre dans Supabase (positions: 10, 20, 30...)
     async function saveToolsOrder() {
