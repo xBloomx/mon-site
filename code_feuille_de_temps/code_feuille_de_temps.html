@@ -87,6 +87,14 @@
             .top-bar .action-btn, .spacer-mobile { flex-shrink: 0; width: auto; margin-bottom: 0; }
         }
 
+        @media (max-width: 1024px) {
+            .top-bar { padding: 10px 85px 10px 10px; gap: 10px; height: 65px; overflow-x: auto; justify-content: flex-start; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+            .top-bar::-webkit-scrollbar { display: none; }
+            .top-bar .action-btn, .spacer-mobile, .office-status-panel { flex-shrink: 0; width: auto; margin-bottom: 0; }
+            .top-bar .action-btn { font-size: 11px; padding: 8px 15px; }
+            .office-status-panel { font-size: 11px; padding: 8px 15px; }
+        }
+
         @media (max-width: 768px) {
             #view-dashboard { padding: 15px; }
             .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; }
