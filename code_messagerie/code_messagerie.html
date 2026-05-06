@@ -612,7 +612,7 @@
     async function chargerMessagesSupabase() {
         const { data, error } = await supabaseClient
             .from('message')
-            .select('id, created_at, contenu, expediteur_id, chat_id, profils(prenom_nom)')
+            .select('id, created_at, contenu, expediteur_id, chat_id, edited_at, deleted_at, profils(prenom_nom)')
             .order('created_at', { ascending: true });
 
         if (error) { 
@@ -646,7 +646,10 @@
 
             conversationsData[cId].messages.push({
                 id: msgDB.id, sender: senderName, time: timeStr, isMine: isMine, reaction: msgDB.reaction || null,
-                type: decodage.type, text: decodage.text, url: decodage.url, fileName: decodage.fileName, fileSize: decodage.fileSize
+                type: decodage.type, text: decodage.text, url: decodage.url, fileName: decodage.fileName, fileSize: decodage.fileSize,
+                createdAt: msgDB.created_at,
+                editedAt: msgDB.edited_at,
+                deletedAt: msgDB.deleted_at
             });
         });
 
@@ -696,7 +699,8 @@
                 conversationsData[cId].messages.push({
                     id: newMsg.id, sender: senderName, time: timeStr, isMine: false, reaction: null,
                     type: decodage.type, text: decodage.text, url: decodage.url,
-                    fileName: decodage.fileName, fileSize: decodage.fileSize
+                    fileName: decodage.fileName, fileSize: decodage.fileSize,
+                    createdAt: newMsg.created_at, editedAt: newMsg.edited_at, deletedAt: newMsg.deleted_at
                 });
 
                 // Si ce chat était masqué pour cet utilisateur, le démasquer
@@ -726,6 +730,45 @@
                 if (currentChatId !== cId) {
                     notifierNouveauMessage(senderName, cId);
                 }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'message' }, async (payload) => {
+                // Reçoit les modifications/suppressions d'autres utilisateurs
+                const updatedMsg = payload.new;
+                const cId = updatedMsg.chat_id || 'global';
+                const chat = conversationsData[cId];
+                if (!chat) return;
+
+                const localMsg = chat.messages.find(m => m.id === updatedMsg.id || m.id == updatedMsg.id);
+                if (!localMsg) return;
+
+                // Mettre à jour les champs concernés
+                const decodage = decoderMessage(updatedMsg.contenu);
+                localMsg.text = decodage.text;
+                localMsg.url = decodage.url;
+                localMsg.fileName = decodage.fileName;
+                localMsg.fileSize = decodage.fileSize;
+                localMsg.editedAt = updatedMsg.edited_at;
+                localMsg.deletedAt = updatedMsg.deleted_at;
+                localMsg.reaction = updatedMsg.reaction || null;
+
+                // Re-render si on est dans ce chat
+                if (currentChatId === cId) {
+                    renderMessages(chat.messages, false);
+                }
+                renderContactList();
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'message' }, async (payload) => {
+                // Reçoit les suppressions définitives (cleanup automatique en BDD)
+                const deletedId = payload.old?.id;
+                if (!deletedId) return;
+                Object.values(conversationsData).forEach(chat => {
+                    const idx = chat.messages.findIndex(m => m.id === deletedId || m.id == deletedId);
+                    if (idx >= 0) chat.messages.splice(idx, 1);
+                });
+                if (currentChatId && conversationsData[currentChatId]) {
+                    renderMessages(conversationsData[currentChatId].messages, false);
+                }
+                renderContactList();
             })
             .on('system', {}, (status) => {
                 // Reconnexion automatique si la connexion est perdue
@@ -778,6 +821,14 @@
         const hasFiles = selectedFiles.length > 0;
 
         if ((!text && !hasFiles) || !currentChatId) return;
+
+        // Mode ÉDITION : si on est en train d'éditer un message, on sauvegarde l'édition au lieu d'envoyer un nouveau message
+        if (_editingMsgId) {
+            if (!text) { showAlert("Le message ne peut pas être vide. Pour le supprimer, utilise plutôt l'option 'Supprimer'."); return; }
+            const ok = await saveEditedMessage(text);
+            if (ok) messageInput.value = '';
+            return;
+        }
 
         const activeChat = conversationsData[currentChatId];
         const now = new Date();
@@ -1162,17 +1213,221 @@
         if(messages.length === 0) { messagesContainer.innerHTML = '<div style="text-align:center; color:#888; font-style:italic; margin-top:50px;">Envoyez un premier message pour démarrer la discussion.</div>'; return; }
         messages.forEach(msg => {
             const wrapper = document.createElement('div'); wrapper.className = `message-wrapper ${msg.isMine ? 'sent' : 'received'}`;
+            wrapper.dataset.msgId = msg.id;
             let senderHtml = !msg.isMine ? `<span class="message-sender">${sanitize(msg.sender)}</span>` : '';
-            let reactionHtml = msg.reaction ? `<div class="msg-reaction-badge" onclick="removeReaction('${msg.id}')">${msg.reaction}</div>` : '';
+            let reactionHtml = (msg.reaction && !msg.deletedAt) ? `<div class="msg-reaction-badge" onclick="removeReaction('${msg.id}')">${msg.reaction}</div>` : '';
+            let editedTag = (msg.editedAt && !msg.deletedAt) ? `<span class="message-edited" style="font-size:10px; opacity:0.6; margin-left:4px; font-style:italic;">(modifié)</span>` : '';
             let innerBubble = '';
-            if (msg.type === 'text') { innerBubble = `<div class="message-bubble">${sanitize(msg.text)}<span class="message-time">${sanitize(msg.time)}</span>${reactionHtml}</div>`; } 
-            else if (msg.type === 'image') { innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}" onclick="window.open('${msg.url}')"><span class="message-time">${msg.time}</span>${reactionHtml}</div>`; } 
-            else if (msg.type === 'file') { innerBubble = `<a href="${msg.url}" target="_blank" class="message-bubble bubble-file"><div class="file-icon"><svg class="svg-icon" style="width:28px;height:28px;"><use href="#icon-file"></use></svg></div><div class="file-meta"><span class="file-name">${sanitize(msg.fileName)}</span><span class="file-size">${sanitize(msg.fileSize)}</span></div><div class="file-download-icon"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-download"></use></svg></div><span class="message-time" style="position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: #333;">${msg.time}</span>${reactionHtml}</a>`; }
-            wrapper.innerHTML = senderHtml + `<div class="message-content-row">${innerBubble}<button class="msg-react-btn" onclick="showReactionPicker(event, '${msg.id}')"><svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-smile"></use></svg></button></div>`;
+
+            if (msg.deletedAt) {
+                // Message supprimé : bulle grise, italique, pas de réaction ni de long press
+                innerBubble = `<div class="message-bubble" style="background:#3a3b46 !important; color:#888 !important; font-style:italic;"><svg class="svg-icon" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;opacity:0.6;"><use href="#icon-trash"></use></svg>Message supprimé<span class="message-time">${sanitize(msg.time)}</span></div>`;
+            } else if (msg.type === 'text') {
+                innerBubble = `<div class="message-bubble">${sanitize(msg.text)}<span class="message-time">${sanitize(msg.time)}${editedTag}</span>${reactionHtml}</div>`;
+            } else if (msg.type === 'image') {
+                innerBubble = `<div class="message-bubble bubble-image"><img src="${msg.url}" onclick="window.open('${msg.url}')"><span class="message-time">${msg.time}${editedTag}</span>${reactionHtml}</div>`;
+            } else if (msg.type === 'file') {
+                innerBubble = `<a href="${msg.url}" target="_blank" class="message-bubble bubble-file"><div class="file-icon"><svg class="svg-icon" style="width:28px;height:28px;"><use href="#icon-file"></use></svg></div><div class="file-meta"><span class="file-name">${sanitize(msg.fileName)}</span><span class="file-size">${sanitize(msg.fileSize)}</span></div><div class="file-download-icon"><svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-download"></use></svg></div><span class="message-time" style="position: absolute; bottom: 5px; right: 10px; font-size: 9px; color: #333;">${msg.time}${editedTag}</span>${reactionHtml}</a>`;
+            }
+            const reactBtnHtml = msg.deletedAt ? '' : `<button class="msg-react-btn" onclick="showReactionPicker(event, '${msg.id}')"><svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-smile"></use></svg></button>`;
+            wrapper.innerHTML = senderHtml + `<div class="message-content-row">${innerBubble}${reactBtnHtml}</div>`;
             messagesContainer.appendChild(wrapper);
+
+            // Long press sur ses propres messages (non supprimés) — affiche menu modifier/supprimer
+            if (msg.isMine && !msg.deletedAt) {
+                attachLongPress(wrapper, msg);
+            }
         });
         if (scroll) { scrollToBottom(); } else { messagesContainer.scrollTop = scrollPos; }
     }
+
+    // ============================================================================
+    // LONG PRESS sur message → menu Modifier / Supprimer
+    // ============================================================================
+    let _longPressTimer = null;
+    let _longPressStartXY = null;
+    const LONG_PRESS_MS = 500; // 0.5 sec
+
+    function attachLongPress(wrapper, msg) {
+        const start = (e) => {
+            const t = e.touches ? e.touches[0] : e;
+            _longPressStartXY = { x: t.clientX, y: t.clientY };
+            _longPressTimer = setTimeout(() => {
+                _longPressTimer = null;
+                navigator.vibrate && navigator.vibrate(40);
+                openMessageActionMenu(msg, wrapper);
+            }, LONG_PRESS_MS);
+        };
+        const move = (e) => {
+            if (!_longPressTimer || !_longPressStartXY) return;
+            const t = e.touches ? e.touches[0] : e;
+            const dx = Math.abs(t.clientX - _longPressStartXY.x);
+            const dy = Math.abs(t.clientY - _longPressStartXY.y);
+            // Si l'utilisateur bouge le doigt > 10px, on annule (c'est un scroll)
+            if (dx > 10 || dy > 10) {
+                clearTimeout(_longPressTimer);
+                _longPressTimer = null;
+            }
+        };
+        const cancel = () => {
+            if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
+        };
+        wrapper.addEventListener('touchstart', start, { passive: true });
+        wrapper.addEventListener('touchmove', move, { passive: true });
+        wrapper.addEventListener('touchend', cancel);
+        wrapper.addEventListener('touchcancel', cancel);
+        // Pour ordi : long press avec souris (mousedown 500ms)
+        wrapper.addEventListener('mousedown', start);
+        wrapper.addEventListener('mousemove', move);
+        wrapper.addEventListener('mouseup', cancel);
+        wrapper.addEventListener('mouseleave', cancel);
+        // Empêcher le menu contextuel natif (clic droit sur ordi)
+        wrapper.addEventListener('contextmenu', (e) => { e.preventDefault(); openMessageActionMenu(msg, wrapper); });
+    }
+
+    function openMessageActionMenu(msg, wrapper) {
+        // Calculer si modifiable (5 min)
+        const createdMs = msg.createdAt ? new Date(msg.createdAt).getTime() : 0;
+        const ageMs = Date.now() - createdMs;
+        const canEdit = (msg.type === 'text') && (ageMs < 5 * 60 * 1000); // 5 min, texte seulement
+
+        const overlay = document.createElement('div');
+        overlay.id = 'msg-action-overlay';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(2px); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;';
+        overlay.innerHTML = `
+            <div style="background:#2a2b35; border-radius:14px; padding:8px; min-width:240px; box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+                ${canEdit ? `
+                <button class="msg-act-btn" data-action="edit" style="display:flex; align-items:center; gap:12px; width:100%; padding:14px 16px; background:transparent; border:none; color:#fff; font-size:15px; cursor:pointer; border-radius:10px; text-align:left;">
+                    <svg class="svg-icon" style="width:18px;height:18px;color:var(--btn-blue);"><use href="#icon-edit"></use></svg>
+                    <span>Modifier</span>
+                </button>` : `
+                <div style="display:flex; align-items:center; gap:12px; width:100%; padding:14px 16px; color:#666; font-size:13px; font-style:italic;">
+                    <svg class="svg-icon" style="width:18px;height:18px;opacity:0.5;"><use href="#icon-edit"></use></svg>
+                    <span>Modifier (limite 5 min dépassée)</span>
+                </div>`}
+                <button class="msg-act-btn" data-action="delete" style="display:flex; align-items:center; gap:12px; width:100%; padding:14px 16px; background:transparent; border:none; color:var(--btn-red); font-size:15px; cursor:pointer; border-radius:10px; text-align:left;">
+                    <svg class="svg-icon" style="width:18px;height:18px;"><use href="#icon-trash"></use></svg>
+                    <span>Supprimer</span>
+                </button>
+                <div style="height:1px; background:#444; margin:4px 12px;"></div>
+                <button class="msg-act-btn" data-action="cancel" style="display:flex; align-items:center; justify-content:center; width:100%; padding:14px 16px; background:transparent; border:none; color:#aaa; font-size:14px; cursor:pointer; border-radius:10px;">
+                    Annuler
+                </button>
+            </div>
+        `;
+        overlay.querySelectorAll('.msg-act-btn').forEach(b => {
+            b.onmouseenter = () => b.style.background = '#3a3b46';
+            b.onmouseleave = () => b.style.background = 'transparent';
+            b.addEventListener('click', () => {
+                const action = b.dataset.action;
+                document.body.removeChild(overlay);
+                if (action === 'edit') startEditMessage(msg);
+                else if (action === 'delete') confirmDeleteMessage(msg);
+            });
+        });
+        // Fermer en tapant à côté
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) document.body.removeChild(overlay);
+        });
+        document.body.appendChild(overlay);
+    }
+
+    let _editingMsgId = null;
+
+    function startEditMessage(msg) {
+        const input = document.getElementById('chatInput');
+        if (!input) return;
+        _editingMsgId = msg.id;
+        input.value = msg.text || '';
+        input.focus();
+        // Indicateur visuel : barre de modification au-dessus de l'input
+        showEditingBanner(msg.text || '');
+    }
+
+    function showEditingBanner(currentText) {
+        // Supprimer l'ancienne bannière si elle existe
+        const old = document.getElementById('editing-banner');
+        if (old) old.remove();
+        const banner = document.createElement('div');
+        banner.id = 'editing-banner';
+        banner.style.cssText = 'background:rgba(91,192,235,0.15); border-left:3px solid var(--btn-blue); padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; border-radius:6px;';
+        banner.innerHTML = `
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:11px; color:var(--btn-blue); font-weight:600; margin-bottom:2px;">Modification du message</div>
+                <div style="font-size:13px; color:#bbb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sanitize(currentText)}</div>
+            </div>
+            <button onclick="cancelEditMessage()" style="background:transparent; border:none; color:#888; cursor:pointer; padding:4px;" title="Annuler">
+                <svg class="svg-icon" style="width:16px;height:16px;"><use href="#icon-x"></use></svg>
+            </button>
+        `;
+        const inputArea = document.querySelector('.chat-input-area') || document.getElementById('chatInput')?.parentElement;
+        if (inputArea && inputArea.parentElement) {
+            inputArea.parentElement.insertBefore(banner, inputArea);
+        }
+    }
+
+    function cancelEditMessage() {
+        _editingMsgId = null;
+        const input = document.getElementById('chatInput');
+        if (input) input.value = '';
+        const banner = document.getElementById('editing-banner');
+        if (banner) banner.remove();
+    }
+
+    async function saveEditedMessage(newText) {
+        if (!_editingMsgId) return false;
+        const editedId = _editingMsgId;
+        try {
+            const { error } = await supabaseClient
+                .from('message')
+                .update({ contenu: newText, edited_at: new Date().toISOString() })
+                .eq('id', editedId)
+                .eq('expediteur_id', myUserId);
+            if (error) throw error;
+
+            // Mise à jour locale immédiate
+            const chat = conversationsData[currentChatId];
+            if (chat) {
+                const m = chat.messages.find(x => x.id === editedId || x.id == editedId);
+                if (m) {
+                    m.text = newText;
+                    m.editedAt = new Date().toISOString();
+                    renderMessages(chat.messages, false);
+                }
+            }
+            cancelEditMessage();
+            return true;
+        } catch (e) {
+            showAlert("Erreur lors de la modification : " + (e.message || 'inconnue'));
+            return false;
+        }
+    }
+
+    function confirmDeleteMessage(msg) {
+        showConfirm("Supprimer ce message ?", async () => {
+            try {
+                const { error } = await supabaseClient
+                    .from('message')
+                    .update({ deleted_at: new Date().toISOString() })
+                    .eq('id', msg.id)
+                    .eq('expediteur_id', myUserId);
+                if (error) throw error;
+
+                // Mise à jour locale
+                const chat = conversationsData[currentChatId];
+                if (chat) {
+                    const m = chat.messages.find(x => x.id === msg.id || x.id == msg.id);
+                    if (m) {
+                        m.deletedAt = new Date().toISOString();
+                        renderMessages(chat.messages, false);
+                    }
+                }
+            } catch (e) {
+                showAlert("Erreur lors de la suppression : " + (e.message || 'inconnue'));
+            }
+        });
+    }
+
 
     function scrollToBottom() { if(messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight; }
     function renderQuickReactions() { const list = document.getElementById('quickReactionsList'); if(!list) return; list.innerHTML = ''; quickReactions.forEach(emoji => { const span = document.createElement('span'); span.textContent = emoji; span.onclick = () => selectReaction(emoji); list.appendChild(span); }); }
