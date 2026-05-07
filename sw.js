@@ -4,7 +4,7 @@
 //   - Images/assets statiques : cache-first (rapide, change rarement)
 //   - Supabase                : jamais touché (toujours réseau)
 
-const CACHE_NAME = 'fdussault-v60';
+const CACHE_NAME = 'fdussault-v67';
 
 // Détecter le sous-chemin de déploiement (ex: /mon-site/ ou /)
 const SW_SCOPE = self.registration.scope;
