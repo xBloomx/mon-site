@@ -563,10 +563,11 @@
             closeConfirmModal();
             return;
         }
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from('clients')
             .update({ est_supprime: true })
-            .eq('id', clientToDeleteId);
+            .eq('id', clientToDeleteId)
+            .select(); // .select() force le retour des lignes affectées
 
         closeConfirmModal();
         if (error) {
@@ -574,15 +575,29 @@
             openAlertModal('Erreur lors de la suppression : ' + (error.message || 'inconnue'));
             return;
         }
+        // Si aucune ligne n'a été modifiée, c'est probablement un blocage RLS silencieux
+        if (!data || data.length === 0) {
+            console.error('Suppression bloquée : 0 ligne modifiée (probablement RLS).');
+            openAlertModal("La suppression a été bloquée par les permissions de la base de données. Lance le script SQL « supabase-fix-clients-suppression.sql ».");
+            return;
+        }
         closeModal('editModal');
         await loadClients();
     }
 
     async function restaurerClient(id) {
-        const { error } = await supabaseClient.from('clients').update({ est_supprime: false }).eq('id', id);
+        const { data, error } = await supabaseClient
+            .from('clients')
+            .update({ est_supprime: false })
+            .eq('id', id)
+            .select();
         if (error) {
             console.error('Erreur restauration client:', error);
             openAlertModal('Erreur lors de la restauration : ' + (error.message || 'inconnue'));
+            return;
+        }
+        if (!data || data.length === 0) {
+            openAlertModal("La restauration a été bloquée par les permissions de la base de données.");
             return;
         }
         await loadClients();
