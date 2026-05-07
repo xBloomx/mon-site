@@ -552,7 +552,7 @@
         if (myRole !== 'A0' && profils && profils.length === 1) {
             list.innerHTML = `
                 <div style="background:#3a2424; border:1px solid var(--btn-red); border-radius:8px; padding:14px; color:#ffb3b3; font-size:13px; line-height:1.5;">
-                    <strong style="color:var(--btn-red);">⚠ Liste incomplète</strong><br>
+                    <strong style="color:var(--btn-red);">Liste incomplète</strong><br>
                     La politique de sécurité Supabase t'empêche de voir les autres collègues.
                     Demande à ton administrateur (A0) d'exécuter le fichier <code style="background:#2a1414; padding:2px 5px; border-radius:3px; color:#ffd5d5;">supabase-fix-profils-visibles.sql</code> dans Supabase SQL Editor.
                 </div>`;
@@ -633,7 +633,7 @@
                     const { data, error } = await supabaseClient.rpc('delete_expired_archives');
                     if (error) throw error;
                     const total = (data || []).reduce((acc, r) => acc + Number(r.nb_deleted || 0), 0);
-                    showAlert("✅ Nettoyage terminé : <b>" + total + "</b> document(s) supprimé(s).");
+                    showAlert("Nettoyage terminé : <b>" + total + "</b> document(s) supprimé(s).");
                     await loadArchivesExpiredCount();
                     if (typeof loadTechnicalLogs === 'function') loadTechnicalLogs();
                 } catch (e) {
@@ -689,8 +689,8 @@
         }, '*');
 
         showAlert(maintenanceActive
-            ? "✅ Mode maintenance activé. Les employés voient l'écran de blocage."
-            : "✅ Mode maintenance désactivé. L'application est accessible."
+            ? "Mode maintenance activé. Les employés voient l'écran de blocage."
+            : "Mode maintenance désactivé. L'application est accessible."
         );
     }
 
@@ -721,7 +721,7 @@
                 </div>
                 <div style="color:#ccc; line-height:1.5;">${sanitize(t.message)}</div>
                 <div style="text-align:right; margin-top:10px;">
-                    <button class="btn-modal-green" style="padding:5px 10px;" onclick="resolveTicket('${t.id}')">✅ Réglé</button>
+                    <button class="btn-modal-green" style="padding:5px 10px;" onclick="resolveTicket('${t.id}')">Réglé</button>
                 </div>
             </div>`;
         });
@@ -761,7 +761,7 @@
         await saveRolesToSupabase();
         updateRoleSelects();
         document.getElementById('roleSelect').value = roleId;
-        showAlert("✅ Permissions sauvegardées !");
+        showAlert("Permissions sauvegardées !");
         window.parent.postMessage({ type: 'permissions_updated' }, '*');
     }
     function openCustomRoleModal() { document.getElementById('customRoleId').value = ''; document.getElementById('customRoleName').value = ''; document.getElementById('newCustomRoleModal').style.display = 'flex'; }
