@@ -198,7 +198,6 @@
                 <option value="commercial">Commercial</option>
                 <option value="residentiel">Résidentiel</option>
                 <option value="prospect">Prospect</option>
-                <option value="archived">Archivés</option>
             </select>
         </div>
         
@@ -675,7 +674,6 @@
                         <div class="cli-name-container">
                             ${mainName} ${chipsHTML}
                             ${alertVal ? '<span class="cli-alert-badge"><svg class="svg-icon" style="width:12px;height:12px;"><use href="#icon-alert-circle"></use></svg> ALERTE</span>' : ''}
-                        ${extra.is_archived ? '<span style="background:#555; color:#ccc; font-size:10px; padding:3px 8px; border-radius:6px; font-weight:bold;">ARCHIVÉ</span>' : ''}
                         </div>
                     </div>
                     <div class="cli-contact">
@@ -698,8 +696,8 @@
         const term = document.getElementById('clientSearch').value.toLowerCase();
         const statusF = document.getElementById('statusFilter').value;
 
-        const showArchived = statusF === 'archived';
-        const activeClients = clients.filter(c => !c.est_supprime && (showArchived ? c.contacts?.is_archived : !c.contacts?.is_archived));
+        // Système d'archivage retiré : on ne filtre que sur est_supprime (corbeille)
+        const activeClients = clients.filter(c => !c.est_supprime);
 
         const filtered = activeClients.filter(c => {
             const extra = c.contacts || {};
@@ -709,7 +707,7 @@
                               (c.adresse || '').toLowerCase().includes(term) ||
                               (c.telephone || '').includes(term) ||
                               (extra.list || []).some(ct => (ct.phone || '').includes(term));
-            const matchStatus = statusF === 'all' || statusF === 'archived' || c.type === statusF;
+            const matchStatus = statusF === 'all' || c.type === statusF;
             return matchTerm && matchStatus;
         });
 
@@ -859,17 +857,6 @@
                 btnDel.innerHTML = `<svg class="svg-icon"><use href="#icon-trash"></use></svg> Supprimer`;
                 btnDel.onclick = () => askDeleteClient(c.id);
                 actionsDiv.prepend(btnDel);
-
-                // Bouton Archiver
-                const isArchived = c.contacts?.is_archived || false;
-                const btnArchive = document.createElement('button');
-                btnArchive.className = 'btn-cancel';
-                btnArchive.style.cssText = 'background:#555; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px;';
-                btnArchive.innerHTML = isArchived
-                    ? `<svg class="svg-icon"><use href="#icon-refresh"></use></svg> Réactiver`
-                    : `<svg class="svg-icon"><use href="#icon-archive"></use></svg> Archiver`;
-                btnArchive.onclick = () => toggleArchiveClient(c.id, !isArchived);
-                actionsDiv.prepend(btnArchive);
             }
         } else {
             document.getElementById('edId').value = '';
