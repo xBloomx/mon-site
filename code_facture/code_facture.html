@@ -547,21 +547,6 @@
     }
     .paper-page-display .ppd-remove svg { width: 12px; height: 12px; }
 
-    /* Bouton télécharger l'image (toujours visible, à gauche du bouton retirer) */
-    .paper-page-display .ppd-download {
-        position: absolute; top: 8px; right: 44px;
-        background: var(--btn-blue, #3498db); color: white; border: none;
-        width: 28px; height: 28px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; padding: 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    .paper-page-display .ppd-download:hover { filter: brightness(1.15); }
-    .paper-page-display .ppd-download svg { width: 14px; height: 14px; }
-    /* Si bouton retirer caché (lecture seule), le DL revient à droite */
-    .paper-page-display .ppd-remove[style*="none"] ~ .ppd-download,
-    .paper-page-display.readonly .ppd-download { right: 8px; }
-
     /* Bouton "+ Ajouter une page" — toujours visible en bas de la page blanche */
     .paper-add-page-btn {
         display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -1790,9 +1775,6 @@
                 <button type="button" class="ppd-remove" onclick="removePaperPage(${idx})" title="Retirer cette page">
                     <svg><use href="#icon-x"></use></svg>
                 </button>
-                <button type="button" class="ppd-download" onclick="downloadPaperPage(${idx}, event)" title="Télécharger cette image">
-                    <svg><use href="#icon-download"></use></svg>
-                </button>
                 <img src="${p.dataUrl || p.url}" alt="Page ${idx + 1}" />
             `;
             list.appendChild(pageEl);
@@ -1825,60 +1807,6 @@
     function removePaperPage(idx) {
         paperPages.splice(idx, 1);
         renderPaperPagesInEditor();
-    }
-
-    // Télécharger l'image d'une page papier sur l'appareil de l'utilisateur
-    async function downloadPaperPage(idx, event) {
-        if (event) { event.preventDefault(); event.stopPropagation(); }
-        const p = paperPages[idx];
-        if (!p) return;
-
-        // Récupérer infos pour nom de fichier
-        const meta = (typeof getPaperHeaderData === 'function') ? getPaperHeaderData() : {};
-        const safe = (s) => String(s || '')
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 40);
-        const numero = safe(meta.numero || currentInvoiceId || 'Facture');
-        const client = safe(meta.client);
-        const partsName = [numero];
-        if (client) partsName.push(client);
-        partsName.push(`page${idx + 1}`);
-
-        try {
-            // Cas 1 : on a un dataUrl directement (image juste prise/uploadée localement)
-            if (p.dataUrl) {
-                const ext = (p.dataUrl.match(/^data:image\/(\w+);/) || [])[1] || 'jpg';
-                triggerDownload(p.dataUrl, `${partsName.join('_')}.${ext === 'jpeg' ? 'jpg' : ext}`);
-                return;
-            }
-            // Cas 2 : URL distante (Supabase Storage) → on fetch l'image en blob
-            if (p.url) {
-                const res = await fetch(p.url, { mode: 'cors' });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const blob = await res.blob();
-                const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-                const objectUrl = URL.createObjectURL(blob);
-                triggerDownload(objectUrl, `${partsName.join('_')}.${ext}`);
-                // Libérer après un petit délai pour laisser le navigateur initier le DL
-                setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
-                return;
-            }
-            showAlert("Image introuvable.");
-        } catch (e) {
-            console.error('downloadPaperPage:', e);
-            showAlert("Impossible de télécharger l'image : " + (e.message || e));
-        }
-    }
-
-    // Helper : déclenche le téléchargement d'une URL (data: ou blob:) avec un nom de fichier
-    function triggerDownload(href, filename) {
-        const a = document.createElement('a');
-        a.href = href;
-        a.download = filename;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
     }
 
     // Téléverser une image vers Supabase Storage et retourner son URL publique
