@@ -101,9 +101,9 @@
             .gps-btn { flex: 1; text-align: center; padding: 6px 5px; font-size: 13px; }
         }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; z-index: 4000; justify-content: center; align-items: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; z-index: 4000; justify-content: center; align-items: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); box-sizing: border-box; }
         .modal-overlay.z-high { z-index: 4500; background: rgba(0,0,0,0.85); }
-        .modal-card { background: var(--card-bg); width: 850px; padding: 30px; border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        .modal-card { background: var(--card-bg); width: 850px; padding: 30px; border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: calc(90vh - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px)); overflow-y: auto; }
         .modal-card.small-card { width: 350px; text-align: center; }
         .modal-title { font-size: 28px; color: white; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid var(--btn-yellow); padding-bottom: 10px; display: inline-block;}
         
@@ -198,7 +198,7 @@
                 <option value="commercial">Commercial</option>
                 <option value="residentiel">Résidentiel</option>
                 <option value="prospect">Prospect</option>
-                <option value="archived">📦 Archivés</option>
+                <option value="archived">Archivés</option>
             </select>
         </div>
         
@@ -555,7 +555,7 @@
         if (error) { openAlertModal('Erreur : ' + error.message); return; }
         await loadClients();
         closeModal('editModal');
-        showAlert(archive ? '📦 Client archivé.' : '✅ Client réactivé.');
+        showAlert(archive ? 'Client archivé.' : 'Client réactivé.');
     }
 
     async function executeDeleteClient() {
@@ -647,7 +647,7 @@
                         <div class="cli-name-container">
                             ${mainName} ${chipsHTML}
                             ${alertVal ? '<span class="cli-alert-badge"><svg class="svg-icon" style="width:12px;height:12px;"><use href="#icon-alert-circle"></use></svg> ALERTE</span>' : ''}
-                        ${extra.is_archived ? '<span style="background:#555; color:#ccc; font-size:10px; padding:3px 8px; border-radius:6px; font-weight:bold;">📦 ARCHIVÉ</span>' : ''}
+                        ${extra.is_archived ? '<span style="background:#555; color:#ccc; font-size:10px; padding:3px 8px; border-radius:6px; font-weight:bold;">ARCHIVÉ</span>' : ''}
                         </div>
                     </div>
                     <div class="cli-contact">
@@ -917,7 +917,7 @@
 
 <div class="modal-overlay z-high" id="hardConfirmModal" style="z-index: 5000;">
     <div class="modal-card small-card">
-        <div class="modal-title" style="color: var(--btn-red); text-decoration: none; border:none;">⚠️ Action irréversible</div>
+        <div class="modal-title" style="color: var(--btn-red); text-decoration: none; border:none;">Action irréversible</div>
         <div style="color:#aaa; margin-bottom: 20px; font-size: 14px; line-height: 1.5;">Le client sera détruit à tout jamais. Cette action est impossible à annuler.</div>
         <div class="modal-actions center">
             <button class="btn-cancel" onclick="closeHardConfirmModal()">Annuler</button>
