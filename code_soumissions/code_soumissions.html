@@ -35,7 +35,7 @@
         .inv-client { font-weight: bold; font-size: 16px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .inv-author { font-size: 14px; color: #888; font-style: italic; display: flex; align-items: center; gap: 6px; }
         .inv-date { color: #aaa; font-size: 14px; text-align: right; font-weight: 500; }
-        .inv-status { font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: bold; display:flex; align-items:center; justify-content:center; gap:5px; width: 100%; text-align:center;}
+        .inv-status { font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: bold; display: inline-block; }
         .status-attente { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.5); }
         .status-convertie { background: rgba(40, 167, 69, 0.2); color: var(--btn-green); border: 1px solid rgba(40, 167, 69, 0.5); }
         .status-brouillon { background: #444; color: white; border: 1px solid #555; }
@@ -74,6 +74,7 @@
         .main-table td { border: 1px solid black; height: 23px; background-color: var(--blue-bg); padding: 0; }
         .main-table tbody tr:last-child td { border-bottom: 4px double black; }
         .main-table input { width: 100%; height: 100%; background: transparent; border: none; padding: 0 5px; box-sizing: border-box; font-size: 12px; color: black; font-weight: bold;}
+        .desc-textarea { width: 100%; min-height: 18px; background: transparent; border: none; padding: 0 5px; box-sizing: border-box; font-size: 12px; color: black; font-weight: bold; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; display: block; vertical-align: top; }
         .bottom-section { margin-top: auto; width: 100%; }
         .time-wrapper { width: 100%; border: 1px solid black; border-collapse: collapse; table-layout: fixed; margin-top: 0; }
         .time-label-col { width: 110px; border-right: 1px solid black; padding: 5px; vertical-align: top; }
@@ -387,7 +388,7 @@
     const viewDashboard = document.getElementById('view-dashboard'); const viewEditor = document.getElementById('view-editor'); const listContainer = document.getElementById('quoteListContainer'); const containerInvoice = document.getElementById('quote-container');
     function showDashboard() { stopAutosave(); viewDashboard.style.display = 'flex'; viewEditor.style.display = 'none'; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); loadData(); }
     
-    function toggleInputs(canEdit) { const allInputs = containerInvoice.querySelectorAll('input'); const allSigs = containerInvoice.querySelectorAll('.display-sig'); allInputs.forEach(inp => { if (!canEdit) { inp.setAttribute('readonly', true); inp.style.pointerEvents = 'none'; } else { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; } }); allSigs.forEach(img => { img.style.pointerEvents = canEdit ? 'auto' : 'none'; }); }
+    function toggleInputs(canEdit) { const allInputs = containerInvoice.querySelectorAll('input, textarea.desc-textarea'); const allSigs = containerInvoice.querySelectorAll('.display-sig'); allInputs.forEach(inp => { if (!canEdit) { inp.setAttribute('readonly', true); inp.style.pointerEvents = 'none'; } else { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; } }); allSigs.forEach(img => { img.style.pointerEvents = canEdit ? 'auto' : 'none'; }); }
 
     function applyEditorSecurity(quoteObj) {
         const isBureau = hasPermission(myRole, 'view_all_quotes');
@@ -447,8 +448,9 @@
         currentQuoteId = id; viewDashboard.style.display = 'none'; viewEditor.style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
         containerInvoice.innerHTML = '';
         const pageCount = quote.pageCount || 1; for(let i=0; i<pageCount; i++) { containerInvoice.appendChild(createQuotePageHTML()); }
-        const allInputs = containerInvoice.querySelectorAll('input'); if (quote.inputValues) { allInputs.forEach((input, index) => { if (quote.inputValues[index] !== undefined) input.value = quote.inputValues[index]; }); }
+        const allInputs = containerInvoice.querySelectorAll('input, textarea.desc-textarea'); if (quote.inputValues) { allInputs.forEach((input, index) => { if (quote.inputValues[index] !== undefined) input.value = quote.inputValues[index]; }); }
         const allSigs = containerInvoice.querySelectorAll('.display-sig'); if (quote.sigValues) { allSigs.forEach((img, index) => { if (quote.sigValues[index]) img.src = quote.sigValues[index]; }); }
+        if (typeof resizeAllDescTextareas === 'function') resizeAllDescTextareas();
         applyEditorSecurity(quote); fitToScreen(); if(window.SignatureFD) window.SignatureFD.refreshIndicators(containerInvoice);
 
         // Démarrer l'autosave seulement si la soumission est encore modifiable
@@ -522,7 +524,7 @@
         const inputs = firstPage.querySelectorAll('.top-section input'); const clientName = inputs[0] ? inputs[0].value.trim() : "Client Inconnu";
         let dateVal = inputs[4] ? inputs[4].value.trim() : new Date().toLocaleDateString();
         const quoteNumInput = firstPage.querySelector('.red-quote-input'); let quoteNum = (quoteNumInput && quoteNumInput.value.trim() !== '') ? quoteNumInput.value.trim() : "S-Draft-" + Date.now().toString().slice(-4);
-        const inputValues = Array.from(containerInvoice.querySelectorAll('input')).map(input => input.value); const sigValues = Array.from(containerInvoice.querySelectorAll('.display-sig')).map(img => img.getAttribute('src')); const pageCount = containerInvoice.querySelectorAll('.page').length;
+        const inputValues = Array.from(containerInvoice.querySelectorAll('input, textarea.desc-textarea')).map(input => input.value); const sigValues = Array.from(containerInvoice.querySelectorAll('.display-sig')).map(img => img.getAttribute('src')); const pageCount = containerInvoice.querySelectorAll('.page').length;
         
         let currentStatus = 'brouillon'; let existing = quotesData.find(q => q.id === currentQuoteId || q.id === quoteNum);
         if (existing && existing.status) currentStatus = existing.status; if (isSending) currentStatus = 'En attente';
@@ -561,10 +563,10 @@
         try { localStorage.removeItem('fdussault_draft_soumission_new'); } catch(e) {}
         await loadData();
         if (isSending) {
-            showAlert("✅ Soumission envoyée au bureau avec succès !");
+            showAlert("Soumission envoyée au bureau avec succès !");
             showDashboard();
         } else {
-            showAlert("✅ Brouillon sauvegardé avec succès !");
+            showAlert("Brouillon sauvegardé avec succès !");
             applyEditorSecurity(payload);
         }
         return true;
@@ -585,8 +587,8 @@
             
             if (!error) {
                 const { error: errUpdate } = await supabaseClient.from('soumissions').update({status: 'Convertie'}).eq('id', currentQuoteId);
-                if (errUpdate) { showAlert("⚠️ Facture créée mais erreur lors de la mise à jour de la soumission : " + errUpdate.message); }
-                else { showAlert(`✅ Succès ! La facture #${nextInvNum} a été générée.`); showDashboard(); }
+                if (errUpdate) { showAlert("Facture créée mais erreur lors de la mise à jour de la soumission : " + errUpdate.message); }
+                else { showAlert(`Succès ! La facture #${nextInvNum} a été générée.`); showDashboard(); }
             } else {
                 showAlert("❌ Erreur de conversion : " + error.message);
             }
@@ -634,13 +636,13 @@
 
         listToShow.forEach(q => {
             let statusHTML = '';
-            if(q.status === 'Convertie') { statusHTML = `<div class="inv-status status-convertie"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-check-circle"></use></svg> Convertie</div>`; }
-            else if (q.status === 'brouillon') { statusHTML = `<div class="inv-status status-brouillon"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-file-text"></use></svg> Brouillon</div>`; }
-            else { statusHTML = `<div class="inv-status status-attente"><svg class="svg-icon" style="width:14px;height:14px;"><use href="#icon-clock"></use></svg> ${!isBureau ? 'Envoyée' : 'En attente'}</div>`; }
+            if(q.status === 'Convertie') { statusHTML = `<div class="inv-status status-convertie">Convertie</div>`; }
+            else if (q.status === 'brouillon') { statusHTML = `<div class="inv-status status-brouillon">Brouillon</div>`; }
+            else { statusHTML = `<div class="inv-status status-attente">${!isBureau ? 'Envoyée' : 'En attente'}</div>`; }
 
             // Override visuel si archivé
             if (q.isArchived) {
-                statusHTML = `<div class="inv-status" style="background:#555; color:#fff; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">📦 Archivée</div>`;
+                statusHTML = `<div class="inv-status" style="background:#555; color:#fff; padding:4px 10px; border-radius:6px;">Archivée</div>`;
             }
 
             const item = document.createElement('div'); item.className = 'quote-item'; item.onclick = function() { openExistingQuote(q.id); };
@@ -679,11 +681,12 @@
     function filterQuotes() { const searchText = document.getElementById('searchInput').value.toLowerCase(); const isBureau = hasPermission(myRole, 'view_all_quotes'); let baseList = quotesData; if (currentQuoteTab === 'archives') { baseList = quotesData; } else if (!isBureau || currentQuoteTab === 'mine') { baseList = quotesData.filter(q => q.authorId === myUserId || !q.authorId); } else { baseList = quotesData.filter(q => q.status !== 'brouillon'); } const filtered = baseList.filter(q => { return (q.client.toLowerCase().includes(searchText) || String(q.id).toLowerCase().includes(searchText)); }); renderQuoteList(filtered); }
 
     const inputAttrs = `type="text" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"`;
+    const taAttrs = `autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" rows="1"`;
     let quotePageCount = 0; let globalSigCount = 0;
 
     function createQuotePageHTML() {
         quotePageCount++; globalSigCount++; const page = document.createElement('div'); page.className = 'page quote-style';
-        let rows = ""; for(let i=0; i<20; i++) { rows += `<tr><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td></tr>`; }
+        let rows = ""; for(let i=0; i<20; i++) { rows += `<tr><td><input ${inputAttrs}></td><td><textarea class="desc-textarea" ${taAttrs}></textarea></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td></tr>`; }
         page.innerHTML = `<div class="top-section"><div class="header-main"><img src="../assets/logo_dussault.png" alt="F. Dussault"><h2>SOUMISSION / ESTIMATION</h2></div><div class="info-section"><div class="info-column"><div class="field"><label>M.</label><input ${inputAttrs}></div><div class="field"><input ${inputAttrs}></div><div class="field" style="margin-top:2px;"><label>Po client:</label><input ${inputAttrs}></div><div class="field"><label>Tél:</label><input ${inputAttrs}></div></div><div class="info-column"><div class="field"><label>Date:</label><input ${inputAttrs}></div><div class="field"><label>Travail à:</label><input ${inputAttrs}></div><div class="field"><label>Adresse:</label><input ${inputAttrs}></div><div class="field"><label>Po:</label><input ${inputAttrs}></div></div></div><div class="banner-cmmtq"><img src="../assets/cmmtq_et_slogan.png" alt="CMMTQ"></div></div><table class="main-table"><thead><tr><th width="45">QUANT.</th><th>DESCRIPTION</th><th width="75">MONTANT<br>AMOUNT</th><th width="75">TOTAL</th></tr></thead><tbody>${rows}</tbody></table><div class="bottom-section"><table class="time-wrapper"><tr><td class="time-label-col"><span>Valide pour 30 jours<br>Valid for 30 days</span><h2># TEMPS</h2></td><td><table class="inner-table"><tr class="row-headers"><td style="width:25%">TARIF ESTIMÉ</td><td style="width:15%">CHARGE MIN.</td><td style="width:25%">TRANSPORT</td><td style="width:20%">HRE ARRIVÉE</td><td class="last-col" style="width:15%">INITIALE</td></tr><tr class="row-sublabels"><td>A.M.</td><td>INITIALE</td><td>P.M.</td><td></td><td class="last-col">INITIALE</td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr></table></td></tr></table><div class="footer-grid"><div class="sig-box"><img id="sig-p-${globalSigCount}" class="display-sig" onclick="openModal('sig-p-${globalSigCount}')"><div class="sig-text">Signature (Approbation)</div></div><div class="sig-box"><img id="sig-c-${globalSigCount}" class="display-sig" onclick="openModal('sig-c-${globalSigCount}')"><div class="sig-text">Signature du client (Acception)</div></div><div class="quote-num-box"><input type="text" class="red-quote-input" placeholder="No."></div></div></div>`;
         return page;
     }
@@ -691,7 +694,7 @@
     function addPage() { containerInvoice.appendChild(createQuotePageHTML()); if(currentZoom !== 1.0) updateZoom(); }
     function duplicatePage() { const pages = containerInvoice.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createQuotePageHTML(); containerInvoice.appendChild(newPage); const sourceTopInputs = sourcePage.querySelectorAll('.top-section input'); const newTopInputs = newPage.querySelectorAll('.top-section input'); sourceTopInputs.forEach((input, index) => { if(newTopInputs[index]) { newTopInputs[index].value = input.value; } }); if(currentZoom !== 1.0) updateZoom(); }
     function deletePage() { if (containerInvoice.children.length > 1) { containerInvoice.removeChild(containerInvoice.lastElementChild); quotePageCount--; } else { showAlert("Impossible de supprimer la dernière page."); } }
-    function askClearInputs() { showConfirm("Effacer tout le contenu de la soumission ?", function() { containerInvoice.querySelectorAll('input').forEach(input => input.value = ''); containerInvoice.querySelectorAll('.display-sig').forEach(img => img.src = ''); }); }
+    function askClearInputs() { showConfirm("Effacer tout le contenu de la soumission ?", function() { containerInvoice.querySelectorAll('input, textarea.desc-textarea').forEach(input => input.value = ''); containerInvoice.querySelectorAll('.display-sig').forEach(img => img.src = ''); }); }
 
     const modal = document.getElementById('sig-modal'); const modalCanvas = document.getElementById('modal-canvas'); const ctx = modalCanvas.getContext('2d'); let currentTargetImgId = null, drawing = false;
     function resizeCanvas() { const ratio = Math.max(window.devicePixelRatio || 1, 1); modalCanvas.width = modalCanvas.offsetWidth * ratio; modalCanvas.height = modalCanvas.offsetHeight * ratio; ctx.scale(ratio, ratio); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#000'; }
@@ -733,6 +736,11 @@
         window.SignatureFD.watchContainer(containerInvoice);
         window.SignatureFD.attachAll(containerInvoice);
     }
+
+    // Auto-resize des textarea de description
+    function autoResizeTextarea(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+    containerInvoice.addEventListener('input', function(e) { if (e.target && e.target.classList.contains('desc-textarea')) autoResizeTextarea(e.target); });
+    function resizeAllDescTextareas() { containerInvoice.querySelectorAll('.desc-textarea').forEach(autoResizeTextarea); }
 
     initAuth();
 </script>
