@@ -110,7 +110,7 @@
             .invoice-item {
                 display: grid;
                 grid-template-columns: 1fr auto;
-                grid-template-areas: "id id" "client client" "status date";
+                grid-template-areas: "id id" "client client" "status hours";
                 align-items: center;
                 gap: 4px 12px; 
                 padding: 16px;
@@ -124,7 +124,7 @@
             .inv-id { grid-area: id; font-size: 15px; font-weight: 800; width: auto; white-space: normal;}
             .inv-client { grid-area: client; font-size: 18px; font-weight: 700; margin-top: 0px; margin-bottom: 8px; white-space: normal; padding-right: 45px; width: auto; }
             .inv-status { grid-area: status; justify-self: start; width: auto; }
-            .inv-date { grid-area: date; text-align: right; justify-self: end; font-size: 12px; color: #888; width: auto; }
+            .inv-hours { grid-area: hours; justify-self: end; text-align: right !important; font-size: 18px !important; width: auto; }
             .inv-actions { position: absolute; top: 16px; right: 16px; margin: 0; }
             .btn-icon { width: 36px; height: 36px; border-radius: 10px; }
         }
@@ -754,7 +754,7 @@
                 }
             }
 
-            item.innerHTML = `<div class="inv-id">${sheet.periode || "Période inconnue"}</div><div class="inv-client"><svg class="svg-icon" style="margin-right:6px; color:#aaa; width:16px; height:16px;"><use href="#icon-user"></use></svg>${sheet.employe || sheet.authorName || 'Employé'}</div><div style="font-weight:bold; font-size:18px; color:var(--btn-yellow); text-align:center;">${sheet.total_heures} h</div><div>${badgeHTML}</div><div class="inv-actions">${actionsHTML}</div>`;
+            item.innerHTML = `<div class="inv-id">${sheet.periode || "Période inconnue"}</div><div class="inv-client"><svg class="svg-icon" style="margin-right:6px; color:#aaa; width:16px; height:16px;"><use href="#icon-user"></use></svg>${sheet.employe || sheet.authorName || 'Employé'}</div><div class="inv-hours" style="font-weight:bold; font-size:18px; color:var(--btn-yellow); text-align:center;">${sheet.total_heures} h</div><div class="inv-status">${badgeHTML}</div><div class="inv-actions">${actionsHTML}</div>`;
             listContainer.appendChild(item);
         });
     }
