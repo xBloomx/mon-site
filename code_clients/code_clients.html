@@ -559,19 +559,32 @@
     }
 
     async function executeDeleteClient() {
+        if (!clientToDeleteId) {
+            closeConfirmModal();
+            return;
+        }
         const { error } = await supabaseClient
             .from('clients')
             .update({ est_supprime: true })
             .eq('id', clientToDeleteId);
 
-        if (error) { console.error(error); }
         closeConfirmModal();
+        if (error) {
+            console.error('Erreur suppression client:', error);
+            openAlertModal('Erreur lors de la suppression : ' + (error.message || 'inconnue'));
+            return;
+        }
         closeModal('editModal');
         await loadClients();
     }
 
     async function restaurerClient(id) {
-        await supabaseClient.from('clients').update({ est_supprime: false }).eq('id', id);
+        const { error } = await supabaseClient.from('clients').update({ est_supprime: false }).eq('id', id);
+        if (error) {
+            console.error('Erreur restauration client:', error);
+            openAlertModal('Erreur lors de la restauration : ' + (error.message || 'inconnue'));
+            return;
+        }
         await loadClients();
         openCorbeille();
     }
