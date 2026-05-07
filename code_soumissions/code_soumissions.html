@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -113,41 +114,44 @@
         .btn-modal-confirm { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight:bold;}
         .btn-modal-ok { background: var(--btn-yellow); color: black; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
-        @media (max-width: 1024px) {
-            .top-bar { padding: 10px 85px 10px 10px; gap: 10px; height: 65px; overflow-x: auto; justify-content: flex-start; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
-            .top-bar::-webkit-scrollbar { display: none; }
-            .top-bar .action-btn, .spacer-mobile { flex-shrink: 0; width: auto; margin-bottom: 0; }
-        }
+```
+    @media (max-width: 1024px) {
+        .top-bar { padding: 10px 85px 10px 10px; gap: 10px; height: 65px; overflow-x: auto; justify-content: flex-start; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+        .top-bar::-webkit-scrollbar { display: none; }
+        .top-bar .action-btn, .spacer-mobile { flex-shrink: 0; width: auto; margin-bottom: 0; }
+    }
 
-        @media (max-width: 1024px) {
-            .top-bar { padding: 10px 85px 10px 10px; gap: 10px; height: 65px; overflow-x: auto; justify-content: flex-start; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
-            .top-bar::-webkit-scrollbar { display: none; }
-            .top-bar .action-btn, .spacer-mobile, .office-status-panel { flex-shrink: 0; width: auto; margin-bottom: 0; }
-            .top-bar .action-btn { font-size: 11px; padding: 8px 15px; }
-            .office-status-panel { font-size: 11px; padding: 8px 15px; }
-        }
+    @media (max-width: 1024px) {
+        .top-bar { padding: 10px 85px 10px 10px; gap: 10px; height: 65px; overflow-x: auto; justify-content: flex-start; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+        .top-bar::-webkit-scrollbar { display: none; }
+        .top-bar .action-btn, .spacer-mobile, .office-status-panel { flex-shrink: 0; width: auto; margin-bottom: 0; }
+        .top-bar .action-btn { font-size: 11px; padding: 8px 15px; }
+        .office-status-panel { font-size: 11px; padding: 8px 15px; }
+    }
 
-        @media (max-width: 768px) {
-            #view-dashboard { padding: 15px; }
-            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; }
-            .dash-title { padding-right: 80px; width: 100%; }
-            .dash-header .action-btn { width: 100%; justify-content: center; font-size: 14px; }
-            .tabs-container { flex-direction: column; width: 100%; }
-            .btn-tab { width: 100%; justify-content: center; }
-            .toolbar { flex-direction: column; gap: 10px; width: 100%; }
-            .search-box, .search-box input { width: 100%; }
-            .zoom-controls { display: none !important; }
-            .quote-item { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "id id" "client client" "author author" "status date"; align-items: center; gap: 4px 12px; padding: 16px; border-radius: 12px; border: 1px solid #3a3b46; border-left: 1px solid #3a3b46; margin-bottom: 12px; position: relative; }
-            .quote-item:hover { transform: translateY(-2px); background-color: #30313c; border-color: #555; }
-            .inv-id { grid-area: id; font-size: 15px; font-weight: 800; width: auto; }
-            .inv-client { grid-area: client; font-size: 18px; font-weight: 700; margin-top: 0px; margin-bottom: 4px; white-space: normal; padding-right: 45px; width: auto; }
-            .inv-author { grid-area: author; font-size: 13px; margin-bottom: 4px; color: #aaa; width: auto; }
-            .inv-status { grid-area: status; justify-self: start; width: auto; margin-left: 0; padding-left: 0; align-self: center; }
-            .inv-date { grid-area: date; text-align: right; justify-self: end; font-size: 12px; color: #888; width: auto; }
-            .inv-actions { position: absolute; top: 16px; right: 16px; margin: 0; }
-        }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    </style>
+    @media (max-width: 768px) {
+        #view-dashboard { padding: 15px; }
+        .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; width: 100%; }
+        .dash-title { padding-right: 80px; width: 100%; }
+        .dash-header .action-btn { width: 100%; justify-content: center; font-size: 14px; }
+        .tabs-container { flex-direction: column; width: 100%; }
+        .btn-tab { width: 100%; justify-content: center; }
+        .toolbar { flex-direction: column; gap: 10px; width: 100%; }
+        .search-box, .search-box input { width: 100%; }
+        .zoom-controls { display: none !important; }
+        .quote-item { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "id id" "client client" "author author" "status date"; align-items: center; gap: 4px 12px; padding: 16px; border-radius: 12px; border: 1px solid #3a3b46; border-left: 1px solid #3a3b46; margin-bottom: 12px; position: relative; }
+        .quote-item:hover { transform: translateY(-2px); background-color: #30313c; border-color: #555; }
+        .inv-id { grid-area: id; font-size: 15px; font-weight: 800; width: auto; }
+        .inv-client { grid-area: client; font-size: 18px; font-weight: 700; margin-top: 0px; margin-bottom: 4px; white-space: normal; padding-right: 45px; width: auto; }
+        .inv-author { grid-area: author; font-size: 13px; margin-bottom: 4px; color: #aaa; width: auto; }
+        .inv-status { grid-area: status; justify-self: start; width: auto; margin-left: 0; padding-left: 0; align-self: center; }
+        .inv-date { grid-area: date; text-align: right; justify-self: end; font-size: 12px; color: #888; width: auto; }
+        .inv-actions { position: absolute; top: 16px; right: 16px; margin: 0; }
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+```
+
 </head>
 <body>
 
@@ -190,48 +194,51 @@
                 <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Soumission
             </button>
         </div>
-        
-        <div class="tabs-container" id="quote-tabs" style="display:none;">
-            <button id="tab-mine" class="btn-tab active" onclick="switchQuoteTab('mine')">
-                <svg class="svg-icon"><use href="#icon-user"></use></svg> Mes Soumissions
-            </button>
-            <button id="tab-all" class="btn-tab" onclick="switchQuoteTab('all')">
-                <svg class="svg-icon"><use href="#icon-inbox"></use></svg> Boîte de réception
-            </button>
-            <button id="tab-archives" class="btn-tab" onclick="switchQuoteTab('archives')">
-                <svg class="svg-icon"><use href="#icon-archive"></use></svg> Archives
-            </button>
-        </div>
 
-        <div class="toolbar">
-            <div class="search-box">
-                <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
-                <input type="text" id="searchInput" placeholder="Rechercher (Client, N°...)" onkeyup="filterQuotes()">
-            </div>
-        </div>
-        <div id="quote-compteur" style="color:#888; font-size:12px; padding:5px 10px;"></div>
-        <div class="quote-list" id="quoteListContainer"></div>
+```
+    <div class="tabs-container" id="quote-tabs" style="display:none;">
+        <button id="tab-mine" class="btn-tab active" onclick="switchQuoteTab('mine')">
+            <svg class="svg-icon"><use href="#icon-user"></use></svg> Mes Soumissions
+        </button>
+        <button id="tab-all" class="btn-tab" onclick="switchQuoteTab('all')">
+            <svg class="svg-icon"><use href="#icon-inbox"></use></svg> Boîte de réception
+        </button>
+        <button id="tab-archives" class="btn-tab" onclick="switchQuoteTab('archives')">
+            <svg class="svg-icon"><use href="#icon-archive"></use></svg> Archives
+        </button>
     </div>
 
-    <div id="view-editor">
-        <div class="top-bar">
-            <button class="action-btn btn-back" onclick="showDashboard()"><svg class="svg-icon"><use href="#icon-back"></use></svg> Retour</button>
-            <button class="action-btn btn-save" onclick="saveCurrentQuote(false)"><svg class="svg-icon"><use href="#icon-save"></use></svg> Sauvegarder</button>
-            <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()"><svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyer au bureau</button>
-            <button class="action-btn btn-convert" onclick="convertToInvoice()"><svg class="svg-icon"><use href="#icon-refresh"></use></svg> Convertir en facture</button>
-            <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockQuote()" style="display:none;"><svg class="svg-icon"><use href="#icon-unlock"></use></svg> Débloquer</button>
-            <div style="flex:1" class="spacer-mobile"></div>
-            <button class="action-btn" id="btn-print" style="background-color: var(--btn-yellow);" onclick="exporterPDF()"><svg class="svg-icon"><use href="#icon-print"></use></svg> PDF / Imprimer</button>
-            <button class="action-btn" id="btn-add-page" style="background-color: var(--btn-yellow);" onclick="addPage()"><svg class="svg-icon"><use href="#icon-file-plus"></use></svg> Page</button>
-            <button class="action-btn" id="btn-dup-page" style="background-color: var(--btn-yellow);" onclick="duplicatePage()"><svg class="svg-icon"><use href="#icon-copy"></use></svg> Dupliquer</button>
-            <button class="action-btn" id="btn-del-page" style="background-color: var(--btn-yellow);" onclick="deletePage()"><svg class="svg-icon"><use href="#icon-file-minus"></use></svg> Page</button>
-            <button class="action-btn" id="btn-clear" style="background-color: var(--btn-yellow);" onclick="askClearInputs()"><svg class="svg-icon"><use href="#icon-eraser"></use></svg> Effacer</button>
-        </div>
-        <div class="scroll-area"><div id="quote-container"></div></div>
-        <div class="zoom-controls">
-            <button onclick="adjustZoom(-0.1)">−</button><span id="zoom-level">100%</span><button onclick="adjustZoom(0.1)">+</button><button onclick="resetZoom()" style="font-size: 14px;">↺</button>
+    <div class="toolbar">
+        <div class="search-box">
+            <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
+            <input type="text" id="searchInput" placeholder="Rechercher (Client, N°...)" onkeyup="filterQuotes()">
         </div>
     </div>
+    <div id="quote-compteur" style="color:#888; font-size:12px; padding:5px 10px;"></div>
+    <div class="quote-list" id="quoteListContainer"></div>
+</div>
+
+<div id="view-editor">
+    <div class="top-bar">
+        <button class="action-btn btn-back" onclick="showDashboard()"><svg class="svg-icon"><use href="#icon-back"></use></svg> Retour</button>
+        <button class="action-btn btn-save" onclick="saveCurrentQuote(false)"><svg class="svg-icon"><use href="#icon-save"></use></svg> Sauvegarder</button>
+        <button class="action-btn btn-send" id="btn-send" onclick="sendToOffice()"><svg class="svg-icon"><use href="#icon-send"></use></svg> Envoyer au bureau</button>
+        <button class="action-btn btn-convert" onclick="convertToInvoice()"><svg class="svg-icon"><use href="#icon-refresh"></use></svg> Convertir en facture</button>
+        <button class="action-btn btn-unlock" id="btn-unlock" onclick="unlockQuote()" style="display:none;"><svg class="svg-icon"><use href="#icon-unlock"></use></svg> Débloquer</button>
+        <div style="flex:1" class="spacer-mobile"></div>
+        <button class="action-btn" id="btn-print" style="background-color: var(--btn-yellow);" onclick="exporterPDF()"><svg class="svg-icon"><use href="#icon-print"></use></svg> PDF / Imprimer</button>
+        <button class="action-btn" id="btn-add-page" style="background-color: var(--btn-yellow);" onclick="addPage()"><svg class="svg-icon"><use href="#icon-file-plus"></use></svg> Page</button>
+        <button class="action-btn" id="btn-dup-page" style="background-color: var(--btn-yellow);" onclick="duplicatePage()"><svg class="svg-icon"><use href="#icon-copy"></use></svg> Dupliquer</button>
+        <button class="action-btn" id="btn-del-page" style="background-color: var(--btn-yellow);" onclick="deletePage()"><svg class="svg-icon"><use href="#icon-file-minus"></use></svg> Page</button>
+        <button class="action-btn" id="btn-clear" style="background-color: var(--btn-yellow);" onclick="askClearInputs()"><svg class="svg-icon"><use href="#icon-eraser"></use></svg> Effacer</button>
+    </div>
+    <div class="scroll-area"><div id="quote-container"></div></div>
+    <div class="zoom-controls">
+        <button onclick="adjustZoom(-0.1)">−</button><span id="zoom-level">100%</span><button onclick="adjustZoom(0.1)">+</button><button onclick="resetZoom()" style="font-size: 14px;">↺</button>
+    </div>
+</div>
+```
+
 </div>
 
 <div id="sig-modal">
@@ -659,7 +666,7 @@
                 }
             }
 
-            item.innerHTML = `<div class="inv-id">${q.id}</div><div class="inv-client">${q.client}</div><div class="inv-author"><svg class="svg-icon"><use href="#icon-user"></use></svg> ${q.authorName || 'Inconnu'}</div><div class="inv-status">${statusHTML}</div><div class="inv-date">${q.date}</div><div class="inv-actions">${actionsHTML}</div>`;
+            item.innerHTML = `<div class="inv-id">${q.id}</div><div class="inv-client">${q.client}</div><div class="inv-author"><svg class="svg-icon"><use href="#icon-user"></use></svg> ${q.authorName || 'Inconnu'}</div>${statusHTML}<div class="inv-date">${q.date}</div><div class="inv-actions">${actionsHTML}</div>`;
             listContainer.appendChild(item);
          });
         ajouterBoutonPlusSoum();
@@ -687,62 +694,66 @@
     function createQuotePageHTML() {
         quotePageCount++; globalSigCount++; const page = document.createElement('div'); page.className = 'page quote-style';
         let rows = ""; for(let i=0; i<20; i++) { rows += `<tr><td><input ${inputAttrs}></td><td><textarea class="desc-textarea" ${taAttrs}></textarea></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td></tr>`; }
-        page.innerHTML = `<div class="top-section"><div class="header-main"><img src="../assets/logo_dussault.png" alt="F. Dussault"><h2>SOUMISSION / ESTIMATION</h2></div><div class="info-section"><div class="info-column"><div class="field"><label>M.</label><input ${inputAttrs}></div><div class="field"><input ${inputAttrs}></div><div class="field" style="margin-top:2px;"><label>Po client:</label><input ${inputAttrs}></div><div class="field"><label>Tél:</label><input ${inputAttrs}></div></div><div class="info-column"><div class="field"><label>Date:</label><input ${inputAttrs}></div><div class="field"><label>Travail à:</label><input ${inputAttrs}></div><div class="field"><label>Adresse:</label><input ${inputAttrs}></div><div class="field"><label>Po:</label><input ${inputAttrs}></div></div></div><div class="banner-cmmtq"><img src="../assets/cmmtq_et_slogan.png" alt="CMMTQ"></div></div><table class="main-table"><thead><tr><th width="45">QUANT.</th><th>DESCRIPTION</th><th width="75">MONTANT<br>AMOUNT</th><th width="75">TOTAL</th></tr></thead><tbody>${rows}</tbody></table><div class="bottom-section"><table class="time-wrapper"><tr><td class="time-label-col"><span>Valide pour 30 jours<br>Valid for 30 days</span><h2># TEMPS</h2></td><td><table class="inner-table"><tr class="row-headers"><td style="width:25%">TARIF ESTIMÉ</td><td style="width:15%">CHARGE MIN.</td><td style="width:25%">TRANSPORT</td><td style="width:20%">HRE ARRIVÉE</td><td class="last-col" style="width:15%">INITIALE</td></tr><tr class="row-sublabels"><td>A.M.</td><td>INITIALE</td><td>P.M.</td><td></td><td class="last-col">INITIALE</td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr></table></td></tr></table><div class="footer-grid"><div class="sig-box"><img id="sig-p-${globalSigCount}" class="display-sig" onclick="openModal('sig-p-${globalSigCount}')"><div class="sig-text">Signature (Approbation)</div></div><div class="sig-box"><img id="sig-c-${globalSigCount}" class="display-sig" onclick="openModal('sig-c-${globalSigCount}')"><div class="sig-text">Signature du client (Acception)</div></div><div class="quote-num-box"><input type="text" class="red-quote-input" placeholder="No."></div></div></div>`;
-        return page;
+
+```
+    page.innerHTML = `<div class="top-section"><div class="header-main"><img src="../assets/logo_dussault.png" alt="F. Dussault"><h2>SOUMISSION / ESTIMATION</h2></div><div class="info-section"><div class="info-column"><div class="field"><label>M.</label><input ${inputAttrs}></div><div class="field"><input ${inputAttrs}></div><div class="field" style="margin-top:2px;"><label>Po client:</label><input ${inputAttrs}></div><div class="field"><label>Tél:</label><input ${inputAttrs}></div></div><div class="info-column"><div class="field"><label>Date:</label><input ${inputAttrs}></div><div class="field"><label>Travail à:</label><input ${inputAttrs}></div><div class="field"><label>Adresse:</label><input ${inputAttrs}></div><div class="field"><label>Po:</label><input ${inputAttrs}></div></div></div><div class="banner-cmmtq"><img src="../assets/cmmtq_et_slogan.png" alt="CMMTQ"></div></div><table class="main-table"><thead><tr><th width="45">QUANT.</th><th>DESCRIPTION</th><th width="75">MONTANT<br>AMOUNT</th><th width="75">TOTAL</th></tr></thead><tbody>${rows}</tbody></table><div class="bottom-section"><table class="time-wrapper"><tr><td class="time-label-col"><span>Valide pour 30 jours<br>Valid for 30 days</span><h2># TEMPS</h2></td><td><table class="inner-table"><tr class="row-headers"><td style="width:25%">TARIF ESTIMÉ</td><td style="width:15%">CHARGE MIN.</td><td style="width:25%">TRANSPORT</td><td style="width:20%">HRE ARRIVÉE</td><td class="last-col" style="width:15%">INITIALE</td></tr><tr class="row-sublabels"><td>A.M.</td><td>INITIALE</td><td>P.M.</td><td></td><td class="last-col">INITIALE</td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr><tr class="row-inputs"><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="input-box"><input ${inputAttrs}></div></td><td><div class="flex-group">DE <div class="input-box"><input ${inputAttrs}></div> À <div class="input-box"><input ${inputAttrs}></div></div></td><td><div class="flex-group">TOTAL <div class="input-box"><input ${inputAttrs}></div></div></td><td class="last-col"><div class="input-box"><input ${inputAttrs}></div></td></tr></table></td></tr></table><div class="footer-grid"><div class="sig-box"><img id="sig-p-${globalSigCount}" class="display-sig" onclick="openModal('sig-p-${globalSigCount}')"><div class="sig-text">Signature (Approbation)</div></div><div class="sig-box"><img id="sig-c-${globalSigCount}" class="display-sig" onclick="openModal('sig-c-${globalSigCount}')"><div class="sig-text">Signature du client (Acception)</div></div><div class="quote-num-box"><input type="text" class="red-quote-input" placeholder="No."></div></div></div>`;
+    return page;
+}
+
+function addPage() { containerInvoice.appendChild(createQuotePageHTML()); if(currentZoom !== 1.0) updateZoom(); }
+function duplicatePage() { const pages = containerInvoice.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createQuotePageHTML(); containerInvoice.appendChild(newPage); const sourceTopInputs = sourcePage.querySelectorAll('.top-section input'); const newTopInputs = newPage.querySelectorAll('.top-section input'); sourceTopInputs.forEach((input, index) => { if(newTopInputs[index]) { newTopInputs[index].value = input.value; } }); if(currentZoom !== 1.0) updateZoom(); }
+function deletePage() { if (containerInvoice.children.length > 1) { containerInvoice.removeChild(containerInvoice.lastElementChild); quotePageCount--; } else { showAlert("Impossible de supprimer la dernière page."); } }
+function askClearInputs() { showConfirm("Effacer tout le contenu de la soumission ?", function() { containerInvoice.querySelectorAll('input, textarea.desc-textarea').forEach(input => input.value = ''); containerInvoice.querySelectorAll('.display-sig').forEach(img => img.src = ''); }); }
+
+const modal = document.getElementById('sig-modal'); const modalCanvas = document.getElementById('modal-canvas'); const ctx = modalCanvas.getContext('2d'); let currentTargetImgId = null, drawing = false;
+function resizeCanvas() { const ratio = Math.max(window.devicePixelRatio || 1, 1); modalCanvas.width = modalCanvas.offsetWidth * ratio; modalCanvas.height = modalCanvas.offsetHeight * ratio; ctx.scale(ratio, ratio); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#000'; }
+function openModal(id) { currentTargetImgId = id; modal.style.display = 'flex'; setTimeout(resizeCanvas, 10); }
+function closeModal(id) { if(!id) { modal.style.display = 'none'; drawing = false; } }
+function clearModalCanvas() { ctx.clearRect(0, 0, modalCanvas.width, modalCanvas.height); }
+function saveSignature() { if(currentTargetImgId) document.getElementById(currentTargetImgId).src = modalCanvas.toDataURL(); closeModal(); }
+function getPos(e) { const rect = modalCanvas.getBoundingClientRect(); return { x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top }; }
+function startDrawing(e) { drawing = true; ctx.beginPath(); const pos = getPos(e); ctx.moveTo(pos.x, pos.y); if(e.type === 'touchstart') e.preventDefault(); }
+function moveDrawing(e) { if (!drawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); if(e.type === 'touchmove') e.preventDefault(); }
+modalCanvas.addEventListener('mousedown', startDrawing); window.addEventListener('mousemove', moveDrawing); window.addEventListener('mouseup', () => drawing = false); modalCanvas.addEventListener('touchstart', startDrawing, {passive: false}); modalCanvas.addEventListener('touchmove', moveDrawing, {passive: false}); modalCanvas.addEventListener('touchend', () => drawing = false);
+
+let currentZoom = 1.0; const minZoom = 0.3; const maxZoom = 3.0; const zoomDisplay = document.getElementById('zoom-level');
+function fitToScreen() {
+    const scrollArea = document.querySelector('.scroll-area');
+    if (!scrollArea) return;
+    const screenWidth = scrollArea.clientWidth;
+    // Si la vue n'est pas encore rendue (clientWidth=0), on réessaie au prochain frame
+    if (screenWidth === 0) {
+        requestAnimationFrame(fitToScreen);
+        return;
     }
-
-    function addPage() { containerInvoice.appendChild(createQuotePageHTML()); if(currentZoom !== 1.0) updateZoom(); }
-    function duplicatePage() { const pages = containerInvoice.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createQuotePageHTML(); containerInvoice.appendChild(newPage); const sourceTopInputs = sourcePage.querySelectorAll('.top-section input'); const newTopInputs = newPage.querySelectorAll('.top-section input'); sourceTopInputs.forEach((input, index) => { if(newTopInputs[index]) { newTopInputs[index].value = input.value; } }); if(currentZoom !== 1.0) updateZoom(); }
-    function deletePage() { if (containerInvoice.children.length > 1) { containerInvoice.removeChild(containerInvoice.lastElementChild); quotePageCount--; } else { showAlert("Impossible de supprimer la dernière page."); } }
-    function askClearInputs() { showConfirm("Effacer tout le contenu de la soumission ?", function() { containerInvoice.querySelectorAll('input, textarea.desc-textarea').forEach(input => input.value = ''); containerInvoice.querySelectorAll('.display-sig').forEach(img => img.src = ''); }); }
-
-    const modal = document.getElementById('sig-modal'); const modalCanvas = document.getElementById('modal-canvas'); const ctx = modalCanvas.getContext('2d'); let currentTargetImgId = null, drawing = false;
-    function resizeCanvas() { const ratio = Math.max(window.devicePixelRatio || 1, 1); modalCanvas.width = modalCanvas.offsetWidth * ratio; modalCanvas.height = modalCanvas.offsetHeight * ratio; ctx.scale(ratio, ratio); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#000'; }
-    function openModal(id) { currentTargetImgId = id; modal.style.display = 'flex'; setTimeout(resizeCanvas, 10); }
-    function closeModal(id) { if(!id) { modal.style.display = 'none'; drawing = false; } }
-    function clearModalCanvas() { ctx.clearRect(0, 0, modalCanvas.width, modalCanvas.height); }
-    function saveSignature() { if(currentTargetImgId) document.getElementById(currentTargetImgId).src = modalCanvas.toDataURL(); closeModal(); }
-    function getPos(e) { const rect = modalCanvas.getBoundingClientRect(); return { x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top }; }
-    function startDrawing(e) { drawing = true; ctx.beginPath(); const pos = getPos(e); ctx.moveTo(pos.x, pos.y); if(e.type === 'touchstart') e.preventDefault(); }
-    function moveDrawing(e) { if (!drawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); if(e.type === 'touchmove') e.preventDefault(); }
-    modalCanvas.addEventListener('mousedown', startDrawing); window.addEventListener('mousemove', moveDrawing); window.addEventListener('mouseup', () => drawing = false); modalCanvas.addEventListener('touchstart', startDrawing, {passive: false}); modalCanvas.addEventListener('touchmove', moveDrawing, {passive: false}); modalCanvas.addEventListener('touchend', () => drawing = false);
-
-    let currentZoom = 1.0; const minZoom = 0.3; const maxZoom = 3.0; const zoomDisplay = document.getElementById('zoom-level');
-    function fitToScreen() {
-        const scrollArea = document.querySelector('.scroll-area');
-        if (!scrollArea) return;
-        const screenWidth = scrollArea.clientWidth;
-        // Si la vue n'est pas encore rendue (clientWidth=0), on réessaie au prochain frame
-        if (screenWidth === 0) {
-            requestAnimationFrame(fitToScreen);
-            return;
-        }
-        const pageWidth = 816;
-        if (screenWidth < pageWidth) {
-            currentZoom = (screenWidth / pageWidth) * 0.98;
-        } else {
-            currentZoom = 1.0;
-        }
-        currentZoom = Math.round(currentZoom * 100) / 100;
-        updateZoom();
+    const pageWidth = 816;
+    if (screenWidth < pageWidth) {
+        currentZoom = (screenWidth / pageWidth) * 0.98;
+    } else {
+        currentZoom = 1.0;
     }
-    function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; containerInvoice.style.transform = `scale(${currentZoom})`; if(zoomDisplay) { zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; } const scrollArea = document.querySelector('.scroll-area'); if(scrollArea) { const screenWidth = scrollArea.clientWidth; const scaledWidth = 816 * currentZoom; if (scaledWidth < screenWidth) { containerInvoice.style.marginLeft = ((screenWidth - scaledWidth) / 2) + "px"; } else { containerInvoice.style.marginLeft = "0px"; } } const unscaledHeight = containerInvoice.offsetHeight; const scaledHeight = unscaledHeight * currentZoom; if (currentZoom < 1.0) { containerInvoice.style.marginBottom = (scaledHeight - unscaledHeight + 50) + "px"; } else if (currentZoom > 1.0) { containerInvoice.style.marginBottom = (currentZoom * 400) + "px"; } else { containerInvoice.style.marginBottom = "100px"; } }
-    function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
-    function resetZoom() { fitToScreen(); } 
-    window.addEventListener('resize', () => { if (document.getElementById('view-editor').style.display === 'flex') { fitToScreen(); } });
+    currentZoom = Math.round(currentZoom * 100) / 100;
+    updateZoom();
+}
+function updateZoom() { if (currentZoom < minZoom) currentZoom = minZoom; if (currentZoom > maxZoom) currentZoom = maxZoom; containerInvoice.style.transform = `scale(${currentZoom})`; if(zoomDisplay) { zoomDisplay.textContent = Math.round(currentZoom * 100) + '%'; } const scrollArea = document.querySelector('.scroll-area'); if(scrollArea) { const screenWidth = scrollArea.clientWidth; const scaledWidth = 816 * currentZoom; if (scaledWidth < screenWidth) { containerInvoice.style.marginLeft = ((screenWidth - scaledWidth) / 2) + "px"; } else { containerInvoice.style.marginLeft = "0px"; } } const unscaledHeight = containerInvoice.offsetHeight; const scaledHeight = unscaledHeight * currentZoom; if (currentZoom < 1.0) { containerInvoice.style.marginBottom = (scaledHeight - unscaledHeight + 50) + "px"; } else if (currentZoom > 1.0) { containerInvoice.style.marginBottom = (currentZoom * 400) + "px"; } else { containerInvoice.style.marginBottom = "100px"; } }
+function adjustZoom(delta) { currentZoom += delta; currentZoom = Math.round(currentZoom * 10) / 10; updateZoom(); }
+function resetZoom() { fitToScreen(); } 
+window.addEventListener('resize', () => { if (document.getElementById('view-editor').style.display === 'flex') { fitToScreen(); } });
 
-    // --- SIGNATURE ÉLECTRONIQUE AMÉLIORÉE (Chantier 6) ---
-    if (window.SignatureFD) {
-        window.SignatureFD.watchContainer(containerInvoice);
-        window.SignatureFD.attachAll(containerInvoice);
-    }
+// --- SIGNATURE ÉLECTRONIQUE AMÉLIORÉE (Chantier 6) ---
+if (window.SignatureFD) {
+    window.SignatureFD.watchContainer(containerInvoice);
+    window.SignatureFD.attachAll(containerInvoice);
+}
 
-    // Auto-resize des textarea de description
-    function autoResizeTextarea(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
-    containerInvoice.addEventListener('input', function(e) { if (e.target && e.target.classList.contains('desc-textarea')) autoResizeTextarea(e.target); });
-    function resizeAllDescTextareas() { containerInvoice.querySelectorAll('.desc-textarea').forEach(autoResizeTextarea); }
+// Auto-resize des textarea de description
+function autoResizeTextarea(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+containerInvoice.addEventListener('input', function(e) { if (e.target && e.target.classList.contains('desc-textarea')) autoResizeTextarea(e.target); });
+function resizeAllDescTextareas() { containerInvoice.querySelectorAll('.desc-textarea').forEach(autoResizeTextarea); }
 
-    initAuth();
+initAuth();
+```
+
 </script>
 </body>
 </html>
