@@ -269,8 +269,15 @@
     function filterEmails() { renderEmailList(); }
     function closeReadingPane() { document.getElementById('emptyView').style.display = 'flex'; document.getElementById('readingPane').style.display = 'none'; document.getElementById('emailLayout').classList.remove('show-reading'); currentEmailId = null; renderEmailList(); }
     function updateUnreadCount() { const c = emailsData.filter(e => e.folder === 'inbox' && e.unread).length; const b = document.getElementById('unreadCount'); b.style.display = c > 0 ? 'inline-block' : 'none'; b.textContent = c; }
-    function openComposeModal() { document.getElementById('composeModal').style.display = 'flex'; document.getElementById('btnSendEmail').disabled = false; }
-    function closeComposeModal() { document.getElementById('composeModal').style.display = 'none'; }
+    function openComposeModal() { 
+        document.getElementById('composeModal').style.display = 'flex'; 
+        document.getElementById('btnSendEmail').disabled = false;
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*');
+    }
+    function closeComposeModal() { 
+        document.getElementById('composeModal').style.display = 'none';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
+    }
     function replyEmail() { /* Remplir composeTo et Subject */ openComposeModal(); }
     // =============================================
     // MODAL DE CONFIRMATION CUSTOM (remplace confirm() natif)
