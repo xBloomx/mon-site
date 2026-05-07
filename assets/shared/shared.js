@@ -35,6 +35,11 @@
     }
 
     function showToast(message, type = 'info', duration = 3000) {
+        // Préférence utilisateur : on n'affiche que les notifications d'erreur
+        // ou d'avertissement. Les toasts 'success' et 'info' sont volontairement
+        // ignorés pour ne pas polluer l'écran.
+        if (type !== 'error' && type !== 'warning') return;
+
         // Si on est dans un iframe, on demande au parent d'afficher le toast
         // (pour qu'il s'affiche par-dessus toute l'app)
         if (window.parent && window.parent !== window) {

@@ -135,7 +135,8 @@
                     else if (minutesAgo < 60) timeText = "il y a " + minutesAgo + " min";
                     else timeText = "il y a " + Math.floor(minutesAgo / 60) + " h";
 
-                    window.showToast('Brouillon restauré (' + timeText + ')', 'info', 4000);
+                    // Notification désactivée à la demande de l'utilisateur (visuel discret).
+                    // La restauration se fait silencieusement.
                 }
 
                 return state;

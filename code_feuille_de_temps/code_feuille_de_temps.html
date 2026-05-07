@@ -370,15 +370,42 @@
     }
 
     let confirmCallback = null;
-    function showConfirm(msg, callback, title="Confirmation") { document.getElementById('confirmTitle').innerHTML = `<svg class="svg-icon" style="margin-right:8px;"><use href="#icon-alert-triangle"></use></svg>` + title; document.getElementById('confirmMsg').innerHTML = msg; confirmCallback = callback; document.getElementById('confirmModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
+    function showConfirm(msg, callback, title="Confirmation", confirmLabel="Oui") { 
+        document.getElementById('confirmTitle').innerHTML = `<svg class="svg-icon" style="margin-right:8px;"><use href="#icon-alert-triangle"></use></svg>` + title; 
+        document.getElementById('confirmMsg').innerHTML = msg; 
+        document.getElementById('confirmYesBtn').textContent = confirmLabel;
+        confirmCallback = callback; 
+        document.getElementById('confirmModal').style.display = 'flex'; 
+        window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); 
+    }
     function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; confirmCallback = null; if (document.getElementById('view-editor').style.display !== 'flex') window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
     document.getElementById('confirmYesBtn').onclick = function() { if (confirmCallback) confirmCallback(); closeConfirmModal(); };
     function showAlert(msg) { document.getElementById('alertMsg').innerHTML = msg; document.getElementById('alertModal').style.display = 'flex'; window.parent.postMessage({ type: 'toggle_menu', action: 'hide' }, '*'); }
     function closeAlertModal() { document.getElementById('alertModal').style.display = 'none'; if (document.getElementById('view-editor').style.display !== 'flex') window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); }
 
     const viewDashboard = document.getElementById('view-dashboard'); const viewEditor = document.getElementById('view-editor'); const listContainer = document.getElementById('timesheetListContainer'); const wrapper = document.getElementById('zoom-wrapper');
-    function showDashboard() { stopAutosave(); viewDashboard.style.display = 'flex'; viewEditor.style.display = 'none'; window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*'); loadData(); }
-    function askGoBack() { showDashboard(); }
+    function showDashboard() {
+        stopAutosave();
+        // Supprimer le brouillon local au retour au dashboard (propre)
+        if (autosave) { try { autosave.clear(); } catch(e){} }
+        viewDashboard.style.display = 'flex'; viewEditor.style.display = 'none';
+        window.parent.postMessage({ type: 'toggle_menu', action: 'show' }, '*');
+        loadData();
+    }
+
+    function askGoBack() {
+        const hasDraft = autosave && typeof autosave.hasDraft === 'function' && autosave.hasDraft();
+        if (hasDraft) {
+            showConfirm(
+                "Tu as des modifications non sauvegardées. Si tu quittes, elles seront perdues définitivement.",
+                () => { showDashboard(); },
+                "Modifications non sauvegardées",
+                "Quitter quand même"
+            );
+        } else {
+            showDashboard();
+        }
+    }
 
     function applyEditorSecurity(sheetObj) {
         const isBureau = canViewAllTimesheets(myRole); // peut voir

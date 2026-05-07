@@ -536,11 +536,7 @@
         _currentTargetImg.src = _canvas.toDataURL('image/png');
         markAsSigned(_currentTargetImg);
         close();
-
-        // Toast de confirmation si dispo
-        if (typeof window.showToast === 'function') {
-            window.showToast('Signature enregistrée', 'success');
-        }
+        // Notification de succès désactivée (info silencieuse).
     }
 
     // ----- Indicateur "Signé" -----

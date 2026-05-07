@@ -190,9 +190,7 @@
                 }
                 return;
             }
-            if (typeof window.showToast === 'function') {
-                window.showToast('Document archivé', 'info', 3000);
-            }
+            // Notification de succès désactivée (info silencieuse).
             if (typeof onSuccess === 'function') onSuccess();
         }, "Supprimer");
     }
@@ -226,9 +224,7 @@
                 }
                 return;
             }
-            if (typeof window.showToast === 'function') {
-                window.showToast('Document restauré', 'success', 3000);
-            }
+            // Notification de succès désactivée (info silencieuse).
             if (typeof onSuccess === 'function') onSuccess();
         }, "Restaurer");
     }

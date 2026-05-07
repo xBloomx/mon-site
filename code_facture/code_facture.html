@@ -330,7 +330,15 @@
         <div class="invoice-list" id="invoiceListContainer"></div>
     </div>
 
-    <div id="view-editor">
+    <!-- Menu déroulant statut bureau — placé hors du top-bar pour éviter le clipping -->
+<div class="custom-select-options" id="statusOptionsMenu">
+    <div class="custom-select-option" onclick="changeOfficeStatusCustom('envoye', 'Reçu (À traiter)', event)">Reçu (À traiter)</div>
+    <div class="custom-select-option" onclick="changeOfficeStatusCustom('traite', 'Traité', event)">Traité</div>
+    <div class="custom-select-option" onclick="changeOfficeStatusCustom('attente', 'À corriger', event)">À corriger</div>
+    <div class="custom-select-option" onclick="changeOfficeStatusCustom('paye', 'Facture payée', event)">Facture payée</div>
+</div>
+
+<div id="view-editor">
         <div class="top-bar" id="editor-top-bar">
             <button class="action-btn btn-back" onclick="askGoBack()">
                 <svg class="svg-icon"><use href="#icon-back"></use></svg> Retour
@@ -356,13 +364,6 @@
                 <svg class="svg-icon" style="color:#aaa;"><use href="#icon-edit"></use></svg>
                 <span id="current-status-text">Reçu (À traiter)</span>
                 <svg class="svg-icon" style="width:12px; height:12px; color:#aaa; margin-left:auto;"><use href="#icon-chevron-down"></use></svg>
-                
-                <div class="custom-select-options" id="statusOptionsMenu">
-                    <div class="custom-select-option" onclick="changeOfficeStatusCustom('envoye', 'Reçu (À traiter)', event)">Reçu (À traiter)</div>
-                    <div class="custom-select-option" onclick="changeOfficeStatusCustom('traite', 'Traité', event)">Traité</div>
-                    <div class="custom-select-option" onclick="changeOfficeStatusCustom('attente', 'À corriger', event)">À corriger</div>
-                    <div class="custom-select-option" onclick="changeOfficeStatusCustom('paye', 'Facture payée', event)">Facture payée</div>
-                </div>
             </div>
 
             <div style="flex:1" class="spacer-mobile"></div>
