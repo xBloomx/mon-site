@@ -170,6 +170,7 @@
         .main-table td { border: 1px solid black; height: 24px; background-color: var(--blue-bg); padding: 0; }
         .main-table tbody tr:last-child td { border-bottom: 4px double black; }
         .main-table input { width: 100%; height: 100%; background: transparent; border: none; padding: 0 5px; box-sizing: border-box; font-size: 12px; color: black; font-weight: bold;}
+        .desc-textarea { width: 100%; min-height: 18px; background: transparent; border: none; padding: 0 5px; box-sizing: border-box; font-size: 12px; color: black; font-weight: bold; resize: none; overflow: hidden; line-height: 1.4; font-family: inherit; display: block; vertical-align: top; }
         
         .bottom-section { margin-top: auto; width: 100%; }
         .time-wrapper { width: 100%; border: 1px solid black; border-collapse: collapse; table-layout: fixed; margin-top: 0; }
@@ -361,7 +362,7 @@
             </button>
             
             <div id="office-status-div" class="office-status-panel" style="display:none;" onclick="toggleStatusMenu(event)">
-                <svg class="svg-icon" style="color:#aaa;"><use href="#icon-edit"></use></svg>
+                <svg class="svg-icon" style="color:#aaa;"><use href="#icon-check"></use></svg>
                 <span id="current-status-text">Reçu (À traiter)</span>
                 <svg class="svg-icon" style="width:12px; height:12px; color:#aaa; margin-left:auto;"><use href="#icon-chevron-down"></use></svg>
             </div>
@@ -814,7 +815,7 @@
     function askGoBack() { showDashboard(); }
 
     function toggleInputs(canEdit) {
-        const allInputs = containerInvoice.querySelectorAll('input');
+        const allInputs = containerInvoice.querySelectorAll('input, textarea.desc-textarea');
         const allSigs = containerInvoice.querySelectorAll('.display-sig');
         allInputs.forEach(inp => { if (!canEdit) { inp.setAttribute('readonly', true); inp.style.pointerEvents = 'none'; } else { inp.removeAttribute('readonly'); inp.style.pointerEvents = 'auto'; } });
         allSigs.forEach(img => { img.style.pointerEvents = canEdit ? 'auto' : 'none'; });
@@ -1045,10 +1046,13 @@
         const pageCount = invoice.pageCount || 1;
         for(let i=0; i<pageCount; i++) { containerInvoice.appendChild(createInvoicePageHTML()); }
         
-        const allInputs = containerInvoice.querySelectorAll('input');
+        const allInputs = containerInvoice.querySelectorAll('input, textarea.desc-textarea');
         if (invoice.inputValues) { allInputs.forEach((input, index) => { if (invoice.inputValues[index] !== undefined) input.value = invoice.inputValues[index]; }); }
         const allSigs = containerInvoice.querySelectorAll('.display-sig');
         if (invoice.sigValues) { allSigs.forEach((img, index) => { if (invoice.sigValues[index]) img.src = invoice.sigValues[index]; }); }
+        
+        // Resize les textareas après restauration
+        if (typeof resizeAllDescTextareas === 'function') resizeAllDescTextareas();
         
         // Le numéro de facture ne se change pas
         const numInput = containerInvoice.querySelector('.red-invoice-input');
@@ -1077,7 +1081,7 @@
         for (let i = 0; i < pageCount; i++) { containerInvoice.appendChild(createInvoicePageHTML()); }
 
         // Copier toutes les valeurs sauf le numéro de facture
-        const allInputs = containerInvoice.querySelectorAll('input');
+        const allInputs = containerInvoice.querySelectorAll('input, textarea.desc-textarea');
         if (invoice.inputValues) {
             allInputs.forEach((input, index) => {
                 if (invoice.inputValues[index] !== undefined) {
@@ -1106,7 +1110,7 @@
 
         applyEditorSecurity(null); fitToScreen();
         startAutosave();
-        showAlert("✅ Facture dupliquée sous le numéro " + nextNum + ". Modifiez et sauvegardez.");
+        showAlert("Facture dupliquée sous le numéro " + nextNum + ". Modifiez et sauvegardez.");
     }
 
     async function openNewInvoice() {
@@ -1223,7 +1227,7 @@
             }
         }
 
-        const inputValues = Array.from(containerInvoice.querySelectorAll('input')).map(input => input.value);
+        const inputValues = Array.from(containerInvoice.querySelectorAll('input, textarea.desc-textarea')).map(input => input.value);
         const sigValues = Array.from(containerInvoice.querySelectorAll('.display-sig')).map(img => img.getAttribute('src'));
         const pageCount = containerInvoice.querySelectorAll('.page').length;
         
@@ -1361,7 +1365,7 @@
 
             // Si archivé : remplacer le badge par "Archivé"
             if (inv.isArchived) {
-                badgeHTML = `<span class="badge-status" style="background:#555; color:#fff;">📦 Archivé</span>`;
+                badgeHTML = `<span class="badge-status" style="background:#555; color:#fff;">Archivé</span>`;
             }
 
             let displayDate = inv.date || '';
@@ -1413,12 +1417,13 @@
     }
 
     const inputAttrs = `type="text" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"`;
+    const taAttrs = `autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" rows="1"`;
     let invoicePageCount = 0; let globalSigCount = 0;
 
     function createInvoicePageHTML() {
         invoicePageCount++; globalSigCount++; 
         const page = document.createElement('div'); page.className = 'page invoice-style';
-        let rows = ""; for(let i=0; i<20; i++) { rows += `<tr><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td></tr>`; }
+        let rows = ""; for(let i=0; i<20; i++) { rows += `<tr><td><input ${inputAttrs}></td><td><textarea class="desc-textarea" ${taAttrs}></textarea></td><td><input ${inputAttrs}></td><td><input ${inputAttrs}></td></tr>`; }
         page.innerHTML = `
             <div class="top-section">
                 <div class="header-main"><img src="../assets/logo_dussault.png" alt="F. Dussault"></div>
@@ -1452,7 +1457,7 @@
     function addPage() { containerInvoice.appendChild(createInvoicePageHTML()); if(currentZoom !== 1.0) updateZoom(); }
     function duplicatePage() { const pages = containerInvoice.querySelectorAll('.page'); if (pages.length === 0) return; const sourcePage = pages[pages.length - 1]; const newPage = createInvoicePageHTML(); containerInvoice.appendChild(newPage); const sourceTopInputs = sourcePage.querySelectorAll('.top-section input'); const newTopInputs = newPage.querySelectorAll('.top-section input'); sourceTopInputs.forEach((input, index) => { if(newTopInputs[index]) newTopInputs[index].value = input.value; }); if(currentZoom !== 1.0) updateZoom(); }
     function deletePage() { if (containerInvoice.children.length > 1) { containerInvoice.removeChild(containerInvoice.lastElementChild); invoicePageCount--; } else { showAlert("<div style='color:var(--btn-red);'>Impossible de supprimer la dernière page.</div>"); } }
-    function askClearInputs() { showConfirm("Effacer tout le contenu de la facture ?", function() { containerInvoice.querySelectorAll('input').forEach(input => input.value = ''); containerInvoice.querySelectorAll('.display-sig').forEach(img => img.src = ''); }); }
+    function askClearInputs() { showConfirm("Effacer tout le contenu de la facture ?", function() { containerInvoice.querySelectorAll('input, textarea.desc-textarea').forEach(input => input.value = ''); containerInvoice.querySelectorAll('.display-sig').forEach(img => img.src = ''); }); }
 
     // --- LOGIQUE CANVAS ET SIGNATURE ---
     const modal = document.getElementById('sig-modal'); const modalCanvas = document.getElementById('modal-canvas'); const ctx = modalCanvas.getContext('2d'); let currentTargetImgId = null; let drawing = false;
@@ -1514,7 +1519,12 @@
             const allInputs = containerInvoice.querySelectorAll('input:not(.red-invoice-input):not([type="date"])');
             const hasContent = Array.from(allInputs).some(i => i.value && i.value.trim());
             if (hasContent) {
-                if (!confirm("Passer en mode 'facture papier' va supprimer le contenu du formulaire actuel. Continuer ?")) return;
+                showConfirm(
+                    "Passer en mode 'facture papier' va supprimer le contenu du formulaire actuel.",
+                    () => { switchToPaperMode(); },
+                    "Changer de mode"
+                );
+                return;
             }
             switchToPaperMode();
         }
@@ -1569,9 +1579,22 @@
         // Demander confirmation si des photos ont été ajoutées
         if (paperPages.length > 0) {
             const msg = paperPages.length === 1
-                ? "Revenir au mode numérique va retirer la photo ajoutée. Continuer ?"
-                : `Revenir au mode numérique va retirer les ${paperPages.length} photos ajoutées. Continuer ?`;
-            if (!confirm(msg)) return;
+                ? "Revenir au mode numérique va retirer la photo ajoutée."
+                : `Revenir au mode numérique va retirer les ${paperPages.length} photos ajoutées.`;
+            showConfirm(msg, () => {
+                isPaperMode = false;
+                paperPages = [];
+                containerInvoice.innerHTML = '';
+                containerInvoice.appendChild(createInvoicePageHTML());
+                ['btn-add-page', 'btn-dup-page', 'btn-del-page', 'btn-clear'].forEach(id => {
+                    const el = document.getElementById(id); if (el) el.style.display = 'flex';
+                });
+                updatePaperToggleButton();
+                applyEditorSecurity({ status: 'brouillon', authorId: myUserId });
+                if (typeof fitToScreen === 'function') fitToScreen();
+                if (window.SignatureFD) window.SignatureFD.attachAll(containerInvoice);
+            }, "Retour au mode numérique");
+            return;
         }
 
         isPaperMode = false;
@@ -1865,10 +1888,10 @@
             await loadData();
 
             if (isSending) {
-                showAlert(`✅ Facture papier #${invoiceNum} envoyée au bureau !`);
+                showAlert(`Facture papier #${invoiceNum} envoyée au bureau !`);
                 showDashboard();
             } else {
-                showAlert(`✅ Facture papier #${invoiceNum} sauvegardée.`);
+                showAlert(`Facture papier #${invoiceNum} sauvegardée.`);
             }
         } catch (e) {
             const msg = (e.message || '').toLowerCase();
@@ -1892,6 +1915,22 @@
     if (window.SignatureFD) {
         window.SignatureFD.watchContainer(containerInvoice);
         window.SignatureFD.attachAll(containerInvoice);
+    }
+
+    // Auto-resize des textarea de description (colonne Description de la grille)
+    function autoResizeTextarea(ta) {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+    }
+    // Délégation au container : un seul listener pour tous les textareas
+    containerInvoice.addEventListener('input', function(e) {
+        if (e.target && e.target.classList.contains('desc-textarea')) {
+            autoResizeTextarea(e.target);
+        }
+    });
+    // Aussi resize au chargement (si des valeurs sont restaurées)
+    function resizeAllDescTextareas() {
+        containerInvoice.querySelectorAll('.desc-textarea').forEach(autoResizeTextarea);
     }
 
     initAuth();
