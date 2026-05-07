@@ -1079,14 +1079,46 @@
             list.innerHTML = '<div style="color:#888; font-style:italic; text-align:center; padding:20px;">Aucun fournisseur. Ajoutez-en un ci-dessus.</div>';
             return;
         }
-        list.innerHTML = suppliersData.map((f, idx) => `
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px;">
-                <span style="color:#ddd; font-size:14px;">${sanitize(f)}</span>
-                <button class="btn-del-emp" onclick="removeSupplier(${idx})" title="Retirer">
-                    <svg class="svg-icon"><use href="#icon-trash"></use></svg>
-                </button>
-            </div>
-        `).join('');
+        list.innerHTML = suppliersData.map((f, idx) => {
+            const isFirst = (idx === 0);
+            const isLast = (idx === suppliersData.length - 1);
+            return `
+                <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#1a1b23; border:1px solid #444; border-radius:6px; margin-bottom:6px;">
+                    <div style="display:flex; flex-direction:column; gap:2px; flex-shrink:0;">
+                        <button onclick="moveSupplierUp(${idx})" ${isFirst ? 'disabled' : ''} title="Monter"
+                                style="background:${isFirst ? '#222' : '#333'}; color:${isFirst ? '#444' : '#bbb'}; border:none; border-radius:4px; width:28px; height:22px; display:flex; align-items:center; justify-content:center; cursor:${isFirst ? 'default' : 'pointer'}; padding:0;">
+                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M7 14l5-5 5 5z"/></svg>
+                        </button>
+                        <button onclick="moveSupplierDown(${idx})" ${isLast ? 'disabled' : ''} title="Descendre"
+                                style="background:${isLast ? '#222' : '#333'}; color:${isLast ? '#444' : '#bbb'}; border:none; border-radius:4px; width:28px; height:22px; display:flex; align-items:center; justify-content:center; cursor:${isLast ? 'default' : 'pointer'}; padding:0;">
+                            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M7 10l5 5 5-5z"/></svg>
+                        </button>
+                    </div>
+                    <span style="flex:1; color:#ddd; font-size:14px; word-break:break-word;">${sanitize(f)}</span>
+                    <button class="btn-del-emp" onclick="removeSupplier(${idx})" title="Retirer" style="flex-shrink:0;">
+                        <svg class="svg-icon"><use href="#icon-trash"></use></svg>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Monte un fournisseur d'une position
+    async function moveSupplierUp(idx) {
+        if (idx <= 0 || idx >= suppliersData.length) return;
+        // Swap avec celui du dessus
+        [suppliersData[idx - 1], suppliersData[idx]] = [suppliersData[idx], suppliersData[idx - 1]];
+        renderSuppliers();
+        await saveSuppliers();
+    }
+
+    // Descend un fournisseur d'une position
+    async function moveSupplierDown(idx) {
+        if (idx < 0 || idx >= suppliersData.length - 1) return;
+        // Swap avec celui du dessous
+        [suppliersData[idx], suppliersData[idx + 1]] = [suppliersData[idx + 1], suppliersData[idx]];
+        renderSuppliers();
+        await saveSuppliers();
     }
 
     async function addSupplier() {

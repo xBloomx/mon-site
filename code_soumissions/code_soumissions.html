@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Soumissions F.Dussault</title>
     <script>if (window.self === window.top) { window.location.href = '../login.html'; }</script>
     <script src="../assets/shared/console-filter.js"></script>
@@ -183,7 +183,7 @@
         <div class="dash-header">
             <div class="dash-title">
                 <h1>Mes Soumissions</h1>
-                <p>Gérez vos estimations (Connecté à Supabase)</p>
+                <p>Gérez vos estimations</p>
             </div>
             <button class="action-btn" style="background-color: var(--btn-yellow);" onclick="openNewQuote()">
                 <svg class="svg-icon"><use href="#icon-plus"></use></svg> Nouvelle Soumission
@@ -640,7 +640,7 @@
 
             // Override visuel si archivé
             if (q.isArchived) {
-                statusHTML = `<div class="inv-status" style="background:#555; color:#fff; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">📦 Archivée</div>`;
+                statusHTML = `<div class="inv-status" style="background:#555; color:#fff; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">Archivée</div>`;
             }
 
             const item = document.createElement('div'); item.className = 'quote-item'; item.onclick = function() { openExistingQuote(q.id); };
