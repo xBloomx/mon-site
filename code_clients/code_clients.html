@@ -1,158 +1,154 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Gestion Clients F.Dussault</title>
-
-```
-<script>
-    if (window.self === window.top) { window.location.href = '../login.html'; }
-</script>
-
-<script src="../assets/shared/console-filter.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../supabase-config.js"></script>
-<link rel="stylesheet" href="../assets/shared/shared.css">
-<script src="../assets/shared/shared.js"></script>
-
-<style>
-    body { 
-        font-family: 'Segoe UI', Arial, sans-serif;
-        background-color: var(--app-bg); 
-        color: var(--text-light);
-        margin: 0; padding: 0;
-        height: 100vh;
-        display: flex;
-        overflow: hidden;
-    }
-
-    .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
-
-    #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-
-    .dash-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
-    .dash-title h1 { margin: 0; font-size: 28px; color: white; }
-    .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
-    .header-actions { display: flex; align-items: center; gap: 15px; }
-
-    .btn-action { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s; }
-    .btn-action:hover { background-color: #ffd66b; transform: translateY(-2px); }
-
-    .btn-header-icon { background: #444; border: none; width: 38px; height: 38px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: #ccc; flex-shrink: 0; }
-    .btn-header-icon:hover { background: var(--btn-red); color: white; }
-
-    .toolbar { display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-    .search-box { flex: 1; position: relative; display: flex; align-items: center; }
-    .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 14px 15px 14px 45px; border-radius: 8px; font-size: 16px; outline: none; transition: 0.2s; }
-    .search-box input:focus { border-color: var(--btn-yellow); }
-    .search-icon { position: absolute; left: 15px; color: #888; pointer-events: none; display: flex; align-items: center; }
-
-    .filter-select { background: #1e1f26; border: 1px solid #444; color: white; padding: 14px 15px; border-radius: 8px; font-size: 15px; outline: none; cursor: pointer; min-width: 180px; font-family: inherit; }
-    .filter-select:focus { border-color: var(--btn-yellow); }
-
-    .discrete-stats { color: #aaa; font-size: 13px; font-style: italic; margin-top: -15px; margin-bottom: -10px; padding-left: 10px; }
-
-    .client-list { display: flex; flex-direction: column; gap: 15px; padding-bottom: 80px; }
     
-    .client-item { background-color: var(--card-bg); padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; border-left: 5px solid transparent; }
-    .client-item:hover { transform: translateY(-3px); background-color: #343542; }
-    .client-item.status-residentiel { border-left-color: #28a745; }
-    .client-item.status-commercial { border-left-color: #007bff; }
-    .client-item.status-prospect { border-left-color: #6c757d; }
-
-    .cli-info { display: flex; gap: 20px; align-items: center; flex: 1; }
-    .cli-status { font-weight: bold; font-size: 13px; width: 140px; display:flex; align-items:center; gap:6px; text-transform: uppercase;}
-    .cli-status.commercial { color: #007bff; }
-    .cli-status.residentiel { color: #28a745; }
-    .cli-status.prospect { color: #6c757d; }
-    .cli-name { font-weight: bold; font-size: 18px; color: white; flex: 1; }
-    .cli-name-container { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .cli-chip-sub { font-size: 13px; color: white; background: #3a3b46; padding: 4px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #555; display: inline-flex; align-items: center; }
-    .cli-chip-contact { font-size: 12px; color: var(--btn-yellow); background: rgba(252, 202, 70, 0.15); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(252, 202, 70, 0.3); display: inline-flex; align-items: center; }
-    .cli-alert-badge { background: var(--btn-red); color: white; font-size: 10px; padding: 4px 8px; border-radius: 6px; font-weight: bold; white-space:nowrap; border: 1px solid #ff7b7b; display:flex; align-items:center; gap:4px;}
-    .cli-contact { color: #aaa; font-size: 14px; width: 250px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-    .cli-contact-item { display: flex; align-items: flex-start; gap: 6px; justify-content: flex-end; text-align: right; }
-    .cli-contact-item.address { font-size: 12px; color: #888; margin-top: 2px; }
-    .cli-actions { display: flex; gap: 10px; margin-left: 20px; }
-    .btn-icon { background: #444; border: none; width: 36px; height: 36px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: white; flex-shrink: 0; }
-    .btn-icon:hover { background: var(--btn-yellow); color:black; }
-
-    @media (max-width: 768px) {
-        #view-dashboard { padding: 15px; }
-        .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; }
-        .header-actions { width: 100%; flex-direction: row; display: flex; gap: 10px; }
-        .dash-header .btn-action { flex: 1; justify-content: center; }
-        .toolbar { flex-direction: column; align-items: stretch; gap: 10px; width: 100%; }
-        .search-box, .search-box input { width: 100%; }
-        .filter-select { width: 100%; }
-        .discrete-stats { margin-top: -5px; margin-bottom: 0px; text-align: center; padding-left: 0; }
-        .client-item { flex-direction: column; align-items: flex-start; gap: 15px; }
-        .cli-info { flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; }
-        .cli-status { width: auto; }
-        .cli-contact { width: 100%; align-items: flex-start; font-size: 13px; margin-top: 5px; }
-        .cli-contact-item { justify-content: flex-start; text-align: left; }
-        .cli-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
-        .modal-card { width: 95% !important; padding: 20px !important; }
-        .form-row { flex-direction: column; gap: 0; }
-        .contact-row { flex-wrap: wrap; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .contact-row input { width: 100%; margin-bottom: 5px; flex: none; font-size: 16px; }
-        .btn-remove-row { width: 100%; text-align: right; }
-        .gps-options { margin-left: 0; margin-top: 10px; width: 100%; display: flex; gap: 10px; justify-content: space-between; }
-        .gps-btn { flex: 1; text-align: center; padding: 6px 5px; font-size: 13px; }
-    }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; z-index: 4000; justify-content: center; align-items: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); box-sizing: border-box; }
-    .modal-overlay.z-high { z-index: 4500; background: rgba(0,0,0,0.85); }
-    .modal-card { background: var(--card-bg); width: 850px; padding: 30px; border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: calc(90vh - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px)); overflow-y: auto; }
-    .modal-card.small-card { width: 350px; text-align: center; }
-    .modal-title { font-size: 28px; color: white; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid var(--btn-yellow); padding-bottom: 10px; display: inline-block;}
+    <script>
+        if (window.self === window.top) { window.location.href = '../login.html'; }
+    </script>
     
-    .form-group { margin-bottom: 15px; text-align: left; }
-    .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 14px; font-weight: bold; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background: #1e1f26; border: 1px solid #555; color: white; border-radius: 8px; font-family: sans-serif; font-size: 14px; outline: none; }
-    .form-group input:focus, .form-group textarea:focus { border-color: var(--btn-yellow); }
-    .form-row { display: flex; gap: 15px; }
-    
-    .contacts-container { border: 1px solid #444; padding: 10px; border-radius: 8px; background: #1e1f26; margin-bottom: 15px; }
-    .contact-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
-    .contact-row input.inp-name { flex: 2; }
-    .contact-row input.inp-role { flex: 1.5; }
-    .contact-row input.inp-phone { flex: 1.5; }
-    .contact-row input.inp-email { flex: 2; }
-    
-    .btn-add-contact { background: #444; color: white; width: 100%; padding: 10px; border: 1px dashed #666; border-radius: 8px; cursor: pointer; font-size: 13px; margin-top: 5px;}
-    .btn-add-contact:hover { background: #555; }
-    .btn-remove-row { background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-weight: bold; font-size: 20px; display:flex; align-items:center; justify-content:center;}
+    <script src="../assets/shared/console-filter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase-config.js"></script>
+    <link rel="stylesheet" href="../assets/shared/shared.css">
+    <script src="../assets/shared/shared.js"></script>
 
-    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
-    .modal-actions.center { justify-content: center; }
-    .btn-cancel { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
-    .btn-submit { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; display:flex; align-items:center; gap:6px;}
-    .btn-delete { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display:flex; align-items:center; gap:6px;}
+    <style>
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--app-bg); 
+            color: var(--text-light);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
 
-    .view-section-title { color: var(--btn-yellow); font-size: 14px; font-weight: bold; margin: 15px 0 5px 0; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
-    .view-row { margin-bottom: 8px; display: flex; align-items: center;}
-    .view-label { color: #888; width: 140px; font-size: 13px; }
-    .view-val { color: white; font-weight: 500; flex: 1; }
-    
-    .gps-options { display: flex; gap: 10px; width: 100%; }
-    .gps-btn { text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; font-weight: bold; transition: 0.2s; display:flex; align-items:center; justify-content:center; gap:5px; flex: 1; }
-    .gps-google { background: #4285F4; color: white; }
-    .gps-apple { background: #ffffff; color: black; }
+        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
 
-    .box-note { background:#1e1f26; padding:10px; border-radius:8px; color:#ddd; font-style:italic; min-height:40px; white-space: pre-wrap; border: 1px solid #444; }
-    .box-alert { background: rgba(255, 77, 77, 0.1); border: 1px solid var(--btn-red); color: var(--btn-red); padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; display:flex; align-items:center; gap:8px;}
-    
-    .contact-item { background: #333; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
-    .ci-name { font-weight: bold; color: white; font-size: 15px; }
-    .ci-role { font-size: 12px; color: var(--btn-yellow); font-style: italic; background: rgba(252, 202, 70, 0.1); padding: 1px 6px; border-radius: 4px; display: inline-block; }
+        #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
 
-    .corbeille-item { background: #1a1b23; border: 1px dashed var(--btn-red); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-</style>
-```
+        .dash-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
+        .dash-title h1 { margin: 0; font-size: 28px; color: white; }
+        .dash-title p { margin: 5px 0 0; color: #aaa; font-size: 14px; }
+        .header-actions { display: flex; align-items: center; gap: 15px; }
 
+        .btn-action { background-color: var(--btn-yellow); color: black; border: none; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: 0.2s; }
+        .btn-action:hover { background-color: #ffd66b; transform: translateY(-2px); }
+
+        .btn-header-icon { background: #444; border: none; width: 38px; height: 38px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: #ccc; flex-shrink: 0; }
+        .btn-header-icon:hover { background: var(--btn-red); color: white; }
+
+        .toolbar { display: flex; gap: 15px; align-items: center; background-color: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .search-box { flex: 1; position: relative; display: flex; align-items: center; }
+        .search-box input { width: 100%; background: #1e1f26; border: 1px solid #444; color: white; padding: 14px 15px 14px 45px; border-radius: 8px; font-size: 16px; outline: none; transition: 0.2s; }
+        .search-box input:focus { border-color: var(--btn-yellow); }
+        .search-icon { position: absolute; left: 15px; color: #888; pointer-events: none; display: flex; align-items: center; }
+
+        .filter-select { background: #1e1f26; border: 1px solid #444; color: white; padding: 14px 15px; border-radius: 8px; font-size: 15px; outline: none; cursor: pointer; min-width: 180px; font-family: inherit; }
+        .filter-select:focus { border-color: var(--btn-yellow); }
+
+        .discrete-stats { color: #aaa; font-size: 13px; font-style: italic; margin-top: -15px; margin-bottom: -10px; padding-left: 10px; }
+
+        .client-list { display: flex; flex-direction: column; gap: 15px; padding-bottom: 80px; }
+        
+        .client-item { background-color: var(--card-bg); padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; border-left: 5px solid transparent; }
+        .client-item:hover { transform: translateY(-3px); background-color: #343542; }
+        .client-item.status-residentiel { border-left-color: #28a745; }
+        .client-item.status-commercial { border-left-color: #007bff; }
+        .client-item.status-prospect { border-left-color: #6c757d; }
+
+        .cli-info { display: flex; gap: 20px; align-items: center; flex: 1; }
+        .cli-status { font-weight: bold; font-size: 13px; width: 140px; display:flex; align-items:center; gap:6px; text-transform: uppercase;}
+        .cli-status.commercial { color: #007bff; }
+        .cli-status.residentiel { color: #28a745; }
+        .cli-status.prospect { color: #6c757d; }
+        .cli-name { font-weight: bold; font-size: 18px; color: white; flex: 1; }
+        .cli-name-container { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .cli-chip-sub { font-size: 13px; color: white; background: #3a3b46; padding: 4px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #555; display: inline-flex; align-items: center; }
+        .cli-chip-contact { font-size: 12px; color: var(--btn-yellow); background: rgba(252, 202, 70, 0.15); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(252, 202, 70, 0.3); display: inline-flex; align-items: center; }
+        .cli-alert-badge { background: var(--btn-red); color: white; font-size: 10px; padding: 4px 8px; border-radius: 6px; font-weight: bold; white-space:nowrap; border: 1px solid #ff7b7b; display:flex; align-items:center; gap:4px;}
+        .cli-contact { color: #aaa; font-size: 14px; width: 250px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .cli-contact-item { display: flex; align-items: flex-start; gap: 6px; justify-content: flex-end; text-align: right; }
+        .cli-contact-item.address { font-size: 12px; color: #888; margin-top: 2px; }
+        .cli-actions { display: flex; gap: 10px; margin-left: 20px; }
+        .btn-icon { background: #444; border: none; width: 36px; height: 36px; border-radius: 8px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; color: white; flex-shrink: 0; }
+        .btn-icon:hover { background: var(--btn-yellow); color:black; }
+
+        @media (max-width: 768px) {
+            #view-dashboard { padding: 15px; }
+            .dash-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .header-actions { width: 100%; flex-direction: row; display: flex; gap: 10px; }
+            .dash-header .btn-action { flex: 1; justify-content: center; }
+            .toolbar { flex-direction: column; align-items: stretch; gap: 10px; width: 100%; }
+            .search-box, .search-box input { width: 100%; }
+            .filter-select { width: 100%; }
+            .discrete-stats { margin-top: -5px; margin-bottom: 0px; text-align: center; padding-left: 0; }
+            .client-item { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .cli-info { flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; }
+            .cli-status { width: auto; }
+            .cli-contact { width: 100%; align-items: flex-start; font-size: 13px; margin-top: 5px; }
+            .cli-contact-item { justify-content: flex-start; text-align: left; }
+            .cli-actions { align-self: flex-end; margin-left: 0; margin-top: -35px; }
+            .modal-card { width: 95% !important; padding: 20px !important; }
+            .form-row { flex-direction: column; gap: 0; }
+            .contact-row { flex-wrap: wrap; border-bottom: 1px solid #333; padding-bottom: 10px; }
+            .contact-row input { width: 100%; margin-bottom: 5px; flex: none; font-size: 16px; }
+            .btn-remove-row { width: 100%; text-align: right; }
+            .gps-options { margin-left: 0; margin-top: 10px; width: 100%; display: flex; gap: 10px; justify-content: space-between; }
+            .gps-btn { flex: 1; text-align: center; padding: 6px 5px; font-size: 13px; }
+        }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; z-index: 4000; justify-content: center; align-items: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); box-sizing: border-box; }
+        .modal-overlay.z-high { z-index: 4500; background: rgba(0,0,0,0.85); }
+        .modal-card { background: var(--card-bg); width: 850px; padding: 30px; border-radius: 15px; border: 1px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: calc(90vh - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px)); overflow-y: auto; }
+        .modal-card.small-card { width: 350px; text-align: center; }
+        .modal-title { font-size: 28px; color: white; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid var(--btn-yellow); padding-bottom: 10px; display: inline-block;}
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 14px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background: #1e1f26; border: 1px solid #555; color: white; border-radius: 8px; font-family: sans-serif; font-size: 14px; outline: none; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--btn-yellow); }
+        .form-row { display: flex; gap: 15px; }
+        
+        .contacts-container { border: 1px solid #444; padding: 10px; border-radius: 8px; background: #1e1f26; margin-bottom: 15px; }
+        .contact-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+        .contact-row input.inp-name { flex: 2; }
+        .contact-row input.inp-role { flex: 1.5; }
+        .contact-row input.inp-phone { flex: 1.5; }
+        .contact-row input.inp-email { flex: 2; }
+        
+        .btn-add-contact { background: #444; color: white; width: 100%; padding: 10px; border: 1px dashed #666; border-radius: 8px; cursor: pointer; font-size: 13px; margin-top: 5px;}
+        .btn-add-contact:hover { background: #555; }
+        .btn-remove-row { background: transparent; border: none; color: #ff4d4d; cursor: pointer; font-weight: bold; font-size: 20px; display:flex; align-items:center; justify-content:center;}
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .modal-actions.center { justify-content: center; }
+        .btn-cancel { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-submit { background: var(--btn-green); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; display:flex; align-items:center; gap:6px;}
+        .btn-delete { background: var(--btn-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; display:flex; align-items:center; gap:6px;}
+
+        .view-section-title { color: var(--btn-yellow); font-size: 14px; font-weight: bold; margin: 15px 0 5px 0; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .view-row { margin-bottom: 8px; display: flex; align-items: center;}
+        .view-label { color: #888; width: 140px; font-size: 13px; }
+        .view-val { color: white; font-weight: 500; flex: 1; }
+        
+        .gps-options { display: flex; gap: 10px; width: 100%; }
+        .gps-btn { text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; font-weight: bold; transition: 0.2s; display:flex; align-items:center; justify-content:center; gap:5px; flex: 1; }
+        .gps-google { background: #4285F4; color: white; }
+        .gps-apple { background: #ffffff; color: black; }
+
+        .box-note { background:#1e1f26; padding:10px; border-radius:8px; color:#ddd; font-style:italic; min-height:40px; white-space: pre-wrap; border: 1px solid #444; }
+        .box-alert { background: rgba(255, 77, 77, 0.1); border: 1px solid var(--btn-red); color: var(--btn-red); padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; display:flex; align-items:center; gap:8px;}
+        
+        .contact-item { background: #333; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+        .ci-name { font-weight: bold; color: white; font-size: 15px; }
+        .ci-role { font-size: 12px; color: var(--btn-yellow); font-style: italic; background: rgba(252, 202, 70, 0.1); padding: 1px 6px; border-radius: 4px; display: inline-block; }
+
+        .corbeille-item { background: #1a1b23; border: 1px dashed var(--btn-red); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    </style>
 </head>
 <body>
 
@@ -192,31 +188,27 @@
             </div>
         </div>
 
-```
-    <div class="toolbar">
-        <div class="search-box">
-            <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
-            <input type="text" id="clientSearch" placeholder="Rechercher (Nom, Tél, Adresse...)" onkeyup="filterClients()">
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon"><svg class="svg-icon"><use href="#icon-search"></use></svg></span>
+                <input type="text" id="clientSearch" placeholder="Rechercher (Nom, Tél, Adresse...)" onkeyup="filterClients()">
+            </div>
+            <select id="statusFilter" class="filter-select" onchange="filterClients()">
+                <option value="all">Tous les statuts</option>
+                <option value="commercial">Commercial</option>
+                <option value="residentiel">Résidentiel</option>
+                <option value="prospect">Prospect</option>
+                <option value="archived">Archivés</option>
+            </select>
         </div>
-        <select id="statusFilter" class="filter-select" onchange="filterClients()">
-            <option value="all">Tous les statuts</option>
-            <option value="commercial">Commercial</option>
-            <option value="residentiel">Résidentiel</option>
-            <option value="prospect">Prospect</option>
-            <option value="archived">Archivés</option>
-        </select>
+        
+        <div class="discrete-stats" id="filterResultText">Total : 0 client(s) dans le répertoire.</div>
+
+        <div class="client-list" id="clientListContainer"></div>
     </div>
-    
-    <div class="discrete-stats" id="filterResultText">Total : 0 client(s) dans le répertoire.</div>
-
-    <div class="client-list" id="clientListContainer"></div>
-</div>
-```
-
 </div>
 
 <!-- MODAL VISUALISATION -->
-
 <div class="modal-overlay" id="viewModal">
     <div class="modal-card">
         <div class="modal-title" id="viewModalTitle">Fiche Client</div>
@@ -267,7 +259,6 @@
 </div>
 
 <!-- MODAL ÉDITION -->
-
 <div class="modal-overlay" id="editModal">
     <div class="modal-card">
         <div class="modal-title" id="edModalTitle">Éditer Client</div>
@@ -322,7 +313,6 @@
 </div>
 
 <!-- MODAL CONFIRMATION SUPPRESSION -->
-
 <div class="modal-overlay z-high" id="confirmModal">
     <div class="modal-card small-card">
         <div class="modal-title" style="color: var(--btn-red); text-decoration: none; border:none;">Supprimer ce client ?</div>
@@ -335,7 +325,6 @@
 </div>
 
 <!-- MODAL CORBEILLE -->
-
 <div class="modal-overlay" id="corbeilleModal">
     <div class="modal-card">
         <div class="modal-title" style="color: var(--btn-red); display:flex; align-items:center; justify-content:center; gap:8px;">
@@ -352,7 +341,6 @@
 </div>
 
 <!-- MODAL ALERTE -->
-
 <div class="modal-overlay z-high" id="alertModal">
     <div class="modal-card small-card">
         <div class="modal-title" style="color: var(--btn-yellow); border:none; margin-bottom: 10px;">Information</div>
@@ -838,6 +826,12 @@
             toggleCommercialFields();
 
             if (hasPermission(myRole, 'delete_clients')) {
+                const btnDel = document.createElement('button');
+                btnDel.className = 'btn-delete';
+                btnDel.innerHTML = `<svg class="svg-icon"><use href="#icon-trash"></use></svg> Supprimer`;
+                btnDel.onclick = () => askDeleteClient(c.id);
+                actionsDiv.prepend(btnDel);
+
                 // Bouton Archiver
                 const isArchived = c.contacts?.is_archived || false;
                 const btnArchive = document.createElement('button');
