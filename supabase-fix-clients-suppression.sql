@@ -2,11 +2,15 @@
 -- supabase-fix-clients-suppression.sql
 -- Corrige l'impossibilité de supprimer un client.
 --
--- Cause probable : la colonne `est_supprime` n'existe pas dans la table
--- `clients`, donc l'UPDATE échoue silencieusement côté front.
+-- Causes possibles :
+--   1) La colonne `est_supprime` n'existe pas dans la table `clients`
+--   2) La policy RLS UPDATE est trop restrictive et bloque silencieusement
+--      l'UPDATE sans renvoyer d'erreur (0 rows affected)
 --
--- Ce script ajoute la colonne si elle manque, et s'assure que les policies
--- RLS autorisent UPDATE/DELETE pour les utilisateurs authentifiés.
+-- Ce script :
+--   - Ajoute la colonne `est_supprime` si elle manque
+--   - Supprime et recrée les policies clients_update et clients_select
+--     pour garantir qu'un authentifié peut bien lire et modifier les clients
 -- ============================================================================
 -- IDEMPOTENT : peut être relancé plusieurs fois sans problème.
 -- ============================================================================
@@ -26,43 +30,39 @@ CREATE INDEX IF NOT EXISTS clients_est_supprime_idx
 -- 2) S'assurer que RLS est activé sur la table
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 
--- 3) Recréer les policies de base au cas où elles auraient été perdues
---    (ne touche à rien si elles existent déjà)
+-- 3) Recréer DE FORCE les policies SELECT, INSERT, UPDATE
+--    (DROP IF EXISTS puis CREATE pour garantir l'état attendu)
+DROP POLICY IF EXISTS "clients_select"  ON public.clients;
+DROP POLICY IF EXISTS "clients_insert"  ON public.clients;
+DROP POLICY IF EXISTS "clients_update"  ON public.clients;
+
+CREATE POLICY "clients_select"
+    ON public.clients FOR SELECT
+    TO authenticated
+    USING (true);
+
+CREATE POLICY "clients_insert"
+    ON public.clients FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- IMPORTANT : USING + WITH CHECK à TRUE pour autoriser l'UPDATE
+-- (c'est cette policy qui permet de mettre est_supprime = true)
+CREATE POLICY "clients_update"
+    ON public.clients FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- 4) DELETE policy : recréer seulement si elle n'existe pas
+--    (on ne veut pas écraser une policy DELETE plus stricte)
 DO $$
 BEGIN
-    -- SELECT
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies
-        WHERE schemaname = 'public' AND tablename = 'clients' AND policyname = 'clients_select'
-    ) THEN
-        CREATE POLICY "clients_select" ON public.clients FOR SELECT TO authenticated USING (true);
-    END IF;
-
-    -- INSERT
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies
-        WHERE schemaname = 'public' AND tablename = 'clients' AND policyname = 'clients_insert'
-    ) THEN
-        CREATE POLICY "clients_insert" ON public.clients FOR INSERT TO authenticated WITH CHECK (true);
-    END IF;
-
-    -- UPDATE (c'est celle qui permet la mise à est_supprime = true)
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies
-        WHERE schemaname = 'public' AND tablename = 'clients' AND policyname = 'clients_update'
-    ) THEN
-        CREATE POLICY "clients_update" ON public.clients FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-    END IF;
-
-    -- DELETE (réservé aux rôles avec la permission delete_clients)
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies
         WHERE schemaname = 'public' AND tablename = 'clients' AND policyname = 'clients_delete'
     ) THEN
-        -- Si la fonction user_has_permission existe, on l'utilise ; sinon on autorise tout authentifié
-        IF EXISTS (
-            SELECT 1 FROM pg_proc WHERE proname = 'user_has_permission'
-        ) THEN
+        IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'user_has_permission') THEN
             EXECUTE 'CREATE POLICY "clients_delete" ON public.clients FOR DELETE TO authenticated USING (public.user_has_permission(''delete_clients''))';
         ELSE
             EXECUTE 'CREATE POLICY "clients_delete" ON public.clients FOR DELETE TO authenticated USING (true)';
@@ -72,11 +72,21 @@ END
 $$;
 
 -- ============================================================================
--- VÉRIFICATION (à exécuter manuellement après) :
+-- VÉRIFICATIONS (à lancer manuellement après) :
 --
--- SELECT column_name, data_type
--- FROM information_schema.columns
--- WHERE table_name = 'clients' AND column_name = 'est_supprime';
+-- a) La colonne existe :
+--    SELECT column_name, data_type, column_default
+--    FROM information_schema.columns
+--    WHERE table_name = 'clients' AND column_name = 'est_supprime';
 --
--- Doit retourner : est_supprime | boolean
+-- b) Les policies sont en place :
+--    SELECT policyname, cmd, qual
+--    FROM pg_policies
+--    WHERE schemaname = 'public' AND tablename = 'clients';
+--
+-- c) Test direct (remplace l'UUID par un vrai client) :
+--    UPDATE public.clients SET est_supprime = true
+--    WHERE id = 'UUID_DU_CLIENT' RETURNING id, nom, est_supprime;
+--    Doit retourner une ligne.
 -- ============================================================================
+
