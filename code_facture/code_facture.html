@@ -1142,6 +1142,52 @@
     }
 
     function exporterPDF() {
+        // === MODE PAPIER : on génère un PDF à partir des photos ===
+        if (isPaperMode) {
+            if (!paperPages || paperPages.length === 0) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Ajoutez au moins une photo avant d\'exporter', 'error');
+                }
+                return;
+            }
+
+            // Récupérer les infos du header papier
+            const paperContainer = containerInvoice.querySelector('.paper-mode-container');
+            let clientName = '', dateVal = '', invoiceNum = '';
+            if (paperContainer) {
+                const cIn = paperContainer.querySelector('.paper-client-input');
+                const dIn = paperContainer.querySelector('.paper-date-input');
+                const nIn = paperContainer.querySelector('.paper-numero-input');
+                clientName = cIn ? cIn.value.trim() : '';
+                dateVal = dIn ? dIn.value.trim() : '';
+                invoiceNum = nIn ? nIn.value.trim() : '';
+            }
+            if (!invoiceNum) invoiceNum = currentInvoiceId || '';
+            if (!dateVal) {
+                const today = new Date();
+                dateVal = today.getFullYear() + '-'
+                    + String(today.getMonth() + 1).padStart(2, '0') + '-'
+                    + String(today.getDate()).padStart(2, '0');
+            }
+
+            if (!window.PDFExportFD) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Module PDF non chargé', 'error');
+                }
+                return;
+            }
+
+            window.PDFExportFD.openPreview({
+                paperImages: paperPages.map(p => ({ dataUrl: p.dataUrl, url: p.url })),
+                docType: 'facture',
+                docNumber: invoiceNum,
+                clientName: clientName,
+                date: dateVal
+            });
+            return;
+        }
+
+        // === MODE NUMÉRIQUE : capture du formulaire ===
         const firstPage = containerInvoice.querySelector('.page');
         if (!firstPage) {
             if (typeof window.showToast === 'function') {
