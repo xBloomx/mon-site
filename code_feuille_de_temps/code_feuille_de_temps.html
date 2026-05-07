@@ -22,7 +22,7 @@
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--app-bg); color: var(--text-light); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
         .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--app-bg); overflow: hidden; }
-        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; color: white; }
+        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; color: white; }
         .b-brouillon { background: #444; } .b-envoye { background: #3498db; } .b-attente { background: #fcca46; color: black; } .b-paye { background: #28a745; } .b-retard, .b-renvoye { background: #ff4d4d; }
         #view-dashboard { padding: 30px; height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; }
@@ -167,6 +167,7 @@
     <symbol id="icon-file-minus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></symbol>
     <symbol id="icon-eraser" viewBox="0 0 24 24"><path d="M20 20H7l-3-3a2.828 2.828 0 0 1 0-4l10-10a2.828 2.828 0 0 1 4 0l3 3a2.828 2.828 0 0 1 0 4l-7 7"></path><line x1="10" y1="10" x2="17" y2="17"></line></symbol>
     <symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
     <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></symbol>
 </svg>
 
@@ -604,10 +605,10 @@
         try { localStorage.removeItem('fdussault_draft_feuille_de_temps_new'); } catch(e) {}
         await loadData();
         if (isSending) {
-            showAlert("✅ Feuille de temps envoyée au bureau avec succès !");
+            showAlert("Feuille de temps envoyée au bureau avec succès !");
             showDashboard();
         } else {
-            showAlert("✅ Feuille de temps sauvegardée !");
+            showAlert("Feuille de temps sauvegardée !");
             applyEditorSecurity(payload);
         }
     }
@@ -661,7 +662,7 @@
             if (error) { showAlert("❌ Erreur : " + error.message); return; }
             await loadData();
             showDashboard();
-            showAlert("✅ Feuille de temps approuvée !");
+            showAlert("Feuille de temps approuvée !");
         });
     }
 
@@ -730,13 +731,13 @@
         
         listToShow.forEach(sheet => {
             let badgeHTML = ''; let st = sheet.status || 'brouillon';
-            if(st === 'brouillon') badgeHTML = `<span class="badge-status b-brouillon"><svg class="svg-icon"><use href="#icon-file-text"></use></svg> Brouillon</span>`;
-            if(st === 'envoye') badgeHTML = `<span class="badge-status b-envoye"><svg class="svg-icon"><use href="#icon-send"></use></svg> ${!isBureau?'Envoyée':'En attente'}</span>`;
-            if(st === 'approuve') badgeHTML = `<span class="badge-status b-paye"><svg class="svg-icon"><use href="#icon-check-circle"></use></svg> Approuvée</span>`;
+            if(st === 'brouillon') badgeHTML = `<span class="badge-status b-brouillon">Brouillon</span>`;
+            if(st === 'envoye') badgeHTML = `<span class="badge-status b-envoye">${!isBureau?'Envoyée':'En attente'}</span>`;
+            if(st === 'approuve') badgeHTML = `<span class="badge-status b-paye">Approuvée</span>`;
 
             // Override visuel si archivée
             if (sheet.isArchived) {
-                badgeHTML = `<span class="badge-status" style="background:#555; color:#fff;">📦 Archivée</span>`;
+                badgeHTML = `<span class="badge-status" style="background:#555; color:#fff;">Archivée</span>`;
             }
 
             const item = document.createElement('div'); item.className = 'invoice-item'; item.onclick = function() { openExistingTimesheet(sheet.id); };
